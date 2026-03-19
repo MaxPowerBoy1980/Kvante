@@ -442,7 +442,7 @@ class FeedbackRequest(BaseModel):
 
 
 class FollowupRequest(BaseModel):
-    action: str  # explain_different | another_example | show_first_step | what_did_well | try_again
+    action: str  # explain_different | another_example | show_first_step | what_did_well | try_again | explain_task
 
 
 # --- Health ---
@@ -1029,6 +1029,13 @@ You will receive:
 - Do NOT outline the full solution path
 - Example: "Start by lining up the numbers so the ones, tens, and hundreds are in columns."
 - Keep it to 1–2 sentences
+
+## For "explain_task":
+- The student hasn't started working yet — they don't understand what the assignment is asking
+- Re-explain the assignment in simpler, more concrete terms
+- Use an everyday analogy if helpful (e.g., "This is asking you to figure out how many are left if you take away...")
+- Do NOT solve it or hint at the answer
+- Keep it to 2–3 sentences
 
 ## For "what_did_well":
 - Focus entirely on what the student did correctly
@@ -1729,6 +1736,9 @@ class FeedbackGeneratorService:
 
         return parsed
 
+    def _get_prompts(self, language: str) -> list[dict]:
+        return STRUCTURED_PROMPTS.get(language, STRUCTURED_PROMPTS["en"])
+
     def _parse_json(self, raw: str) -> dict:
         cleaned = raw.strip()
         if cleaned.startswith("```"):
@@ -2080,6 +2090,44 @@ async def generate_example(
         language=session.detected_language,
     )
     return ExampleResponse(**result)
+
+
+@router.post(
+    "/sessions/{session_id}/assignments/{assignment_id}/explain",
+    response_model=FeedbackResponse,
+)
+async def explain_task(
+    session_id: str,
+    assignment_id: str,
+    db: DBSession = Depends(get_db),
+):
+    """Re-explain what an assignment is asking in simpler terms.
+
+    Used when student taps "I don't understand the task" (pre-submission).
+    """
+    from app.models.schemas import FeedbackResponse
+    from app.services.feedback_generator import FeedbackGeneratorService
+
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    assignment = (
+        db.query(Assignment)
+        .filter(Assignment.id == assignment_id, Assignment.session_id == session_id)
+        .first()
+    )
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    generator = FeedbackGeneratorService()
+    result = generator.generate_followup(
+        assignment_text=assignment.text,
+        previous_feedback="",
+        action="explain_task",
+        language=session.detected_language,
+    )
+    return FeedbackResponse(**result)
 ```
 
 - [ ] **Step 7: Implement submissions.py router**
@@ -2211,7 +2259,7 @@ from app.services.feedback_generator import FeedbackGeneratorService
 
 router = APIRouter()
 
-VALID_ACTIONS = {"explain_different", "another_example", "show_first_step", "what_did_well", "try_again"}
+VALID_ACTIONS = {"explain_different", "another_example", "show_first_step", "what_did_well", "try_again", "explain_task"}
 
 
 @router.post("/feedback/", response_model=FeedbackResponse)
@@ -2268,6 +2316,24 @@ async def followup(
     from app.models.db import Session
     session = db.query(Session).filter(Session.id == submission.session_id).first()
     language = session.detected_language if session else "da"
+
+    # Route "another_example" to the ExampleGeneratorService (returns step-by-step visual)
+    if request.action == "another_example":
+        from app.services.example_generator import ExampleGeneratorService
+        from app.models.schemas import ExampleResponse
+        gen = ExampleGeneratorService()
+        example = gen.generate_example(
+            assignment_type=assignment.type,
+            assignment_topic=assignment.topic,
+            assignment_text=assignment.text,
+            language=language,
+        )
+        # Wrap example as a FeedbackResponse so the iOS app gets a consistent shape
+        return FeedbackResponse(
+            feedback_text=example.get("note", ""),
+            tone="encouraging",
+            structured_prompts=FeedbackGeneratorService()._get_prompts(language),
+        )
 
     generator = FeedbackGeneratorService()
     result = generator.generate_followup(
@@ -2404,7 +2470,7 @@ Expected: All tests PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-git add backend/app/main.py backend/.env
+git add backend/app/main.py
 git commit -m "feat: add FastAPI app with CORS and Bonjour registration"
 ```
 
