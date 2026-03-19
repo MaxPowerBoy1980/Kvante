@@ -1,0 +1,63 @@
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+
+
+def _uuid() -> str:
+    return str(uuid.uuid4())
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    language: Mapped[str] = mapped_column(String, default="da")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class Session(Base):
+    __tablename__ = "sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    student_id: Mapped[str] = mapped_column(String, ForeignKey("students.id"), nullable=False)
+    page_image_path: Mapped[str] = mapped_column(String, nullable=False)
+    parsed_assignments: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    detected_language: Mapped[str] = mapped_column(String, default="da")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    status: Mapped[str] = mapped_column(String, default="active")
+
+
+class Assignment(Base):
+    __tablename__ = "assignments"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(String, ForeignKey("sessions.id"), nullable=False)
+    local_id: Mapped[str] = mapped_column(String, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    type: Mapped[str] = mapped_column(String, nullable=False)
+    topic: Mapped[str] = mapped_column(String, nullable=False)
+    difficulty_estimate: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String, default="not_started")
+
+
+class Submission(Base):
+    __tablename__ = "submissions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(String, ForeignKey("sessions.id"), nullable=False)
+    assignment_id: Mapped[str] = mapped_column(String, ForeignKey("assignments.id"), nullable=False)
+    work_image_path: Mapped[str] = mapped_column(String, nullable=False)
+    preprocessed_image_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    feedback_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
