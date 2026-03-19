@@ -1,0 +1,54 @@
+import json
+import logging
+
+from app.config import settings
+from app.services.claude_client import ClaudeClient
+from app.services.image_preprocessor import preprocess_handwritten_work
+
+logger = logging.getLogger(__name__)
+
+
+class WorkAnalyzerService:
+    def __init__(self):
+        self.claude = ClaudeClient()
+        self._system_prompt = (settings.prompts_dir / "analyze_work.txt").read_text()
+
+    def analyze_work(
+        self,
+        image_bytes: bytes,
+        assignment_text: str,
+        assignment_type: str,
+        assignment_topic: str,
+    ) -> dict:
+        """Analyze a photo of handwritten student work.
+
+        Returns structured analysis. Never includes the correct answer.
+        """
+        preprocessed = preprocess_handwritten_work(image_bytes)
+        user_message = (
+            f"Assignment: {assignment_text}\n"
+            f"Type: {assignment_type}\n"
+            f"Topic: {assignment_topic}\n\n"
+            f"Please analyze the student's handwritten work in the photo. Return JSON."
+        )
+        raw = self.claude.send_vision(self._system_prompt, preprocessed, user_message)
+
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1]
+        if cleaned.endswith("```"):
+            cleaned = cleaned.rsplit("```", 1)[0]
+        cleaned = cleaned.strip()
+
+        parsed = json.loads(cleaned)
+
+        # Safety: ensure correct_answer is NEVER in the response
+        parsed.pop("correct_answer", None)
+
+        logger.info(
+            "Analyzed work for '%s': confidence=%.2f, methodology_sound=%s",
+            assignment_text,
+            parsed.get("confidence", 0),
+            parsed.get("methodology_sound"),
+        )
+        return parsed
