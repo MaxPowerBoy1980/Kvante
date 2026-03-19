@@ -246,7 +246,6 @@ Upload handwritten work photo for analysis.
 ```
 
 Note: The response deliberately omits the correct answer. The `methodology_sound` boolean indicates whether the student's approach and result are correct, used by the frontend to branch between celebratory and corrective feedback tones. The actual correct answer is computed server-side for Claude's analysis but never sent to the client.
-```
 
 ### POST `/feedback/`
 
