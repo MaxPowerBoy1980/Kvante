@@ -1,0 +1,19 @@
+from pathlib import Path
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    anthropic_api_key: str
+    db_path: str = "kvante.db"
+    host: str = "0.0.0.0"
+    port: int = 8000
+    confidence_threshold: float = 0.6
+    claude_model: str = "claude-sonnet-4-20250514"
+    upload_dir: str = "uploads"
+    max_upload_size: int = 10 * 1024 * 1024  # 10 MB
+    prompts_dir: Path = Path(__file__).parent / "prompts"
+
+    model_config = {"env_prefix": "KVANTE_", "env_file": ".env"}
+
+
+settings = Settings()

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+kvante.db
+uploads/
+.pytest_cache/
+.venv/
