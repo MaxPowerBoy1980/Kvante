@@ -211,6 +211,7 @@ Response:
   "structured_prompts": [
     {"id": "explain_different", "label": "Forklar på en anden måde"},
     {"id": "another_example", "label": "Vis mig et andet eksempel"},
+    {"id": "show_first_step", "label": "Jeg sidder fast — vis mig første skridt"},
     {"id": "what_did_well", "label": "Hvad gjorde jeg godt?"},
     {"id": "try_again", "label": "Jeg vil prøve igen"},
     {"id": "next_assignment", "label": "Næste opgave"}
@@ -266,6 +267,14 @@ The student is solving on paper. The iPad shows the assignment text and:
 The backend endpoint `POST /feedback/{submission_id}/followup` accepts an `action` enum matching these IDs. The iOS app renders the appropriate button set based on the current state and sends the enum value.
 
 Structured prompt labels are localized based on the session's detected language. The `id` field is the stable API contract; `label` is display text.
+
+### Action: `show_first_step`
+
+When the student taps "I'm stuck — show me the first step," the backend uses the `explain_method.txt` prompt with additional instructions to focus ONLY on the very first step of the methodology. It must not outline the full solution path — just enough to get the student unstuck. For example: "Start by lining up the numbers so the ones, tens, and hundreds are in columns. That's always the first step for addition with big numbers." Never reveals intermediate or final answers.
+
+### Action: `next_assignment`
+
+`next_assignment` is a client-side navigation action — the iPad returns to `AssignmentPickerView`. It does NOT trigger a backend call. The backend does not include it in the followup action enum, but the frontend includes it in the button set.
 
 ### Focus enforcement
 
@@ -347,7 +356,7 @@ class Submission(Base):
     work_image_path: str       # Photo of student's handwritten work
     preprocessed_image_path: str  # Preprocessed version sent to Claude
     analysis: JSON             # Structured analysis from work_analyzer
-    feedback_text: str         # Generated feedback
+    feedback_text: str         # Generated feedback (populated when POST /feedback/ is called for this submission)
     attempt_number: int        # 1, 2, 3... (for the "try again" flow)
     created_at: datetime
 
@@ -596,7 +605,7 @@ Upload handwritten work photo for analysis.
 
 Generate student-facing feedback from analysis.
 
-**Request:** `submission_id` + `language` (da/en)
+**Request:** JSON body: `{"submission_id": "uuid", "language": "da"}`
 
 **Response:** See Feedback Generator section above for full schema.
 
@@ -604,7 +613,11 @@ Generate student-facing feedback from analysis.
 
 Handle structured follow-up prompts.
 
-**Request:** `action` enum — one of: `explain_different`, `another_example`, `show_first_step`, `what_did_well`, `try_again`
+**Request:** JSON body: `{"action": "<action_id>"}`
+
+**Action enum:** `explain_different`, `another_example`, `show_first_step`, `what_did_well`, `try_again`
+
+Note: `next_assignment` is NOT in this enum — it is a client-side navigation action handled entirely by the iOS app.
 
 **Response:** Same shape as feedback response, with updated text and prompts appropriate to the new state.
 
