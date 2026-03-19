@@ -1,4 +1,5 @@
 import logging
+import os
 import socket
 from contextlib import asynccontextmanager
 
@@ -27,29 +28,31 @@ async def lifespan(app: FastAPI):
             db.commit()
             logger.info("Created default student")
 
-    zeroconf = None
-    try:
-        from zeroconf import ServiceInfo, Zeroconf
-        hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
-        info = ServiceInfo(
-            "_kvante._tcp.local.",
-            f"Kvante Math Assistant._kvante._tcp.local.",
-            addresses=[socket.inet_aton(local_ip)],
-            port=settings.port,
-            properties={"version": "0.1.0"},
-        )
-        zeroconf = Zeroconf()
-        zeroconf.register_service(info)
-        logger.info("Bonjour service registered: _kvante._tcp on port %d", settings.port)
-    except Exception as e:
-        logger.warning("Bonjour registration failed (non-fatal): %s", e)
+    zeroconf_instance = None
+    if not os.environ.get("KVANTE_TESTING"):
+        try:
+            from zeroconf import ServiceInfo, Zeroconf
+
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+            info = ServiceInfo(
+                "_kvante._tcp.local.",
+                f"Kvante Math Assistant._kvante._tcp.local.",
+                addresses=[socket.inet_aton(local_ip)],
+                port=settings.port,
+                properties={"version": "0.1.0"},
+            )
+            zeroconf_instance = Zeroconf()
+            zeroconf_instance.register_service(info)
+            logger.info("Bonjour service registered: _kvante._tcp on port %d", settings.port)
+        except Exception as e:
+            logger.warning("Bonjour registration failed (non-fatal): %s", e)
 
     yield
 
-    if zeroconf:
-        zeroconf.unregister_all_services()
-        zeroconf.close()
+    if zeroconf_instance:
+        zeroconf_instance.unregister_all_services()
+        zeroconf_instance.close()
         logger.info("Bonjour service unregistered")
 
 

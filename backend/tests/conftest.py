@@ -1,9 +1,11 @@
-import sys
-from unittest.mock import MagicMock, patch
+import os
+
+os.environ["KVANTE_TESTING"] = "1"
+os.environ.setdefault("KVANTE_ANTHROPIC_API_KEY", "sk-test-placeholder")
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session as DBSession, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -38,7 +40,6 @@ def client(test_db):
         yield test_db
 
     app.dependency_overrides[get_db] = override_get_db
-    with patch.dict(sys.modules, {"zeroconf": MagicMock()}):
-        with TestClient(app) as c:
-            yield c
+    with TestClient(app) as c:
+        yield c
     app.dependency_overrides.clear()
