@@ -113,7 +113,7 @@ kvante/
 │   │   │   ├── page.py                # Scanned textbook page
 │   │   │   ├── assignment.py          # Parsed assignment
 │   │   │   ├── submission.py          # Student work submission
-│   │   │   └── student.py             # Student profile
+│   │   │   └── student.py             # Student profile (placeholder — single default student for MVP, multi-student in Phase 3)
 │   │   └── prompts/
 │   │       ├── parse_page.txt         # Extract assignments from textbook photo
 │   │       ├── generate_example.txt   # Create similar worked example
@@ -178,13 +178,26 @@ Upload a textbook page photo. Returns parsed assignments.
   "page_context": "Chapter 4: Addition and subtraction with large numbers",
   "suggested_order": ["3a", "3b", "3c", "3d"],
   "suggested_start": "3a",
-  "reasoning": "3a is the simplest — single carrying operation."
+  "reasoning": "3a is the simplest — single carrying operation.",
+  "detected_language": "da"
 }
 ```
 
-### POST `/assignments/{id}/example`
+### GET `/health`
 
-Generate a worked example of a similar problem.
+Health check for Bonjour discovery verification.
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "version": "0.1.0"
+}
+```
+
+### POST `/sessions/{session_id}/assignments/{assignment_id}/example`
+
+Generate a worked example of a similar problem. Assignment IDs (e.g., "3a") are scoped to a session.
 
 **Response:**
 ```json
@@ -212,15 +225,16 @@ Generate a worked example of a similar problem.
 
 Upload handwritten work photo for analysis.
 
-**Request:** multipart/form-data with image file + `assignment_id`
+**Request:** multipart/form-data with image file + `session_id` + `assignment_id`
 
 **Response:**
 ```json
 {
+  "submission_id": "uuid",
   "assignment_id": "3a",
+  "session_id": "uuid",
   "student_answer": "633",
-  "correct_answer": "633",
-  "answer_correct": true,
+  "methodology_sound": true,
   "steps_identified": [
     {"step": 1, "description": "Added ones: 7+6=13, wrote 3, carried 1", "correct": true}
   ],
@@ -229,6 +243,9 @@ Upload handwritten work photo for analysis.
   "methodology_assessment": "Clean, systematic approach.",
   "confidence": 0.95
 }
+```
+
+Note: The response deliberately omits the correct answer. The `methodology_sound` boolean indicates whether the student's approach and result are correct, used by the frontend to branch between celebratory and corrective feedback tones. The actual correct answer is computed server-side for Claude's analysis but never sent to the client.
 ```
 
 ### POST `/feedback/`
@@ -260,6 +277,28 @@ Handle structured follow-up prompts.
 
 **Response:** Same shape as feedback response, with updated text and prompts.
 
+### Error Responses
+
+All endpoints return errors in a standard envelope:
+
+```json
+{
+  "error": "unreadable_photo",
+  "message": "Could not read the handwritten work clearly enough to analyze.",
+  "student_message": "Jeg kan ikke helt læse dit svar — kan du prøve at tage et tydeligere billede?",
+  "detail": "Confidence below threshold (0.3)"
+}
+```
+
+**HTTP status codes:**
+- `400` — Invalid request (missing fields, unsupported image format)
+- `404` — Session or assignment not found
+- `422` — Image received but unprocessable (too blurry, no assignments found, unreadable handwriting)
+- `500` — Internal error (Claude API timeout, unexpected failure)
+- `503` — Claude API unavailable
+
+The `student_message` field (present on 422 errors) contains a kid-friendly message the iOS app can display directly. The `error` field is a stable machine-readable code for programmatic handling.
+
 ## Structured Prompts
 
 Context-dependent buttons — no free text input.
@@ -284,6 +323,8 @@ Context-dependent buttons — no free text input.
 
 ### Focus enforcement
 
+Structured prompt labels are localized based on the session's detected language. The `id` field is the stable API contract; `label` is display text.
+
 Off-topic input (if voice is added later) is redirected: "That's an interesting thought! But right now, let's focus on your math. Which of these would help you?" — then re-present structured options.
 
 ## "Never Give The Answer" Enforcement
@@ -295,13 +336,18 @@ Enforced at two levels:
 
 For MVP, prompt-level enforcement is sufficient. Production could add output validation as a safety net.
 
-## Image Preprocessing
+## Image Handling
 
-### Printed textbook pages
+### Upload constraints
+- **Accepted formats:** JPEG (preferred), HEIC, PNG
+- **Maximum upload size:** 10 MB
+- **Resizing:** Server-side. iPad sends full-resolution photos; backend handles all preprocessing.
+
+### Preprocessing: printed textbook pages
 - Resize to max 1568px longest side
 - Light contrast enhancement
 
-### Handwritten pencil work (critical path)
+### Preprocessing: handwritten pencil work (critical path)
 - Convert to grayscale
 - Apply adaptive histogram equalization (CLAHE) for pencil-on-paper contrast
 - Light sharpening
@@ -363,7 +409,9 @@ Dependency-aware ordering (e.g., "use your answer from 3a to solve 3b") is defer
 - **Cost:** Negligible at demo scale. Log token usage per call.
 - **CORS:** Configure FastAPI middleware for iOS app requests.
 - **Error handling:** If Claude can't read a photo, tell the student honestly: "I'm having trouble reading your writing — can you try taking a clearer photo?"
-- **Language:** Danish default, English switchable. All student-facing text localizable.
+- **Language:** Danish default, English switchable. All student-facing text localizable. Textbook language is auto-detected during page scan. Detected language is used as default for feedback; overridable via `language` parameter on feedback endpoints.
+- **CORS origin:** `*` for MVP (local network only). Tighten for production.
+- **iOS timeouts:** 30-second timeout for Claude API calls. No automatic retry. Show a "Try again" button on timeout.
 
 ## System Prompts
 
