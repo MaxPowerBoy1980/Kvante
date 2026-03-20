@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from app.config import settings
 from app.services.ai_client import get_ai_client
@@ -23,6 +24,8 @@ class ExampleGeneratorService:
 
         Cardinal rule: The example must NEVER use the same numbers as the real assignment.
         """
+        logger.info("Generating example for %s: '%s'", assignment_type, assignment_text)
+        start = time.time()
         user_message = (
             f"Assignment type: {assignment_type}\n"
             f"Assignment topic: {assignment_topic}\n"
@@ -40,5 +43,11 @@ class ExampleGeneratorService:
         cleaned = cleaned.strip()
 
         parsed = json.loads(cleaned)
-        logger.info("Generated example for %s: %s", assignment_type, parsed.get("example_problem"))
+        elapsed = time.time() - start
+        logger.info(
+            "Generated example for %s in %.1fs: %s",
+            assignment_type,
+            elapsed,
+            parsed.get("example_problem"),
+        )
         return parsed

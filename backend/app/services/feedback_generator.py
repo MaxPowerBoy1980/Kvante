@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from app.config import settings
 from app.services.ai_client import get_ai_client
@@ -44,6 +45,8 @@ class FeedbackGeneratorService:
 
         Never reveals the correct answer.
         """
+        logger.info("Generating feedback for '%s' (lang=%s)", assignment_text, language)
+        start = time.time()
         user_message = (
             f"Assignment: {assignment_text}\n"
             f"Student's language: {language}\n\n"
@@ -52,6 +55,8 @@ class FeedbackGeneratorService:
         )
         raw = self.client.send_text(self._feedback_prompt, user_message)
         parsed = self._parse_json(raw)
+        elapsed = time.time() - start
+        logger.info("Generated feedback in %.1fs, tone=%s", elapsed, parsed.get("tone"))
 
         # Attach structured prompts for the iOS button bar
         prompts = STRUCTURED_PROMPTS.get(language, STRUCTURED_PROMPTS["en"])
@@ -70,6 +75,8 @@ class FeedbackGeneratorService:
 
         Actions: explain_different, another_example, show_first_step, what_did_well, try_again, explain_task
         """
+        logger.info("Generating followup action='%s' for '%s'", action, assignment_text)
+        start = time.time()
         user_message = (
             f"Assignment: {assignment_text}\n"
             f"Previous feedback: {previous_feedback}\n"
@@ -79,6 +86,8 @@ class FeedbackGeneratorService:
         )
         raw = self.client.send_text(self._explain_prompt, user_message)
         parsed = self._parse_json(raw)
+        elapsed = time.time() - start
+        logger.info("Generated followup '%s' in %.1fs", action, elapsed)
 
         prompts = STRUCTURED_PROMPTS.get(language, STRUCTURED_PROMPTS["en"])
         parsed["structured_prompts"] = prompts

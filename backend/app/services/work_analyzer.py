@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from app.config import settings
 from app.services.ai_client import get_ai_client
@@ -24,6 +25,8 @@ class WorkAnalyzerService:
 
         Returns structured analysis. Never includes the correct answer.
         """
+        logger.info("Analyzing work for '%s' (%d bytes)", assignment_text, len(image_bytes))
+        start = time.time()
         preprocessed = preprocess_handwritten_work(image_bytes)
         user_message = (
             f"Assignment: {assignment_text}\n"
@@ -44,10 +47,12 @@ class WorkAnalyzerService:
 
         # Safety: ensure correct_answer is NEVER in the response
         parsed.pop("correct_answer", None)
+        elapsed = time.time() - start
 
         logger.info(
-            "Analyzed work for '%s': confidence=%.2f, methodology_sound=%s",
+            "Analyzed work for '%s' in %.1fs: confidence=%.2f, methodology_sound=%s",
             assignment_text,
+            elapsed,
             parsed.get("confidence", 0),
             parsed.get("methodology_sound"),
         )

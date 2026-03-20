@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from app.config import settings
 from app.services.ai_client import get_ai_client
@@ -15,12 +16,15 @@ class PageParserService:
 
     def parse_page(self, image_bytes: bytes) -> dict:
         """Parse a textbook page photo into a list of assignments."""
+        logger.info("Parsing textbook page (%d bytes)", len(image_bytes))
+        start = time.time()
         preprocessed = preprocess_textbook_page(image_bytes)
         raw_response = self.client.send_vision(
             self._system_prompt,
             preprocessed,
             "Please identify all assignments on this textbook page and return structured JSON.",
         )
+        elapsed = time.time() - start
         # Strip markdown code fences if Claude wraps the response
         cleaned = raw_response.strip()
         if cleaned.startswith("```"):
@@ -30,5 +34,9 @@ class PageParserService:
         cleaned = cleaned.strip()
 
         parsed = json.loads(cleaned)
-        logger.info("Parsed %d assignments from page", len(parsed.get("assignments", [])))
+        logger.info(
+            "Parsed %d assignments from page in %.1fs",
+            len(parsed.get("assignments", [])),
+            elapsed,
+        )
         return parsed
