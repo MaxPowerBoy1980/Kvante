@@ -35,13 +35,11 @@ MOCK_UNCLEAR = json.dumps({
 
 @pytest.fixture
 def service():
-    with patch("app.services.work_analyzer.ClaudeClient") as mock_cls, \
+    mock_client = MagicMock()
+    mock_client.send_vision.return_value = MOCK_ANALYSIS
+    with patch("app.services.work_analyzer.get_ai_client", return_value=mock_client), \
          patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b):
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
-        mock_client.send_vision.return_value = MOCK_ANALYSIS
         svc = WorkAnalyzerService()
-        svc.claude = mock_client
         yield svc, mock_client
 
 

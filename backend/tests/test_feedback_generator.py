@@ -29,12 +29,10 @@ ANALYSIS = {
 
 @pytest.fixture
 def service():
-    with patch("app.services.feedback_generator.ClaudeClient") as mock_cls:
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
-        mock_client.send_text.return_value = MOCK_FEEDBACK
+    mock_client = MagicMock()
+    mock_client.send_text.return_value = MOCK_FEEDBACK
+    with patch("app.services.feedback_generator.get_ai_client", return_value=mock_client):
         svc = FeedbackGeneratorService()
-        svc.claude = mock_client
         yield svc, mock_client
 
 

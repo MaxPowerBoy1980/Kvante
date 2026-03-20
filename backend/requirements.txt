@@ -6,6 +6,7 @@ pillow==11.1.0
 opencv-python-headless==4.10.0.84
 zeroconf==0.136.2
 python-dotenv==1.0.1
+google-genai==1.14.0
 pydantic-settings==2.7.1
 pytest==8.3.4
 httpx==0.28.1

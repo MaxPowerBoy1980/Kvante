@@ -2,7 +2,7 @@ import json
 import logging
 
 from app.config import settings
-from app.services.claude_client import ClaudeClient
+from app.services.ai_client import get_ai_client
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ STRUCTURED_PROMPTS = {
 
 class FeedbackGeneratorService:
     def __init__(self):
-        self.claude = ClaudeClient()
+        self.client = get_ai_client()
         self._feedback_prompt = (settings.prompts_dir / "give_feedback.txt").read_text()
         self._explain_prompt = (settings.prompts_dir / "explain_method.txt").read_text()
 
@@ -50,7 +50,7 @@ class FeedbackGeneratorService:
             f"Analysis:\n{json.dumps(analysis, indent=2)}\n\n"
             f"Generate warm, method-focused feedback. Return JSON."
         )
-        raw = self.claude.send_text(self._feedback_prompt, user_message)
+        raw = self.client.send_text(self._feedback_prompt, user_message)
         parsed = self._parse_json(raw)
 
         # Attach structured prompts for the iOS button bar
@@ -77,7 +77,7 @@ class FeedbackGeneratorService:
             f"Action requested: {action}\n\n"
             f"Respond according to the action. Return JSON."
         )
-        raw = self.claude.send_text(self._explain_prompt, user_message)
+        raw = self.client.send_text(self._explain_prompt, user_message)
         parsed = self._parse_json(raw)
 
         prompts = STRUCTURED_PROMPTS.get(language, STRUCTURED_PROMPTS["en"])

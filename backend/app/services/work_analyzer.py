@@ -2,7 +2,7 @@ import json
 import logging
 
 from app.config import settings
-from app.services.claude_client import ClaudeClient
+from app.services.ai_client import get_ai_client
 from app.services.image_preprocessor import preprocess_handwritten_work
 
 logger = logging.getLogger(__name__)
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class WorkAnalyzerService:
     def __init__(self):
-        self.claude = ClaudeClient()
+        self.client = get_ai_client()
         self._system_prompt = (settings.prompts_dir / "analyze_work.txt").read_text()
 
     def analyze_work(
@@ -31,7 +31,7 @@ class WorkAnalyzerService:
             f"Topic: {assignment_topic}\n\n"
             f"Please analyze the student's handwritten work in the photo. Return JSON."
         )
-        raw = self.claude.send_vision(self._system_prompt, preprocessed, user_message)
+        raw = self.client.send_vision(self._system_prompt, preprocessed, user_message)
 
         cleaned = raw.strip()
         if cleaned.startswith("```"):

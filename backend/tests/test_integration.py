@@ -70,17 +70,21 @@ FOLLOWUP = json.dumps({
 def test_full_workflow(client):
     """Test the complete Kvante workflow end-to-end."""
 
-    with patch("app.services.page_parser.ClaudeClient") as mock_parser_client, \
-         patch("app.services.page_parser.preprocess_textbook_page", side_effect=lambda b: b), \
-         patch("app.services.example_generator.ClaudeClient") as mock_example_client, \
-         patch("app.services.work_analyzer.ClaudeClient") as mock_analyzer_client, \
-         patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b), \
-         patch("app.services.feedback_generator.ClaudeClient") as mock_feedback_client:
+    mock_parser = MagicMock()
+    mock_parser.send_vision.return_value = PARSED_PAGE
+    mock_example = MagicMock()
+    mock_example.send_text.return_value = EXAMPLE
+    mock_analyzer = MagicMock()
+    mock_analyzer.send_vision.return_value = ANALYSIS
+    mock_feedback = MagicMock()
+    mock_feedback.send_text.return_value = FEEDBACK
 
-        mock_parser_client.return_value.send_vision.return_value = PARSED_PAGE
-        mock_example_client.return_value.send_text.return_value = EXAMPLE
-        mock_analyzer_client.return_value.send_vision.return_value = ANALYSIS
-        mock_feedback_client.return_value.send_text.return_value = FEEDBACK
+    with patch("app.services.page_parser.get_ai_client", return_value=mock_parser), \
+         patch("app.services.page_parser.preprocess_textbook_page", side_effect=lambda b: b), \
+         patch("app.services.example_generator.get_ai_client", return_value=mock_example), \
+         patch("app.services.work_analyzer.get_ai_client", return_value=mock_analyzer), \
+         patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b), \
+         patch("app.services.feedback_generator.get_ai_client", return_value=mock_feedback):
 
         # 1. Scan page
         resp = client.post("/pages/scan", files={"image": ("page.jpg", _jpeg(), "image/jpeg")})
@@ -119,7 +123,7 @@ def test_full_workflow(client):
         assert "next_assignment" in prompt_ids
 
         # 5. Followup — "What did I do well?"
-        mock_feedback_client.return_value.send_text.return_value = FOLLOWUP
+        mock_feedback.send_text.return_value = FOLLOWUP
         resp = client.post(
             f"/feedback/{submission_id}/followup",
             json={"action": "what_did_well"},

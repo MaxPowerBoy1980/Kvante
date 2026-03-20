@@ -22,12 +22,10 @@ MOCK_RESPONSE = json.dumps({
 
 @pytest.fixture
 def service():
-    with patch("app.services.example_generator.ClaudeClient") as mock_cls:
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
-        mock_client.send_text.return_value = MOCK_RESPONSE
+    mock_client = MagicMock()
+    mock_client.send_text.return_value = MOCK_RESPONSE
+    with patch("app.services.example_generator.get_ai_client", return_value=mock_client):
         svc = ExampleGeneratorService()
-        svc.claude = mock_client
         yield svc
 
 

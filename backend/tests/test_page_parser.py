@@ -35,13 +35,11 @@ MOCK_CLAUDE_RESPONSE = json.dumps({
 
 @pytest.fixture
 def service():
-    with patch("app.services.page_parser.ClaudeClient") as mock_cls, \
+    mock_client = MagicMock()
+    mock_client.send_vision.return_value = MOCK_CLAUDE_RESPONSE
+    with patch("app.services.page_parser.get_ai_client", return_value=mock_client), \
          patch("app.services.page_parser.preprocess_textbook_page", side_effect=lambda b: b):
-        mock_client = MagicMock()
-        mock_cls.return_value = mock_client
-        mock_client.send_vision.return_value = MOCK_CLAUDE_RESPONSE
         svc = PageParserService()
-        svc.claude = mock_client
         yield svc
 
 
@@ -58,8 +56,8 @@ def test_parse_page_includes_suggestion(service):
     assert result["detected_language"] == "da"
 
 
-def test_parse_page_sends_image_to_claude(service):
+def test_parse_page_sends_image_to_client(service):
     service.parse_page(b"test-image")
-    service.claude.send_vision.assert_called_once()
-    call_args = service.claude.send_vision.call_args
+    service.client.send_vision.assert_called_once()
+    call_args = service.client.send_vision.call_args
     assert b"test-image" in call_args.args or b"test-image" == call_args.args[1]

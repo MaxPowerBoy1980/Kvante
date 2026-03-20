@@ -2,14 +2,14 @@ import json
 import logging
 
 from app.config import settings
-from app.services.claude_client import ClaudeClient
+from app.services.ai_client import get_ai_client
 
 logger = logging.getLogger(__name__)
 
 
 class ExampleGeneratorService:
     def __init__(self):
-        self.claude = ClaudeClient()
+        self.client = get_ai_client()
         self._system_prompt = (settings.prompts_dir / "generate_example.txt").read_text()
 
     def generate_example(
@@ -30,7 +30,7 @@ class ExampleGeneratorService:
             f"Student's language: {language}\n\n"
             f"Create a worked example with different numbers. Return JSON."
         )
-        raw = self.claude.send_text(self._system_prompt, user_message)
+        raw = self.client.send_text(self._system_prompt, user_message)
 
         cleaned = raw.strip()
         if cleaned.startswith("```"):
