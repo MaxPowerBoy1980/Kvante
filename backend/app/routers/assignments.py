@@ -6,6 +6,10 @@ from app.models.db import Assignment, Session
 from app.models.schemas import ExampleResponse, FeedbackResponse
 from app.services.example_generator import ExampleGeneratorService
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
@@ -29,6 +33,8 @@ async def generate_example(
     )
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
+
+    logger.info("Generating example for assignment %s in session %s", assignment_id, session_id)
 
     generator = ExampleGeneratorService()
     result = generator.generate_example(
@@ -66,6 +72,8 @@ async def explain_task(
     )
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
+
+    logger.info("Explaining task for assignment %s in session %s", assignment_id, session_id)
 
     generator = FeedbackGeneratorService()
     result = generator.generate_followup(

@@ -6,6 +6,10 @@ from PIL import Image, ImageEnhance, ImageFilter
 
 from app.config import settings
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 MAX_DIMENSION = 1568
 
 
@@ -41,6 +45,7 @@ def preprocess_textbook_page(image_bytes: bytes) -> bytes:
     """
     _validate_size(image_bytes)
     img = Image.open(io.BytesIO(image_bytes))
+    logger.debug("Textbook page: original size=%s, %d bytes", img.size, len(image_bytes))
     img = _resize_if_needed(img)
     img = ImageEnhance.Contrast(img).enhance(1.2)
     return _to_jpeg_bytes(img)
@@ -54,6 +59,7 @@ def preprocess_handwritten_work(image_bytes: bytes) -> bytes:
     """
     _validate_size(image_bytes)
     img = Image.open(io.BytesIO(image_bytes))
+    logger.debug("Handwritten work: original size=%s, %d bytes", img.size, len(image_bytes))
     img = _resize_if_needed(img)
     img = img.convert("L")
 

@@ -6,6 +6,10 @@ from app.models.db import Assignment, Submission
 from app.models.schemas import FeedbackRequest, FeedbackResponse, FollowupRequest
 from app.services.feedback_generator import FeedbackGeneratorService
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 VALID_ACTIONS = {"explain_different", "another_example", "show_first_step", "what_did_well", "try_again", "explain_task"}
@@ -26,6 +30,8 @@ async def generate_feedback(
 
     if not submission.analysis:
         raise HTTPException(status_code=400, detail="Submission has not been analyzed yet")
+
+    logger.info("Generating feedback for submission %s", request.submission_id)
 
     generator = FeedbackGeneratorService()
     result = generator.generate_feedback(
@@ -51,6 +57,8 @@ async def followup(
             status_code=400,
             detail=f"Invalid action '{request.action}'. Valid: {', '.join(sorted(VALID_ACTIONS))}",
         )
+
+    logger.info("Followup action='%s' for submission %s", request.action, submission_id)
 
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
