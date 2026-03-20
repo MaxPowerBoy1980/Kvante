@@ -1,7 +1,9 @@
 import os
+import tempfile
 
 os.environ["KVANTE_TESTING"] = "1"
 os.environ.setdefault("KVANTE_ANTHROPIC_API_KEY", "sk-test-placeholder")
+os.environ.setdefault("KVANTE_LOG_DIR", os.path.join(tempfile.gettempdir(), "kvante-test-logs"))
 
 import pytest
 from fastapi.testclient import TestClient

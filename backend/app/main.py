@@ -10,7 +10,9 @@ from app.config import settings
 from app.database import Base, engine
 from app.routers import assignments, feedback, health, pages, submissions
 
-logging.basicConfig(level=logging.INFO)
+from app.logging_config import setup_logging
+
+setup_logging(log_level=settings.log_level, log_dir=settings.log_dir)
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +21,12 @@ async def lifespan(app: FastAPI):
     """Startup: create tables, register Bonjour. Shutdown: unregister."""
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
+    logger.info(
+        "Kvante starting: port=%d, ai_provider=%s, log_level=%s",
+        settings.port,
+        settings.ai_provider,
+        settings.log_level,
+    )
 
     from sqlalchemy.orm import Session as DBSession
     from app.models.db import Student
@@ -54,6 +62,7 @@ async def lifespan(app: FastAPI):
         zeroconf_instance.unregister_all_services()
         zeroconf_instance.close()
         logger.info("Bonjour service unregistered")
+    logger.info("Kvante shutting down")
 
 
 app = FastAPI(
