@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class ParsedAssignment(BaseModel):
     id: str
+    local_id: str
     text: str
     type: str
     topic: str

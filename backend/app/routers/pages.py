@@ -76,6 +76,7 @@ async def scan_page(
         )
         response_assignments.append({
             "id": db_a.id,
+            "local_id": db_a.local_id,
             "text": db_a.text,
             "type": db_a.type,
             "topic": db_a.topic,

@@ -24,6 +24,7 @@ struct PageScanResponse: Codable {
 
 struct ParsedAssignment: Codable, Identifiable {
     let id: String
+    let localId: String
     let text: String
     let type: String
     let topic: String
@@ -32,6 +33,7 @@ struct ParsedAssignment: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id, text, type, topic
+        case localId = "local_id"
         case difficultyEstimate = "difficulty_estimate"
         case positionOnPage = "position_on_page"
     }

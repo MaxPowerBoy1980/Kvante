@@ -16,15 +16,15 @@ struct AssignmentCardView: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(assignment.id.uppercased())
-                        .font(.headline)
-                        .fontWeight(.bold)
+                    Text("Opgave \(assignment.localId)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .opacity(0.8)
                     Spacer()
                     if isRecommended {
                         Image(systemName: "star.fill")
                             .foregroundStyle(.yellow)
                     }
-                    // Difficulty dots
                     HStack(spacing: 3) {
                         ForEach(1...5, id: \.self) { i in
                             Circle()
@@ -41,8 +41,8 @@ struct AssignmentCardView: View {
                     .lineLimit(3)
 
                 Text(assignment.topic)
-                    .font(.caption)
-                    .opacity(0.8)
+                    .font(.subheadline)
+                    .opacity(0.7)
             }
             .foregroundStyle(.white)
             .padding(16)

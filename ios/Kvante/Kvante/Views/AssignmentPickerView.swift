@@ -36,7 +36,7 @@ struct AssignmentPickerView: View {
                     ForEach(pageResponse.assignments) { assignment in
                         AssignmentCardView(
                             assignment: assignment,
-                            isRecommended: assignment.id == pageResponse.suggestedStart
+                            isRecommended: assignment.localId == pageResponse.suggestedStart
                         ) {
                             onSelectAssignment(assignment)
                         }
