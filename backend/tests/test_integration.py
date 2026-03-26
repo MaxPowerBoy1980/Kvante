@@ -35,11 +35,16 @@ PARSED_PAGE = json.dumps({
 
 EXAMPLE = json.dumps({
     "example_problem": "38 + 24 =",
+    "pedagogy": "concrete-first",
     "steps": [
-        {"step": 1, "instruction": "Stil tallene op", "visual": " 38\n+24\n---",
-         "explanation": "Enerne under enerne."},
+        {"step": 1, "phase": "concrete", "text": "Vi tegner 38 cirkler.",
+         "visual": {"type": "object_collection", "action": "draw", "object": "circle", "count": 20, "layout": "rows", "rows": 2},
+         "audio_cue": "Vi tegner 38 cirkler."},
+        {"step": 2, "phase": "abstract", "text": "38 + 24 = 62",
+         "visual": {"type": "equation", "action": "reveal", "parts": ["38", "+", "24", "=", "62"], "highlight": 4},
+         "audio_cue": "38 plus 24 er lig med 62."},
     ],
-    "note": "Bemærk: dette er andre tal end din opgave!",
+    "note": "Bemaerk: dette er andre tal end din opgave!",
 })
 
 ANALYSIS = json.dumps({
