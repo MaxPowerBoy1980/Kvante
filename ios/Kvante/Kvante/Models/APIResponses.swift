@@ -43,12 +43,21 @@ struct ParsedAssignment: Codable, Identifiable {
 
 struct ExampleResponse: Codable {
     let exampleProblem: String
-    let steps: [ExampleStep]
+    let pedagogy: String
+    let steps: [AnimationStep]
     let note: String
 
     enum CodingKeys: String, CodingKey {
         case exampleProblem = "example_problem"
-        case steps, note
+        case pedagogy, steps, note
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        exampleProblem = try container.decode(String.self, forKey: .exampleProblem)
+        pedagogy = try container.decodeIfPresent(String.self, forKey: .pedagogy) ?? "concrete-first"
+        steps = try container.decode([AnimationStep].self, forKey: .steps)
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
     }
 }
 
