@@ -43,7 +43,7 @@ struct WorkingView: View {
         .sheet(isPresented: $showExample) {
             if let example = exampleResponse {
                 NavigationStack {
-                    ExampleView(example: example)
+                    AnimatedExplanationView(example: example)
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Button("Luk") { showExample = false }
