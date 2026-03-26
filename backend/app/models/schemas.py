@@ -25,17 +25,26 @@ class PageScanResponse(BaseModel):
 
 # --- Example Generator ---
 
-class ExampleStep(BaseModel):
+class VisualInstruction(BaseModel):
+    type: str       # object_collection, number_line, array_grid, grouping, pie_chart, bar_model, coordinate_grid, equation
+    action: str     # type-specific action (draw, cross_out, jump_forward, etc.)
+
+    model_config = {"extra": "allow"}  # Type-specific flat fields pass through
+
+
+class AnimationStep(BaseModel):
     step: int
-    instruction: str
-    visual: str
-    explanation: str
+    phase: str          # concrete, semi-concrete, abstract
+    text: str
+    visual: VisualInstruction
+    audio_cue: str = ""
 
 
 class ExampleResponse(BaseModel):
     example_problem: str
-    steps: list[ExampleStep]
-    note: str
+    pedagogy: str = "concrete-first"
+    steps: list[AnimationStep]
+    note: str = ""
 
 
 # --- Work Analyzer (Submission) ---
