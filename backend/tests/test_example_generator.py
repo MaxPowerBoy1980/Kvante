@@ -1,63 +1,69 @@
 import json
-from unittest.mock import MagicMock, patch
-
 import pytest
-
+from unittest.mock import patch, MagicMock
 from app.services.example_generator import ExampleGeneratorService
 
 
-MOCK_RESPONSE = json.dumps({
-    "example_problem": "523 + 389 =",
+VALID_RESPONSE = json.dumps({
+    "example_problem": "15 - 3",
+    "pedagogy": "concrete-first",
+    "note": "Dette eksempel bruger andre tal.",
     "steps": [
         {
             "step": 1,
-            "instruction": "Stil tallene op efter pladsværdi",
-            "visual": "  523\n+ 389\n-----",
-            "explanation": "Vi skriver tallene så enerne er under enerne.",
+            "phase": "concrete",
+            "text": "Vi tegner 15 cirkler.",
+            "visual": {"type": "object_collection", "action": "draw", "object": "circle", "count": 15, "layout": "rows", "rows": 2},
+            "audio_cue": "Vi tegner femten cirkler."
         },
-    ],
-    "note": "Bemærk at dette er et andet regnestykke end dit — prøv den samme metode med dine tal!",
+        {
+            "step": 2,
+            "phase": "abstract",
+            "text": "15 - 3 = 12",
+            "visual": {"type": "equation", "action": "reveal", "parts": ["15", "-", "3", "=", "12"], "highlight": 4},
+            "audio_cue": "Femten minus tre er lig med tolv."
+        }
+    ]
 })
 
+INVALID_RESPONSE = "This is not JSON at all"
 
-@pytest.fixture
-def service():
+
+def make_service_with_mock(responses):
+    """Create ExampleGeneratorService with mocked AI client."""
+    service = ExampleGeneratorService.__new__(ExampleGeneratorService)
     mock_client = MagicMock()
-    mock_client.send_text.return_value = MOCK_RESPONSE
-    with patch("app.services.example_generator.get_ai_client", return_value=mock_client):
-        svc = ExampleGeneratorService()
-        yield svc
+    mock_client.send_text = MagicMock(side_effect=responses)
+    service.client = mock_client
+    service._system_prompt = "test prompt"
+    return service
 
 
-def test_generate_example_returns_steps(service):
-    result = service.generate_example(
-        assignment_type="addition",
-        assignment_topic="three-digit addition with carrying",
-        assignment_text="347 + 286 =",
-        language="da",
-    )
-    assert result["example_problem"] == "523 + 389 ="
-    assert len(result["steps"]) >= 1
-    assert result["steps"][0]["step"] == 1
+def test_valid_response_parses():
+    service = make_service_with_mock([VALID_RESPONSE])
+    result = service.generate_example("subtraction", "simple subtraction", "17 - 8", "da")
+    assert result["example_problem"] == "15 - 3"
+    assert len(result["steps"]) == 2
+    assert result["steps"][0]["visual"]["type"] == "object_collection"
 
 
-def test_generate_example_uses_different_numbers(service):
-    result = service.generate_example(
-        assignment_type="addition",
-        assignment_topic="three-digit addition",
-        assignment_text="347 + 286 =",
-        language="da",
-    )
-    assert "347" not in result["example_problem"]
-    assert "286" not in result["example_problem"]
+def test_invalid_then_valid_retries():
+    service = make_service_with_mock([INVALID_RESPONSE, VALID_RESPONSE])
+    result = service.generate_example("subtraction", "simple subtraction", "17 - 8", "da")
+    assert result["example_problem"] == "15 - 3"
+    assert service.client.send_text.call_count == 2
 
 
-def test_generate_example_includes_note(service):
-    result = service.generate_example(
-        assignment_type="addition",
-        assignment_topic="addition",
-        assignment_text="1 + 1 =",
-        language="da",
-    )
-    assert "note" in result
-    assert len(result["note"]) > 0
+def test_two_invalid_raises():
+    service = make_service_with_mock([INVALID_RESPONSE, INVALID_RESPONSE])
+    with pytest.raises(ValueError, match="Failed to parse"):
+        service.generate_example("subtraction", "simple subtraction", "17 - 8", "da")
+
+
+def test_too_many_steps_retries():
+    many_steps = json.loads(VALID_RESPONSE)
+    many_steps["steps"] = many_steps["steps"] * 5  # 10 steps, over max of 8
+    service = make_service_with_mock([json.dumps(many_steps), VALID_RESPONSE])
+    result = service.generate_example("subtraction", "simple subtraction", "17 - 8", "da")
+    assert len(result["steps"]) <= 8
+    assert service.client.send_text.call_count == 2
