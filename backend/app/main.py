@@ -36,10 +36,11 @@ async def lifespan(app: FastAPI):
             db.commit()
             logger.info("Created default student")
 
-    zeroconf_instance = None
+    aiozc = None
     if not os.environ.get("KVANTE_TESTING"):
         try:
-            from zeroconf import ServiceInfo, Zeroconf
+            from zeroconf import IPVersion, ServiceInfo
+            from zeroconf.asyncio import AsyncZeroconf
 
             hostname = socket.gethostname()
             local_ip = socket.gethostbyname(hostname)
@@ -50,17 +51,19 @@ async def lifespan(app: FastAPI):
                 port=settings.port,
                 properties={"version": "0.1.0"},
             )
-            zeroconf_instance = Zeroconf()
-            zeroconf_instance.register_service(info)
-            logger.info("Bonjour service registered: _kvante._tcp on port %d", settings.port)
+            aiozc = AsyncZeroconf(
+                interfaces=[local_ip], ip_version=IPVersion.V4Only
+            )
+            await aiozc.async_register_service(info, cooperating_responders=True)
+            logger.info("Bonjour service registered: _kvante._tcp on %s:%d", local_ip, settings.port)
         except Exception as e:
             logger.warning("Bonjour registration failed (non-fatal): %s", e)
 
     yield
 
-    if zeroconf_instance:
-        zeroconf_instance.unregister_all_services()
-        zeroconf_instance.close()
+    if aiozc:
+        await aiozc.async_unregister_all_services()
+        await aiozc.async_close()
         logger.info("Bonjour service unregistered")
     logger.info("Kvante shutting down")
 
