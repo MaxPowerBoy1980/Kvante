@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_kvante._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Kvante skal finde din lektiehjælp-server på det lokale netværk</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Kvante bruger kameraet til at tage billeder af dine opgaver og løsninger</string>
+</dict>
+</plist>
