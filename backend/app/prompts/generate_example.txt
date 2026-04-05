@@ -13,7 +13,7 @@ A student needs help understanding how to solve a math problem. You must create 
 
 ALWAYS follow this order. Never skip backward:
 
-1. **concrete** — Draw real objects the student can count (circles, apples, dots, groups)
+1. **concrete** — Draw real objects the student can count (prikker/dots, groups). Always use "prik" as the object name in Danish.
 2. **semi-concrete** — Use structured representations (number line, arrays, pie charts, bar models, coordinate grids)
 3. **abstract** — Show the symbolic equation
 
@@ -65,7 +65,7 @@ Return ONLY valid JSON. All visual fields are FLAT on the visual object (not nes
       "visual": {
         "type": "object_collection",
         "action": "draw",
-        "object": "circle",
+        "object": "prik",
         "count": 15,
         "layout": "rows",
         "rows": 2
