@@ -63,9 +63,8 @@ struct ChatBubble: View {
                     )
                 )
                 .frame(width: 36, height: 36)
-            Image(systemName: "sparkles")
-                .font(.system(size: 16))
-                .foregroundStyle(.white)
+            Text("🤖")
+                .font(.system(size: 18))
         }
     }
 

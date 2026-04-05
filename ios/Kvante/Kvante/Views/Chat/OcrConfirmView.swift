@@ -16,9 +16,8 @@ struct OcrConfirmView: View {
                     Circle()
                         .fill(Color(red: 0.3, green: 0.3, blue: 0.5))
                         .frame(width: 36, height: 36)
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 14))
-                        .foregroundStyle(.white)
+                    Text("🤖")
+                        .font(.system(size: 16))
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Jeg har scannet dit billede!")
