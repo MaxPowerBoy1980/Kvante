@@ -9,7 +9,7 @@ import time
 
 from app.config import settings
 from app.services.ai_client import get_ai_client
-from app.services.image_preprocessor import preprocess_handwritten_work
+from app.services.image_preprocessor import preprocess_handwritten_work  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +36,12 @@ def read_student_answer(image_bytes: bytes, assignment_text: str) -> dict:
     start = time.time()
 
     client = get_ai_client()
-    preprocessed = preprocess_handwritten_work(image_bytes)
 
+    # Send original image — no preprocessing. The CLAHE/grayscale pipeline
+    # was designed for heavy analysis, but for simple OCR the raw image works better.
     raw = client.send_vision(
         READER_PROMPT,
-        preprocessed,
+        image_bytes,
         f"The assignment is: {assignment_text}\nWhat answer did the student write?",
     )
 
