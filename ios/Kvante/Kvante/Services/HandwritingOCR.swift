@@ -2,27 +2,28 @@ import UIKit
 import Vision
 
 /// On-device handwriting recognition using Apple Vision framework.
-/// Returns recognized text from a photo of handwritten work.
+/// Returns full text + extracted answer from a photo of handwritten work.
 enum HandwritingOCR {
 
     struct Result {
-        let text: String
+        let fullText: String       // Everything the student wrote: "17 + 52 = 69"
+        let answer: String         // Extracted final answer: "69"
         let confidence: Float
         let isCleanNumber: Bool
     }
 
-    /// Recognize handwriting in an image. Returns the best candidate text.
+    /// Recognize handwriting in an image.
     static func recognize(imageData: Data) async -> Result {
         guard let image = UIImage(data: imageData),
               let cgImage = image.cgImage else {
-            return Result(text: "", confidence: 0, isCleanNumber: false)
+            return Result(fullText: "", answer: "", confidence: 0, isCleanNumber: false)
         }
 
         return await withCheckedContinuation { continuation in
             let request = VNRecognizeTextRequest { request, error in
                 guard let observations = request.results as? [VNRecognizedTextObservation],
                       !observations.isEmpty else {
-                    continuation.resume(returning: Result(text: "", confidence: 0, isCleanNumber: false))
+                    continuation.resume(returning: Result(fullText: "", answer: "", confidence: 0, isCleanNumber: false))
                     return
                 }
 
@@ -34,7 +35,6 @@ enum HandwritingOCR {
                     }
                 }
 
-                // Find the answer: look for text after "=" sign, or take the last number
                 let fullText = lines.map(\.0).joined(separator: " ")
                 let avgConfidence = lines.map(\.1).reduce(0, +) / Float(max(lines.count, 1))
 
@@ -42,7 +42,8 @@ enum HandwritingOCR {
                 let isClean = isCleanNumber(answer)
 
                 continuation.resume(returning: Result(
-                    text: answer,
+                    fullText: fullText,
+                    answer: answer,
                     confidence: avgConfidence,
                     isCleanNumber: isClean
                 ))
@@ -57,19 +58,21 @@ enum HandwritingOCR {
             do {
                 try handler.perform([request])
             } catch {
-                continuation.resume(returning: Result(text: "", confidence: 0, isCleanNumber: false))
+                continuation.resume(returning: Result(fullText: "", answer: "", confidence: 0, isCleanNumber: false))
             }
         }
     }
 
     /// Extract the final answer from recognized text.
-    /// Looks for the value after "=" or takes the last number.
     private static func extractAnswer(from text: String) -> String {
-        // Look for "= answer" pattern
-        if let equalsRange = text.range(of: "=") {
-            let afterEquals = String(text[equalsRange.upperBound...]).trimmingCharacters(in: .whitespaces)
-            if !afterEquals.isEmpty {
-                return afterEquals
+        // Look for the LAST "= answer" pattern (student might write multiple lines)
+        if let lastEquals = text.range(of: "=", options: .backwards) {
+            let afterEquals = String(text[lastEquals.upperBound...])
+                .trimmingCharacters(in: .whitespaces)
+            // Take only the first token after = (the answer, not next line)
+            let firstToken = afterEquals.components(separatedBy: .whitespaces).first ?? afterEquals
+            if !firstToken.isEmpty {
+                return firstToken
             }
         }
 
@@ -82,11 +85,10 @@ enum HandwritingOCR {
         return text.trimmingCharacters(in: .whitespaces)
     }
 
-    /// Check if the answer is a clean number (no fractions, units, or special symbols)
+    /// Check if the answer is a clean number
     private static func isCleanNumber(_ text: String) -> Bool {
         let cleaned = text.replacingOccurrences(of: ",", with: ".")
             .replacingOccurrences(of: " ", with: "")
-        // Matches: integers, decimals, negative numbers
         return cleaned.range(of: #"^-?\d+\.?\d*$"#, options: .regularExpression) != nil
     }
 }

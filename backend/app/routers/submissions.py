@@ -20,6 +20,7 @@ async def submit_work(
     assignment_id: str = Form(...),
     image: UploadFile = File(...),
     answer_text: str | None = Form(None),
+    full_ocr_text: str | None = Form(None),
     db: DBSession = Depends(get_db),
 ):
     session = db.query(Session).filter(Session.id == session_id).first()
@@ -69,7 +70,7 @@ async def submit_work(
     # If device already did OCR, use that. Otherwise fall back to LLM vision.
     if answer_text:
         student_answer = answer_text.strip()
-        logger.info("Using device OCR answer: '%s'", student_answer)
+        logger.info("Using device OCR answer: '%s' (full text: '%s')", student_answer, full_ocr_text or "")
     else:
         try:
             result = read_student_answer(contents, assignment.text)
@@ -108,13 +109,14 @@ async def submit_work(
     analysis = {
         "student_answer": student_answer,
         "correct_answer": assignment.correct_answer or "",
+        "full_ocr_text": full_ocr_text or "",
         "methodology_sound": is_correct,
         "steps_identified": [],
         "errors": [] if is_correct else ["Svaret er ikke korrekt"],
         "correct_elements": ["Eleven har besvaret opgaven"] if is_correct else [],
-        "methodology_assessment": f"Eleven svarede: {student_answer}",
+        "methodology_assessment": f"Eleven skrev: {full_ocr_text or student_answer}",
         "handwriting_note": "",
-        "confidence": 0.95 if result["readable"] else 0.3,
+        "confidence": 0.95,
     }
 
     submission.analysis = analysis

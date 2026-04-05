@@ -118,14 +118,17 @@ class ChatViewModel {
                 let ocr = await HandwritingOCR.recognize(imageData: imageData)
 
                 let submission: SubmissionResponse
+                let ocrSource: String
                 if ocr.isCleanNumber && ocr.confidence > 0.5 {
-                    // OCR succeeded — send text answer, skip LLM vision
+                    // OCR succeeded — send text + full work, skip LLM vision
                     submission = try await apiClient.submitAnswer(
                         sessionId: sessionId,
                         assignmentId: currentAssignment.id,
-                        answerText: ocr.text,
+                        answerText: ocr.answer,
+                        fullOcrText: ocr.fullText,
                         imageData: imageData
                     )
+                    ocrSource = "Apple OCR"
                 } else {
                     // OCR failed or complex answer — fall back to LLM vision
                     submission = try await apiClient.submitWork(
@@ -133,12 +136,12 @@ class ChatViewModel {
                         assignmentId: currentAssignment.id,
                         imageData: imageData
                     )
+                    ocrSource = "Gemini Vision"
                 }
 
                 currentSubmissionId = submission.submissionId
 
                 let isCorrect = submission.methodologySound
-                let ocrNote = ocr.isCleanNumber ? "Apple OCR" : "Gemini Vision"
                 let result = AnswerResult(
                     studentAnswer: submission.studentAnswer,
                     correctAnswer: submission.correctAnswer,
@@ -146,7 +149,7 @@ class ChatViewModel {
                     message: isCorrect
                         ? "Flot klaret! Det er helt rigtigt."
                         : "Ikke helt — prøv igen! Du kan også bede om hjælp.",
-                    source: ocrNote
+                    source: "\(ocrSource) · læste: \(ocr.fullText)"
                 )
 
                 let chips: [ActionChipModel] = isCorrect

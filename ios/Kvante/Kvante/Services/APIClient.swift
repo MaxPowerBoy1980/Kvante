@@ -144,7 +144,7 @@ actor APIClient {
 
     // MARK: - Submit Answer (text only, no image analysis needed)
 
-    func submitAnswer(sessionId: String, assignmentId: String, answerText: String, imageData: Data) async throws -> SubmissionResponse {
+    func submitAnswer(sessionId: String, assignmentId: String, answerText: String, fullOcrText: String, imageData: Data) async throws -> SubmissionResponse {
         let url = baseURL.appendingPathComponent("submissions/")
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.httpMethod = "POST"
@@ -163,12 +163,17 @@ actor APIClient {
         body.append("Content-Disposition: form-data; name=\"assignment_id\"\r\n\r\n")
         body.append(assignmentId)
         body.append("\r\n")
-        // answer_text (OCR result from device)
+        // answer_text (extracted answer)
         body.append("--\(boundary)\r\n")
         body.append("Content-Disposition: form-data; name=\"answer_text\"\r\n\r\n")
         body.append(answerText)
         body.append("\r\n")
-        // image (still saved for reference)
+        // full_ocr_text (everything the student wrote)
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"full_ocr_text\"\r\n\r\n")
+        body.append(fullOcrText)
+        body.append("\r\n")
+        // image (saved for reference and LLM feedback)
         body.append("--\(boundary)\r\n")
         body.append("Content-Disposition: form-data; name=\"image\"; filename=\"work.jpg\"\r\n")
         body.append("Content-Type: image/jpeg\r\n\r\n")
