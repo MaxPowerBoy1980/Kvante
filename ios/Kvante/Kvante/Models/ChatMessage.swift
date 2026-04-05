@@ -20,6 +20,7 @@ struct AnswerResult {
     let correctAnswer: String
     let isCorrect: Bool
     let message: String
+    var source: String = ""  // "Apple OCR" or "Gemini Vision" for debug
 }
 
 struct ChatMessage: Identifiable {

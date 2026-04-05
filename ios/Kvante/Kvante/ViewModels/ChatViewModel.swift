@@ -110,26 +110,43 @@ class ChatViewModel {
             content: .scannedImage(imageData)
         ))
 
-        // Loading
         let loadingId = addLoading("Kvante kigger på dit svar...")
 
         Task { @MainActor in
             do {
-                let submission = try await apiClient.submitWork(
-                    sessionId: sessionId,
-                    assignmentId: currentAssignment.id,
-                    imageData: imageData
-                )
+                // Step 1: Try Apple OCR on-device (instant, free)
+                let ocr = await HandwritingOCR.recognize(imageData: imageData)
+
+                let submission: SubmissionResponse
+                if ocr.isCleanNumber && ocr.confidence > 0.5 {
+                    // OCR succeeded — send text answer, skip LLM vision
+                    submission = try await apiClient.submitAnswer(
+                        sessionId: sessionId,
+                        assignmentId: currentAssignment.id,
+                        answerText: ocr.text,
+                        imageData: imageData
+                    )
+                } else {
+                    // OCR failed or complex answer — fall back to LLM vision
+                    submission = try await apiClient.submitWork(
+                        sessionId: sessionId,
+                        assignmentId: currentAssignment.id,
+                        imageData: imageData
+                    )
+                }
+
                 currentSubmissionId = submission.submissionId
 
                 let isCorrect = submission.methodologySound
+                let ocrNote = ocr.isCleanNumber ? "Apple OCR" : "Gemini Vision"
                 let result = AnswerResult(
                     studentAnswer: submission.studentAnswer,
                     correctAnswer: submission.correctAnswer,
                     isCorrect: isCorrect,
                     message: isCorrect
                         ? "Flot klaret! Det er helt rigtigt."
-                        : "Ikke helt — prøv igen! Du kan også bede om hjælp."
+                        : "Ikke helt — prøv igen! Du kan også bede om hjælp.",
+                    source: ocrNote
                 )
 
                 let chips: [ActionChipModel] = isCorrect

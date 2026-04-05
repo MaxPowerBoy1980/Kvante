@@ -19,6 +19,7 @@ async def submit_work(
     session_id: str = Form(...),
     assignment_id: str = Form(...),
     image: UploadFile = File(...),
+    answer_text: str | None = Form(None),
     db: DBSession = Depends(get_db),
 ):
     session = db.query(Session).filter(Session.id == session_id).first()
@@ -65,31 +66,34 @@ async def submit_work(
     db.commit()
 
     # === HYBRID APPROACH ===
-    # Step 1: Vision model just reads the answer (simple OCR)
-    try:
-        result = read_student_answer(contents, assignment.text)
-    except Exception as e:
-        logger.exception("Failed to read student answer")
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": "ocr_failed",
-                "message": str(e),
-                "student_message": "Jeg kan ikke helt læse dit svar — prøv at tage et tydeligere billede.",
-            },
-        )
+    # If device already did OCR, use that. Otherwise fall back to LLM vision.
+    if answer_text:
+        student_answer = answer_text.strip()
+        logger.info("Using device OCR answer: '%s'", student_answer)
+    else:
+        try:
+            result = read_student_answer(contents, assignment.text)
+        except Exception as e:
+            logger.exception("Failed to read student answer")
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "ocr_failed",
+                    "message": str(e),
+                    "student_message": "Jeg kan ikke helt læse dit svar — prøv at tage et tydeligere billede.",
+                },
+            )
 
-    if not result["readable"]:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": "unreadable_photo",
-                "message": "Could not read student answer",
-                "student_message": "Jeg kan ikke læse dit svar — prøv at skrive tydeligere og tag et nyt billede.",
-            },
-        )
-
-    student_answer = result["answer"]
+        if not result["readable"]:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "unreadable_photo",
+                    "message": "Could not read student answer",
+                    "student_message": "Jeg kan ikke læse dit svar — prøv at skrive tydeligere og tag et nyt billede.",
+                },
+            )
+        student_answer = result["answer"]
 
     # Step 2: Compare against ground truth (Python, not AI)
     is_correct = False

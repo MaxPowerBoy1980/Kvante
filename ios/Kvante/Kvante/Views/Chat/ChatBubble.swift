@@ -155,14 +155,19 @@ struct ChatBubble: View {
                     Image(systemName: "text.viewfinder")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("Kvante læste: **\(result.studentAnswer)**")
+                    Text("Læste: **\(result.studentAnswer)**")
                         .font(.subheadline)
+                    if !result.source.isEmpty {
+                        Text("(\(result.source))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 HStack(spacing: 6) {
                     Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .font(.caption)
                         .foregroundStyle(result.isCorrect ? .green : .red)
-                    Text("Korrekt svar: **\(result.correctAnswer)**")
+                    Text("Svar: **\(result.correctAnswer)**")
                         .font(.subheadline)
                 }
             }

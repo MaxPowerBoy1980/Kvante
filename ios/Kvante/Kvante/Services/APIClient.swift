@@ -142,6 +142,45 @@ actor APIClient {
         return try decoder.decode(FeedbackResponse.self, from: data)
     }
 
+    // MARK: - Submit Answer (text only, no image analysis needed)
+
+    func submitAnswer(sessionId: String, assignmentId: String, answerText: String, imageData: Data) async throws -> SubmissionResponse {
+        let url = baseURL.appendingPathComponent("submissions/")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        // session_id
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"session_id\"\r\n\r\n")
+        body.append(sessionId)
+        body.append("\r\n")
+        // assignment_id
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"assignment_id\"\r\n\r\n")
+        body.append(assignmentId)
+        body.append("\r\n")
+        // answer_text (OCR result from device)
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"answer_text\"\r\n\r\n")
+        body.append(answerText)
+        body.append("\r\n")
+        // image (still saved for reference)
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"work.jpg\"\r\n")
+        body.append("Content-Type: image/jpeg\r\n\r\n")
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n")
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(SubmissionResponse.self, from: data)
+    }
+
     // MARK: - Library
 
     func getTopics() async throws -> TopicsResponse {
