@@ -157,11 +157,9 @@ struct ChatBubble: View {
                         .foregroundStyle(.secondary)
                     Text("Læste: **\(result.studentAnswer)**")
                         .font(.subheadline)
-                    if !result.source.isEmpty {
-                        Text("(\(result.source))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("via \(result.source)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 6) {
                     Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -169,6 +167,11 @@ struct ChatBubble: View {
                         .foregroundStyle(result.isCorrect ? .green : .red)
                     Text("Svar: **\(result.correctAnswer)**")
                         .font(.subheadline)
+                }
+                if !result.ocrDebug.isEmpty {
+                    Text(result.ocrDebug)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(10)

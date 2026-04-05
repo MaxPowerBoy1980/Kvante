@@ -20,7 +20,8 @@ struct AnswerResult {
     let correctAnswer: String
     let isCorrect: Bool
     let message: String
-    var source: String = ""  // "Apple OCR" or "Gemini Vision" for debug
+    var source: String = ""    // "Apple OCR" or "Gemini Vision"
+    var ocrDebug: String = ""  // What Apple OCR read: "17 + 52 = 69"
 }
 
 struct ChatMessage: Identifiable {

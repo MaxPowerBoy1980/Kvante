@@ -142,6 +142,7 @@ class ChatViewModel {
                 currentSubmissionId = submission.submissionId
 
                 let isCorrect = submission.methodologySound
+                let ocrDebug = ocr.fullText.isEmpty ? "" : "OCR: \"\(ocr.fullText)\""
                 let result = AnswerResult(
                     studentAnswer: submission.studentAnswer,
                     correctAnswer: submission.correctAnswer,
@@ -149,7 +150,8 @@ class ChatViewModel {
                     message: isCorrect
                         ? "Flot klaret! Det er helt rigtigt."
                         : "Ikke helt — prøv igen! Du kan også bede om hjælp.",
-                    source: "\(ocrSource) · læste: \(ocr.fullText)"
+                    source: ocrSource,
+                    ocrDebug: ocrDebug
                 )
 
                 let chips: [ActionChipModel] = isCorrect
