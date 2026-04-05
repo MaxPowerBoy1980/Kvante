@@ -48,11 +48,21 @@ Each step must include a `visual` object. The `type` field determines which visu
 ### Abstract phase:
 - `equation` — Symbolic math expression
   - Actions: `reveal` (parts, highlight)
+  - **parts MUST contain the actual numbers**, example: `["27", "+", "19", "=", "36"]`
+  - NEVER leave parts empty. Each number and operator is a separate string in the array.
 
 **IMPORTANT: The final step MUST bridge concrete to abstract.** Connect the visual objects back to the numbers explicitly. Example text for the last step:
-- "Vi havde 15 prikker og lagde 23 prikker til. Det giver 38 prikker i alt. Så: 15 + 23 = 38"
+- "Vi havde 27 prikker og lagde 19 prikker til. Det giver 36 prikker i alt. Så: 27 + 19 = 36"
 - "Vi startede med 24 prikker og fjernede 9. Der var 15 tilbage. Så: 24 - 9 = 15"
 Always mention both the objects and the equation in the final step.
+
+## Danish language rules
+- Use "trin" (not "steg" or "skridt") for "step"
+- Use "næste trin" for "next step"
+- Use "prikker" for the dots/objects
+- Use "samlet" or "i alt" for "total" (never "tætsete" or similar)
+- Use "tilføje" for "add" and "fjerne" for "remove"
+- Write natural, correct Danish. Avoid English words.
 
 ## Output Format
 
