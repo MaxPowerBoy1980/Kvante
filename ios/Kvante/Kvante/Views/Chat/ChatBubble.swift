@@ -85,6 +85,10 @@ struct ChatBubble: View {
             answerResultBubble(result)
         case .example(let example):
             exampleBubble(example)
+        case .exampleStep(let step, let num, let total):
+            exampleStepBubble(step, stepNumber: num, total: total)
+        case .tip(let text):
+            tipBubble(text)
         case .scannedImage(let data):
             scannedImageBubble(data)
         case .loading(let text):
@@ -241,10 +245,79 @@ struct ChatBubble: View {
         .background(Color(red: 0.18, green: 0.18, blue: 0.22), in: RoundedRectangle(cornerRadius: 20))
     }
 
-    // MARK: - Example (inline, expandable)
+    // MARK: - Example (legacy, kept for compatibility)
 
     private func exampleBubble(_ example: ExampleResponse) -> some View {
         InlineExampleView(example: example)
+    }
+
+    // MARK: - Example Step (one step per message)
+
+    private func exampleStepBubble(_ step: AnimationStep, stepNumber: Int, total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Step header
+            HStack(spacing: 8) {
+                Text("\(stepNumber)")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 24)
+                    .background(Color.orange, in: Circle())
+                Text("Trin \(stepNumber) af \(total)")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+
+            // Step text
+            Text(step.text)
+                .font(.body)
+                .foregroundStyle(.white)
+
+            // Visual component
+            VisualComponentView(
+                visual: step.visual,
+                animate: true,
+                cumulativeObjects: 0,
+                cumulativeCrossedOut: 0,
+                cumulativeRows: 2,
+                cumulativeGrouped: 0
+            )
+            .frame(maxWidth: .infinity)
+        }
+        .padding(14)
+        .background(Color(red: 0.14, green: 0.14, blue: 0.18), in: RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.orange.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Tip
+
+    private func tipBubble(_ text: String) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.2))
+                    .frame(width: 32, height: 32)
+                Image(systemName: "lightbulb.fill")
+                    .font(.caption)
+                    .foregroundStyle(.purple)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Kvantes Tip")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.purple)
+                Text(text)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+            }
+        }
+        .padding(12)
+        .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+        )
     }
 
     // MARK: - Scanned Image

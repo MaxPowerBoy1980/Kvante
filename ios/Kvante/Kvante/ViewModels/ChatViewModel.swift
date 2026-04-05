@@ -41,11 +41,7 @@ class ChatViewModel {
 
         let welcome = ChatMessage(
             sender: .kvante,
-            content: .text("Hvad vil du gøre? Du kan bede mig om hjælp, eller scanne dit svar når du er klar."),
-            actions: [
-                ActionChipModel(id: "help", label: "Hjælp mig med opgaven", icon: "lightbulb.fill", isPrimary: false),
-                ActionChipModel(id: "scan", label: "Scan mit svar", icon: "camera.fill", isPrimary: true),
-            ]
+            content: .text("Hej! Klar til at kigge på denne opgave? Løs den med blyant og papir, og scan dit svar når du er klar. Tryk + hvis du har brug for hjælp 🤖")
         )
         messages.append(welcome)
     }
@@ -65,10 +61,16 @@ class ChatViewModel {
             tryAgain()
         case "another_example":
             requestHelp()
+        case "next_step":
+            showNextExampleStep()
         default:
             handleFollowup(chip.id)
         }
     }
+
+    // Pending example steps for step-by-step reveal
+    private var pendingExampleSteps: [AnimationStep] = []
+    private var currentExampleStepIndex = 0
 
     func requestHelp() {
         // Student message
@@ -86,14 +88,19 @@ class ChatViewModel {
                     sessionId: sessionId,
                     assignmentId: currentAssignment.id
                 )
+
+                // Store all steps for step-by-step reveal
+                pendingExampleSteps = example.steps
+                currentExampleStepIndex = 0
+
+                // Show intro message
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
-                    content: .example(example),
-                    actions: [
-                        ActionChipModel(id: "scan", label: "Scan mit svar", icon: "camera.fill", isPrimary: true),
-                        ActionChipModel(id: "help", label: "Nyt eksempel", icon: "lightbulb.fill", isPrimary: false),
-                    ]
+                    content: .text("Her er et eksempel med andre tal: **\(example.exampleProblem)**")
                 ))
+
+                // Show first step
+                showNextExampleStep()
             } catch {
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
@@ -101,6 +108,25 @@ class ChatViewModel {
                 ))
             }
         }
+    }
+
+    private func showNextExampleStep() {
+        guard currentExampleStepIndex < pendingExampleSteps.count else { return }
+
+        let step = pendingExampleSteps[currentExampleStepIndex]
+        let isLast = currentExampleStepIndex == pendingExampleSteps.count - 1
+
+        let chips: [ActionChipModel] = isLast
+            ? [ActionChipModel(id: "scan", label: "Scan mit svar", icon: "camera.fill", isPrimary: true)]
+            : [ActionChipModel(id: "next_step", label: "Næste trin →", icon: "arrow.right", isPrimary: false)]
+
+        messages.append(ChatMessage(
+            sender: .kvante,
+            content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count),
+            actions: chips
+        ))
+
+        currentExampleStepIndex += 1
     }
 
     // Pending image data for confirmation flow

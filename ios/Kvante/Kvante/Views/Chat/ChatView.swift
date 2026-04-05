@@ -30,9 +30,10 @@ struct ChatView: View {
             }
 
             // Input bar
-            ChatInputBar {
-                viewModel.showScanner = true
-            }
+            ChatInputBar(
+                onCamera: { viewModel.showScanner = true },
+                onHelp: { viewModel.requestHelp() }
+            )
         }
         .navigationTitle("Kvante")
         .navigationBarTitleDisplayMode(.inline)

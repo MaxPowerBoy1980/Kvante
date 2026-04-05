@@ -8,12 +8,14 @@ enum ChatSender {
 enum ChatMessageContent {
     case text(String)
     case example(ExampleResponse)
+    case exampleStep(AnimationStep, Int, Int)  // step, stepNumber, totalSteps
     case scannedImage(Data)
     case feedback(FeedbackResponse)
     case ocrConfirm(OcrConfirmation)
     case answerResult(AnswerResult)
     case loading(String)
     case assignmentIntro(ParsedAssignment)
+    case tip(String)
 }
 
 struct OcrConfirmation {
