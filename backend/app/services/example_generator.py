@@ -33,10 +33,15 @@ class ExampleGeneratorService:
         user_message = (
             f"Assignment type: {assignment_type}\n"
             f"Assignment topic: {assignment_topic}\n"
-            f"Actual assignment (use DIFFERENT numbers): {assignment_text}\n"
-            f"Student's language: {lang_name}\n\n"
-            f"IMPORTANT: Write ALL text, note, and audio_cue fields in {lang_name}.\n"
+            f"Actual assignment (use DIFFERENT numbers): {assignment_text}\n\n"
             f"Create a worked example with different numbers. Return JSON."
+        )
+
+        # Prepend language requirement to system prompt so the model can't ignore it
+        system_prompt = (
+            f"CRITICAL: You MUST write ALL text, example_problem, note, and audio_cue "
+            f"fields in {lang_name}. Never use English.\n\n"
+            + self._system_prompt
         )
 
         from pydantic import ValidationError
@@ -45,7 +50,7 @@ class ExampleGeneratorService:
         last_error = None
         for attempt in range(2):
             if attempt == 0:
-                raw = self.client.send_text(self._system_prompt, user_message)
+                raw = self.client.send_text(system_prompt, user_message)
             else:
                 logger.warning("Retry after parse error: %s", last_error)
                 correction = (
@@ -53,7 +58,7 @@ class ExampleGeneratorService:
                     f"Error: {last_error}\n\n"
                     f"Please try again with valid JSON in the required format."
                 )
-                raw = self.client.send_text(self._system_prompt, f"{user_message}\n\n{correction}")
+                raw = self.client.send_text(system_prompt, f"{user_message}\n\n{correction}")
 
             try:
                 parsed = self._parse_json(raw)
