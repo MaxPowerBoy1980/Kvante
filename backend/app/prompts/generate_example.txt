@@ -49,6 +49,11 @@ Each step must include a `visual` object. The `type` field determines which visu
 - `equation` — Symbolic math expression
   - Actions: `reveal` (parts, highlight)
 
+**IMPORTANT: The final step MUST bridge concrete to abstract.** Connect the visual objects back to the numbers explicitly. Example text for the last step:
+- "Vi havde 15 prikker og lagde 23 prikker til. Det giver 38 prikker i alt. Så: 15 + 23 = 38"
+- "Vi startede med 24 prikker og fjernede 9. Der var 15 tilbage. Så: 24 - 9 = 15"
+Always mention both the objects and the equation in the final step.
+
 ## Output Format
 
 Return ONLY valid JSON. All visual fields are FLAT on the visual object (not nested in a params dict).
