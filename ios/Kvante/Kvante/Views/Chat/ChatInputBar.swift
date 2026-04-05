@@ -6,22 +6,28 @@ struct ChatInputBar: View {
     let onCamera: () -> Void
     let onHelp: () -> Void
 
-    @State private var showMenu = false
-
     var body: some View {
         VStack(spacing: 0) {
             Divider().opacity(0.2)
 
             HStack(spacing: 10) {
                 // + menu button
-                Button {
-                    showMenu = true
+                Menu {
+                    Button {
+                        onCamera()
+                    } label: {
+                        Label("Scan mit svar", systemImage: "camera.fill")
+                    }
+                    Button {
+                        onHelp()
+                    } label: {
+                        Label("Hjælp mig med opgaven", systemImage: "lightbulb.fill")
+                    }
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 30))
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
 
                 // Text field
                 HStack(spacing: 8) {
@@ -61,19 +67,6 @@ struct ChatInputBar: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(.ultraThinMaterial)
-        }
-        .confirmationDialog("Hvad vil du gøre?", isPresented: $showMenu) {
-            Button {
-                onCamera()
-            } label: {
-                Label("Scan mit svar", systemImage: "camera.fill")
-            }
-            Button {
-                onHelp()
-            } label: {
-                Label("Hjælp mig med opgaven", systemImage: "lightbulb.fill")
-            }
-            Button("Annuller", role: .cancel) {}
         }
     }
 }
