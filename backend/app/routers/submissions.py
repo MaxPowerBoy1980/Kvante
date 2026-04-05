@@ -8,7 +8,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.db import Assignment, Session, Submission
 from app.models.schemas import ErrorResponse, SubmissionResponse
-from app.services.work_analyzer import WorkAnalyzerService
+from app.services.answer_reader import read_student_answer, compare_answer
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -64,37 +64,56 @@ async def submit_work(
     submission.work_image_path = image_path
     db.commit()
 
-    analyzer = WorkAnalyzerService()
+    # === HYBRID APPROACH ===
+    # Step 1: Vision model just reads the answer (simple OCR)
     try:
-        analysis = analyzer.analyze_work(
-            image_bytes=contents,
-            assignment_text=assignment.text,
-            assignment_type=assignment.type,
-            assignment_topic=assignment.topic,
-        )
+        result = read_student_answer(contents, assignment.text)
     except Exception as e:
-        logger.exception("Failed to analyze work")
+        logger.exception("Failed to read student answer")
         raise HTTPException(
             status_code=422,
             detail={
-                "error": "analysis_failed",
+                "error": "ocr_failed",
                 "message": str(e),
-                "student_message": "Jeg kan ikke helt l\u00e6se dit svar \u2014 pr\u00f8v at tage et tydeligere billede.",
+                "student_message": "Jeg kan ikke helt læse dit svar — prøv at tage et tydeligere billede.",
             },
         )
 
-    if analysis.get("confidence", 0) < settings.confidence_threshold:
+    if not result["readable"]:
         raise HTTPException(
             status_code=422,
             detail={
                 "error": "unreadable_photo",
-                "message": "Confidence below threshold",
-                "student_message": "Jeg kan ikke helt l\u00e6se dit arbejde \u2014 kan du pr\u00f8ve at tage et tydeligere billede? S\u00f8rg for godt lys og hold iPad'en rolig.",
+                "message": "Could not read student answer",
+                "student_message": "Jeg kan ikke læse dit svar — prøv at skrive tydeligere og tag et nyt billede.",
             },
         )
 
+    student_answer = result["answer"]
+
+    # Step 2: Compare against ground truth (Python, not AI)
+    is_correct = False
+    if assignment.correct_answer:
+        is_correct = compare_answer(student_answer, assignment.correct_answer)
+        logger.info(
+            "Answer comparison: student='%s' vs correct='%s' → %s",
+            student_answer, assignment.correct_answer, "CORRECT" if is_correct else "INCORRECT",
+        )
+
+    # Build analysis dict (compatible with existing schema)
+    analysis = {
+        "student_answer": student_answer,
+        "methodology_sound": is_correct,
+        "steps_identified": [],
+        "errors": [] if is_correct else ["Svaret er ikke korrekt"],
+        "correct_elements": ["Eleven har besvaret opgaven"] if is_correct else [],
+        "methodology_assessment": f"Eleven svarede: {student_answer}",
+        "handwriting_note": "",
+        "confidence": 0.95 if result["readable"] else 0.3,
+    }
+
     submission.analysis = analysis
-    assignment.status = "in_progress"
+    assignment.status = "complete" if is_correct else "in_progress"
     db.commit()
 
     return SubmissionResponse(
