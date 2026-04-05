@@ -80,7 +80,7 @@ actor APIClient {
 
     func submitWork(sessionId: String, assignmentId: String, imageData: Data) async throws -> SubmissionResponse {
         let url = baseURL.appendingPathComponent("submissions/")
-        var request = URLRequest(url: url, timeoutInterval: timeout)
+        var request = URLRequest(url: url, timeoutInterval: aiTimeout)
         request.httpMethod = "POST"
 
         let boundary = UUID().uuidString
