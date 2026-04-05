@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import assignments, feedback, health, pages, submissions
+from app.routers import assignments, feedback, health, library, pages, practice, students, submissions
 
 from app.logging_config import setup_logging
 
@@ -29,12 +29,16 @@ async def lifespan(app: FastAPI):
     )
 
     from sqlalchemy.orm import Session as DBSession
-    from app.models.db import Student
+    from app.models.db import Student, MathProblem
+    from app.seed_data import seed_math_problems
     with DBSession(engine) as db:
         if not db.query(Student).filter(Student.id == "default").first():
             db.add(Student(id="default", name="Default Student", language="da"))
             db.commit()
             logger.info("Created default student")
+        if db.query(MathProblem).count() == 0:
+            seed_math_problems(db)
+
 
     aiozc = None
     if not os.environ.get("KVANTE_TESTING"):
@@ -88,3 +92,6 @@ app.include_router(pages.router)
 app.include_router(assignments.router)
 app.include_router(submissions.router)
 app.include_router(feedback.router)
+app.include_router(library.router)
+app.include_router(students.router)
+app.include_router(practice.router)
