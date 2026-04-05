@@ -8,6 +8,7 @@ class ChatViewModel {
     var messages: [ChatMessage] = []
     var isLoading = false
     var showScanner = false
+    var inputText = ""
 
     // MARK: - Context
 
@@ -68,6 +69,33 @@ class ChatViewModel {
         }
     }
 
+    func sendMessage() {
+        let text = inputText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        inputText = ""
+
+        messages.append(ChatMessage(sender: .student, content: .text(text)))
+        let loadingId = addLoading("Kvante tænker...")
+
+        Task { @MainActor in
+            do {
+                let response = try await apiClient.explainTask(
+                    sessionId: sessionId,
+                    assignmentId: currentAssignment.id
+                )
+                replaceLoading(loadingId, with: ChatMessage(
+                    sender: .kvante,
+                    content: .text(response.feedbackText)
+                ))
+            } catch {
+                replaceLoading(loadingId, with: ChatMessage(
+                    sender: .kvante,
+                    content: .text("Hovsa, noget gik galt: \(error.localizedDescription)")
+                ))
+            }
+        }
+    }
+
     // Pending example steps for step-by-step reveal
     private var pendingExampleSteps: [AnimationStep] = []
     private var currentExampleStepIndex = 0
@@ -117,7 +145,7 @@ class ChatViewModel {
         let isLast = currentExampleStepIndex == pendingExampleSteps.count - 1
 
         let chips: [ActionChipModel] = isLast
-            ? [ActionChipModel(id: "scan", label: "Scan mit svar", icon: "camera.fill", isPrimary: true)]
+            ? []
             : [ActionChipModel(id: "next_step", label: "Næste trin →", icon: "arrow.right", isPrimary: false)]
 
         messages.append(ChatMessage(
@@ -261,10 +289,7 @@ class ChatViewModel {
 
         let chips: [ActionChipModel] = isCorrect
             ? [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
-            : [
-                ActionChipModel(id: "scan", label: "Prøv igen", icon: "camera.fill", isPrimary: true),
-                ActionChipModel(id: "help", label: "Hjælp mig", icon: "lightbulb.fill", isPrimary: false),
-            ]
+            : []
 
         replaceLoading(loadingId, with: ChatMessage(
             sender: .kvante,
@@ -309,11 +334,7 @@ class ChatViewModel {
     private func tryAgain() {
         messages.append(ChatMessage(
             sender: .kvante,
-            content: .text("Godt, prøv igen! Scan dit nye svar når du er klar."),
-            actions: [
-                ActionChipModel(id: "scan", label: "Scan mit svar", icon: "camera.fill", isPrimary: true),
-                ActionChipModel(id: "help", label: "Hjælp mig med opgaven", icon: "lightbulb.fill", isPrimary: false),
-            ]
+            content: .text("Godt, prøv igen! Scan dit nye svar med + knappen når du er klar 🤖")
         ))
     }
 

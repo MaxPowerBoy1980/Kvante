@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ChatInputBar: View {
+    @Binding var text: String
+    let onSend: () -> Void
     let onCamera: () -> Void
     let onHelp: () -> Void
 
@@ -10,43 +12,54 @@ struct ChatInputBar: View {
         VStack(spacing: 0) {
             Divider().opacity(0.2)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 // + menu button
                 Button {
                     showMenu = true
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 32))
+                        .font(.system(size: 30))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
 
-                // Text field placeholder
-                HStack {
-                    Text("Skriv dit svar her...")
+                // Text field
+                HStack(spacing: 8) {
+                    TextField("Skriv til Kvante...", text: $text)
                         .font(.subheadline)
-                        .foregroundStyle(Color(.systemGray3))
-                    Spacer()
+                        .submitLabel(.send)
+                        .onSubmit { if !text.trimmingCharacters(in: .whitespaces).isEmpty { onSend() } }
+
                     Button(action: onCamera) {
                         Image(systemName: "camera.fill")
                             .font(.body)
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(.white.opacity(0.5))
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
                 .background(Color(.systemGray6), in: Capsule())
 
-                // Send button (triggers camera for now)
-                Button(action: onCamera) {
+                // Send button
+                Button {
+                    if !text.trimmingCharacters(in: .whitespaces).isEmpty {
+                        onSend()
+                    }
+                } label: {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(.blue)
+                        .font(.system(size: 30))
+                        .foregroundStyle(
+                            text.trimmingCharacters(in: .whitespaces).isEmpty
+                                ? Color(.systemGray4)
+                                : .blue
+                        )
                 }
                 .buttonStyle(.plain)
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
             .background(.ultraThinMaterial)
         }
         .confirmationDialog("Hvad vil du gøre?", isPresented: $showMenu) {

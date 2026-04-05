@@ -31,6 +31,8 @@ struct ChatView: View {
 
             // Input bar
             ChatInputBar(
+                text: $viewModel.inputText,
+                onSend: { viewModel.sendMessage() },
                 onCamera: { viewModel.showScanner = true },
                 onHelp: { viewModel.requestHelp() }
             )
