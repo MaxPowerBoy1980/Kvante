@@ -135,9 +135,74 @@ class GeminiAIClient(AIClient):
         return response.text
 
 
+class OllamaAIClient(AIClient):
+    """Local Ollama models — free, unlimited, no API key needed."""
+
+    def __init__(self):
+        import httpx
+
+        self._http = httpx.Client(base_url=settings.ollama_url, timeout=120)
+        self._text_model = settings.ollama_text_model
+        self._vision_model = settings.ollama_vision_model
+
+    def send_text(self, system_prompt: str, user_message: str) -> str:
+        logger.debug("Ollama send_text model=%s", self._text_model)
+        start = time.time()
+        response = self._http.post(
+            "/api/chat",
+            json={
+                "model": self._text_model,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+            },
+        )
+        response.raise_for_status()
+        elapsed = time.time() - start
+        data = response.json()
+        text = data["message"]["content"]
+        logger.info("Ollama API: %.1fs, model=%s", elapsed, self._text_model)
+        return text
+
+    def send_vision(
+        self,
+        system_prompt: str,
+        image_bytes: bytes,
+        user_message: str,
+        media_type: str = "image/jpeg",
+    ) -> str:
+        logger.debug("Ollama send_vision model=%s", self._vision_model)
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        start = time.time()
+        response = self._http.post(
+            "/api/chat",
+            json={
+                "model": self._vision_model,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": user_message,
+                        "images": [image_b64],
+                    },
+                ],
+            },
+        )
+        response.raise_for_status()
+        elapsed = time.time() - start
+        data = response.json()
+        text = data["message"]["content"]
+        logger.info("Ollama API: %.1fs, model=%s", elapsed, self._vision_model)
+        return text
+
+
 _PROVIDERS = {
     "claude": ClaudeAIClient,
     "gemini": GeminiAIClient,
+    "ollama": OllamaAIClient,
 }
 
 
