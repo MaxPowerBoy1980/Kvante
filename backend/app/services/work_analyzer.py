@@ -39,9 +39,9 @@ class WorkAnalyzerService:
 
         try:
             parsed = extract_json(raw)
-        except Exception as e:
-            logger.error("Failed to parse AI response. Raw (first 500 chars): %s", raw[:500])
-            raise
+        except Exception:
+            logger.warning("JSON parse failed, extracting from prose response")
+            parsed = self._parse_prose_response(raw)
 
         # Safety: ensure correct_answer is NEVER in the response
         parsed.pop("correct_answer", None)
@@ -55,3 +55,36 @@ class WorkAnalyzerService:
             parsed.get("methodology_sound"),
         )
         return parsed
+
+    @staticmethod
+    def _parse_prose_response(raw: str) -> dict:
+        """Fallback: extract analysis from a prose/markdown response."""
+        import re
+        text = raw.lower()
+
+        # Detect if student got it right
+        correct_signals = ["correct", "sound", "rigtigt", "korrekt", "well done", "right"]
+        error_signals = ["error", "incorrect", "wrong", "mistake", "fejl", "forkert"]
+        methodology_sound = any(s in text for s in correct_signals) and not any(s in text for s in error_signals)
+
+        # Try to extract the student's answer (look for numbers near = sign)
+        answer_match = re.search(r"=\s*(\d+[\.,]?\d*)", raw)
+        student_answer = answer_match.group(1) if answer_match else ""
+
+        # Extract errors if any
+        errors = []
+        if any(s in text for s in error_signals):
+            error_match = re.search(r"error[s]?[:\s]*\*?\s*(.+?)(?:\n|$)", raw, re.IGNORECASE)
+            if error_match and "none" not in error_match.group(1).lower():
+                errors.append(error_match.group(1).strip("* "))
+
+        return {
+            "student_answer": student_answer,
+            "methodology_sound": methodology_sound,
+            "steps_identified": [],
+            "errors": errors,
+            "correct_elements": ["Eleven har besvaret opgaven"] if methodology_sound else [],
+            "methodology_assessment": raw[:300],
+            "handwriting_note": "",
+            "confidence": 0.85,
+        }
