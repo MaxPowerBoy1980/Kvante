@@ -1,8 +1,8 @@
-import json
 import logging
 import time
 
 from app.config import settings
+from app.services.json_parser import extract_json
 from app.services.ai_client import get_ai_client
 
 logger = logging.getLogger(__name__)
@@ -61,8 +61,8 @@ class ExampleGeneratorService:
                 raw = self.client.send_text(system_prompt, f"{user_message}\n\n{correction}")
 
             try:
-                parsed = self._parse_json(raw)
-            except (json.JSONDecodeError, ValueError) as e:
+                parsed = extract_json(raw)
+            except (Exception,) as e:
                 last_error = str(e)
                 continue
 

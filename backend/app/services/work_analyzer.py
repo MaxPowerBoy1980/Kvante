@@ -1,10 +1,10 @@
-import json
 import logging
 import time
 
 from app.config import settings
 from app.services.ai_client import get_ai_client
 from app.services.image_preprocessor import preprocess_handwritten_work
+from app.services.json_parser import extract_json
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +36,7 @@ class WorkAnalyzerService:
         )
         raw = self.client.send_vision(self._system_prompt, preprocessed, user_message)
 
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("\n", 1)[1]
-        if cleaned.endswith("```"):
-            cleaned = cleaned.rsplit("```", 1)[0]
-        cleaned = cleaned.strip()
-
-        parsed = json.loads(cleaned)
+        parsed = extract_json(raw)
 
         # Safety: ensure correct_answer is NEVER in the response
         parsed.pop("correct_answer", None)

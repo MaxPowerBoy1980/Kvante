@@ -1,8 +1,8 @@
-import json
 import logging
 import time
 
 from app.config import settings
+from app.services.json_parser import extract_json
 from app.services.ai_client import get_ai_client
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class FeedbackGeneratorService:
             f"Generate warm, method-focused feedback. Return JSON."
         )
         raw = self.client.send_text(self._feedback_prompt, user_message)
-        parsed = self._parse_json(raw)
+        parsed = extract_json(raw)
         elapsed = time.time() - start
         logger.info("Generated feedback in %.1fs, tone=%s", elapsed, parsed.get("tone"))
 
@@ -85,7 +85,7 @@ class FeedbackGeneratorService:
             f"Respond according to the action. Return JSON."
         )
         raw = self.client.send_text(self._explain_prompt, user_message)
-        parsed = self._parse_json(raw)
+        parsed = extract_json(raw)
         elapsed = time.time() - start
         logger.info("Generated followup '%s' in %.1fs", action, elapsed)
 
