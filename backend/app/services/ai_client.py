@@ -141,7 +141,7 @@ class OllamaAIClient(AIClient):
     def __init__(self):
         import httpx
 
-        self._http = httpx.Client(base_url=settings.ollama_url, timeout=120)
+        self._http = httpx.Client(base_url=settings.ollama_url, timeout=300)
         self._text_model = settings.ollama_text_model
         self._vision_model = settings.ollama_vision_model
 
