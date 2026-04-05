@@ -117,18 +117,19 @@ class ChatViewModel {
         let loadingId = addLoading("Kvante tyder dit svar...")
 
         Task { @MainActor in
-            // Step 1: OCR (Apple first, then Gemini fallback)
+            // Step 1: Try Apple OCR first (instant, on-device)
             let ocr = await HandwritingOCR.recognize(imageData: imageData)
 
             var readAnswer: String
             var source: String
 
-            if ocr.isCleanNumber && ocr.confidence > 0.3 {
+            if ocr.isCleanNumber && !ocr.answer.isEmpty {
                 readAnswer = ocr.answer
                 source = "Apple OCR"
             } else {
-                // Gemini fallback
+                // Gemini fallback for reading
                 do {
+                    // Use submitWork just to read — but we need the answer text
                     let result = try await apiClient.submitWork(
                         sessionId: sessionId,
                         assignmentId: currentAssignment.id,
@@ -136,19 +137,6 @@ class ChatViewModel {
                     )
                     readAnswer = result.studentAnswer
                     source = "Gemini Vision"
-                    // If Gemini was used, we already have the submission — store it
-                    currentSubmissionId = result.submissionId
-                    pendingImageData = nil
-                    // Skip confirmation, show result directly
-                    showAnswerResult(
-                        studentAnswer: result.studentAnswer,
-                        correctAnswer: result.correctAnswer,
-                        isCorrect: result.methodologySound,
-                        source: source,
-                        ocrDebug: "OCR: \"\(ocr.fullText)\"",
-                        loadingId: loadingId
-                    )
-                    return
                 } catch {
                     replaceLoading(loadingId, with: ChatMessage(
                         sender: .kvante,
@@ -158,7 +146,7 @@ class ChatViewModel {
                 }
             }
 
-            // Step 2: Ask student to confirm
+            // Step 2: ALWAYS ask student to confirm
             pendingImageData = imageData
             pendingOcrFullText = ocr.fullText
 
