@@ -5,36 +5,35 @@ struct ChatInputBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider()
+            Divider().opacity(0.2)
 
-            HStack(spacing: 16) {
-                Spacer()
-
-                Button(action: onCamera) {
-                    HStack(spacing: 8) {
+            HStack(spacing: 12) {
+                // Text field placeholder (non-functional for now — paper-first)
+                HStack {
+                    Text("Skriv dit svar her...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(action: onCamera) {
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 16))
-                        Text("Scan mit svar")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.body)
+                            .foregroundStyle(.white.opacity(0.7))
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(
-                        LinearGradient(
-                            colors: [.orange, .orange.opacity(0.85)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        in: Capsule()
-                    )
-                    .foregroundStyle(.white)
-                    .shadow(color: .orange.opacity(0.3), radius: 8, y: 4)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.systemGray6), in: Capsule())
+
+                // Send / Camera button
+                Button(action: onCamera) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.blue)
                 }
                 .buttonStyle(.plain)
-
-                Spacer()
             }
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .background(.ultraThinMaterial)
         }
     }

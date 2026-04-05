@@ -9,60 +9,80 @@ struct OcrConfirmView: View {
     @State private var correctedText: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // What Kvante read
-            Text("Jeg læste:")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Text(readText)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 8)
-
-            Text("Er det rigtigt?")
-                .font(.subheadline)
-
-            if isEditing {
-                // Correction mode
-                HStack(spacing: 10) {
-                    TextField("Skriv dit svar", text: $correctedText)
-                        .font(.title2.weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .padding(10)
-                        .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 10))
-                        .keyboardType(.numbersAndPunctuation)
-
-                    Button {
-                        let answer = correctedText.trimmingCharacters(in: .whitespaces)
-                        if !answer.isEmpty {
-                            onConfirm(answer)
-                        }
-                    } label: {
-                        Text("OK")
-                            .font(.headline)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(Color.orange, in: RoundedRectangle(cornerRadius: 10))
-                            .foregroundStyle(.white)
-                    }
-                    .disabled(correctedText.trimmingCharacters(in: .whitespaces).isEmpty)
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.3, green: 0.3, blue: 0.5))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white)
                 }
-            } else {
-                // Confirm / Correct buttons
-                HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Jeg har scannet dit billede!")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text("Er det her rigtigt?")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Reading card
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("DIT SVAR")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.green)
+
+                    if isEditing {
+                        HStack {
+                            TextField("Skriv dit svar", text: $correctedText)
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                            Button {
+                                let answer = correctedText.trimmingCharacters(in: .whitespaces)
+                                if !answer.isEmpty { onConfirm(answer) }
+                            } label: {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.green)
+                            }
+                            .disabled(correctedText.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    } else {
+                        HStack {
+                            Text(readText)
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                            Spacer()
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(14)
+                .background(Color(.systemGray6).opacity(0.3), in: RoundedRectangle(cornerRadius: 14))
+            }
+
+            // Buttons
+            if !isEditing {
+                VStack(spacing: 10) {
                     Button {
                         onConfirm(readText)
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark")
-                                .font(.caption.weight(.bold))
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle")
+                                .font(.body)
                             Text("Ja, det er rigtigt")
-                                .font(.subheadline.weight(.medium))
+                                .font(.subheadline.weight(.semibold))
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color.green, in: Capsule())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(red: 0.2, green: 0.55, blue: 0.5), in: RoundedRectangle(cornerRadius: 14))
                         .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
@@ -71,31 +91,31 @@ struct OcrConfirmView: View {
                         correctedText = readText
                         isEditing = true
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "pencil")
-                                .font(.caption)
-                            Text("Nej, ret")
-                                .font(.subheadline.weight(.medium))
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color(.systemGray5), in: Capsule())
-                        .foregroundStyle(.primary)
+                        Text("Nej, lad mig rette")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color(.systemGray5).opacity(0.3), in: RoundedRectangle(cornerRadius: 14))
+                            .foregroundStyle(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            )
                     }
                     .buttonStyle(.plain)
                 }
             }
 
-            // Source label
+            // Source
             Text(source)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
-        .padding(14)
-        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
+        .padding(16)
+        .background(Color(red: 0.14, green: 0.14, blue: 0.18), in: RoundedRectangle(cornerRadius: 22))
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
     }
 }

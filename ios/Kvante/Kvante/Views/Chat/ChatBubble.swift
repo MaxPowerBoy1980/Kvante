@@ -8,22 +8,43 @@ struct ChatBubble: View {
     private var isKvante: Bool { message.sender == .kvante }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        VStack(alignment: isKvante ? .leading : .trailing, spacing: 6) {
+            // Sender label
             if isKvante {
-                avatar
-            } else {
-                Spacer(minLength: 80)
+                Text("KVANTE")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 52)
             }
 
-            VStack(alignment: isKvante ? .leading : .trailing, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                if isKvante {
+                    avatar
+                } else {
+                    Spacer(minLength: 60)
+                }
+
                 bubbleContent
-                chipRow
+
+                if !isKvante {
+                    Spacer().frame(width: 4)
+                } else {
+                    Spacer(minLength: 60)
+                }
             }
 
-            if !isKvante {
-                Spacer().frame(width: 8)
-            } else {
-                Spacer(minLength: 80)
+            // Sender label for student
+            if !isKvante, case .text = message.content {
+                Text("DIG")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 8)
+            }
+
+            // Action chips
+            if !message.actions.isEmpty {
+                chipRow
+                    .padding(.leading, isKvante ? 52 : 0)
             }
         }
         .padding(.horizontal, 16)
@@ -36,14 +57,14 @@ struct ChatBubble: View {
             Circle()
                 .fill(
                     LinearGradient(
-                        colors: [.orange, .orange.opacity(0.7)],
+                        colors: [Color(red: 0.3, green: 0.3, blue: 0.5), Color(red: 0.2, green: 0.2, blue: 0.4)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .frame(width: 36, height: 36)
-            Text("K")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+            Image(systemName: "sparkles")
+                .font(.system(size: 16))
                 .foregroundStyle(.white)
         }
     }
@@ -77,14 +98,14 @@ struct ChatBubble: View {
     private func textBubble(_ text: String) -> some View {
         Text(text)
             .font(.body)
-            .foregroundStyle(isKvante ? Color.primary : Color.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(
                 isKvante
-                    ? AnyShapeStyle(Color(.systemGray6))
-                    : AnyShapeStyle(Color.orange),
-                in: BubbleShape(isFromUser: !isKvante)
+                    ? Color(red: 0.18, green: 0.18, blue: 0.22)
+                    : Color(red: 0.35, green: 0.3, blue: 0.65),
+                in: RoundedRectangle(cornerRadius: 20)
             )
     }
 
@@ -93,14 +114,12 @@ struct ChatBubble: View {
     private func assignmentIntroBubble(_ assignment: ParsedAssignment) -> some View {
         VStack(spacing: 6) {
             Text(assignment.text)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
             HStack(spacing: 4) {
                 Text("Opgave \(assignment.localId)")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.7))
-                Text("·")
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.white.opacity(0.6))
                 ForEach(0..<min(assignment.difficultyEstimate, 5), id: \.self) { _ in
                     Image(systemName: "star.fill")
                         .font(.system(size: 8))
@@ -113,7 +132,7 @@ struct ChatBubble: View {
         .padding(.horizontal, 16)
         .background(
             LinearGradient(
-                colors: [Color.blue.opacity(0.8), Color.indigo.opacity(0.6)],
+                colors: [Color(red: 0.3, green: 0.25, blue: 0.55), Color(red: 0.2, green: 0.2, blue: 0.45)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ),
@@ -136,78 +155,10 @@ struct ChatBubble: View {
             }
             Text(feedback.feedbackText)
                 .font(.body)
+                .foregroundStyle(.white)
         }
         .padding(14)
-        .background(color.opacity(0.08), in: BubbleShape(isFromUser: false))
-        .overlay(
-            BubbleShape(isFromUser: false)
-                .stroke(color.opacity(0.2), lineWidth: 1)
-        )
-    }
-
-    // MARK: - OCR Confirmation
-
-    private func ocrConfirmBubble(_ confirmation: OcrConfirmation) -> some View {
-        OcrConfirmView(
-            readText: confirmation.readText,
-            source: confirmation.source,
-            onConfirm: { answer in
-                onConfirmAnswer?(answer)
-            }
-        )
-    }
-
-    // MARK: - Answer Result
-
-    private func answerResultBubble(_ result: AnswerResult) -> some View {
-        let color: Color = result.isCorrect ? .green : .orange
-        let icon = result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill"
-
-        return VStack(alignment: .leading, spacing: 10) {
-            // Debug info — what OCR read vs correct
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Image(systemName: "text.viewfinder")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("Læste: **\(result.studentAnswer)**")
-                        .font(.subheadline)
-                    Text("via \(result.source)")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                HStack(spacing: 6) {
-                    Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(result.isCorrect ? .green : .red)
-                    Text("Svar: **\(result.correctAnswer)**")
-                        .font(.subheadline)
-                }
-                if !result.ocrDebug.isEmpty {
-                    Text(result.ocrDebug)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 10))
-
-            // Feedback message
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundStyle(color)
-                Text(result.message)
-                    .font(.body)
-            }
-        }
-        .padding(14)
-        .background(color.opacity(0.08), in: BubbleShape(isFromUser: false))
-        .overlay(
-            BubbleShape(isFromUser: false)
-                .stroke(color.opacity(0.2), lineWidth: 1)
-        )
+        .background(Color(red: 0.18, green: 0.18, blue: 0.22), in: RoundedRectangle(cornerRadius: 20))
     }
 
     private func toneStyle(_ tone: String) -> (String, Color) {
@@ -228,45 +179,73 @@ struct ChatBubble: View {
         }
     }
 
-    // MARK: - Example
+    // MARK: - OCR Confirmation
 
-    private func exampleBubble(_ example: ExampleResponse) -> some View {
-        NavigationLink {
-            AnimatedExplanationView(example: example)
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color.orange.opacity(0.15))
-                        .frame(width: 44, height: 44)
-                    Image(systemName: "lightbulb.fill")
-                        .font(.title3)
-                        .foregroundStyle(.orange)
-                }
+    private func ocrConfirmBubble(_ confirmation: OcrConfirmation) -> some View {
+        OcrConfirmView(
+            readText: confirmation.readText,
+            source: confirmation.source,
+            onConfirm: { answer in
+                onConfirmAnswer?(answer)
+            }
+        )
+    }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(example.exampleProblem)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text("\(example.steps.count) trin — tryk for at se")
+    // MARK: - Answer Result
+
+    private func answerResultBubble(_ result: AnswerResult) -> some View {
+        let color: Color = result.isCorrect ? .green : .orange
+
+        return VStack(alignment: .leading, spacing: 10) {
+            // Result card
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "text.viewfinder")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Text("Læste: **\(result.studentAnswer)**")
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                    Text("via \(result.source)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(result.isCorrect ? .green : .red)
+                    Text("Svar: **\(result.correctAnswer)**")
+                        .font(.subheadline)
+                        .foregroundStyle(.white)
+                }
+                if !result.ocrDebug.isEmpty {
+                    Text(result.ocrDebug)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(14)
-            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
-            )
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.systemGray6).opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
+
+            // Feedback message
+            HStack(spacing: 8) {
+                Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(color)
+                Text(result.message)
+                    .font(.body)
+                    .foregroundStyle(.white)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .background(Color(red: 0.18, green: 0.18, blue: 0.22), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    // MARK: - Example (inline, expandable)
+
+    private func exampleBubble(_ example: ExampleResponse) -> some View {
+        InlineExampleView(example: example)
     }
 
     // MARK: - Scanned Image
@@ -280,9 +259,6 @@ struct ChatBubble: View {
                         .scaledToFit()
                         .frame(maxWidth: 220, maxHeight: 180)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                    Text("Mit svar")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -296,38 +272,24 @@ struct ChatBubble: View {
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .italic()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color(.systemGray6), in: BubbleShape(isFromUser: false))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(red: 0.18, green: 0.18, blue: 0.22), in: RoundedRectangle(cornerRadius: 20))
     }
 
     // MARK: - Chips
 
     @ViewBuilder
     private var chipRow: some View {
-        if !message.actions.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(message.actions) { chip in
-                        ActionChip(model: chip) { onChip(chip) }
-                    }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(message.actions) { chip in
+                    ActionChip(model: chip) { onChip(chip) }
                 }
             }
         }
-    }
-}
-
-// MARK: - Bubble Shape
-
-struct BubbleShape: Shape {
-    let isFromUser: Bool
-
-    func path(in rect: CGRect) -> Path {
-        let r: CGFloat = 18
-        let smallR: CGFloat = 4
-        return RoundedRectangle(cornerRadius: r)
-            .path(in: rect)
     }
 }
 
@@ -340,7 +302,7 @@ struct TypingDots: View {
         HStack(spacing: 4) {
             ForEach(0..<3) { i in
                 Circle()
-                    .fill(Color.orange)
+                    .fill(Color.purple.opacity(0.7))
                     .frame(width: 7, height: 7)
                     .offset(y: sin(phase + Double(i) * 0.8) * 4)
             }

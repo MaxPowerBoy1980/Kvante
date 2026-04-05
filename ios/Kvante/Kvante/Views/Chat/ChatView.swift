@@ -34,7 +34,7 @@ struct ChatView: View {
                 viewModel.showScanner = true
             }
         }
-        .navigationTitle(viewModel.currentAssignment.text)
+        .navigationTitle("Kvante")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $viewModel.showScanner) {
             DocumentScannerView(
