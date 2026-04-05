@@ -3,15 +3,18 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query private var profiles: [StudentProfile]
     @State private var serverDiscovery = ServerDiscovery()
-    @State private var showScanner = false
     @State private var isLoading = false
     @State private var loadingMessage = ""
     @State private var errorMessage: String?
 
     // Navigation state
-    @State private var pageResponse: PageScanResponse?
-    @State private var selectedAssignment: ParsedAssignment?
+    @State private var showPractice = false
+    @State private var selectedTopic: TopicInfo?
+    @State private var practiceSession: PracticeSessionResponse?
+
+    private var profile: StudentProfile? { profiles.first }
 
     private var apiClient: APIClient? {
         guard let url = serverDiscovery.serverURL else { return nil }
@@ -23,53 +26,55 @@ struct ContentView: View {
             Group {
                 if isLoading {
                     LoadingView(message: loadingMessage)
-                } else if let assignment = selectedAssignment,
-                          let page = pageResponse,
-                          let client = apiClient {
-                    WorkingView(
-                        assignment: assignment,
-                        sessionId: page.sessionId,
+                } else if profile == nil {
+                    OnboardingView(apiClient: apiClient) {}
+                } else if let session = practiceSession, let client = apiClient {
+                    PracticeSessionView(
+                        sessionId: session.sessionId,
+                        assignments: session.assignments,
                         apiClient: client
                     )
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
                             Button {
-                                selectedAssignment = nil
+                                practiceSession = nil
+                                selectedTopic = nil
+                                showPractice = false
                             } label: {
+                                Label("Afslut", systemImage: "xmark")
+                            }
+                        }
+                    }
+                } else if let topic = selectedTopic {
+                    DifficultyPickerView(topic: topic) { difficulty in
+                        startPracticeSession(topic: topic.topic, difficulty: difficulty)
+                    }
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button { selectedTopic = nil } label: {
                                 Label("Tilbage", systemImage: "chevron.left")
                             }
                         }
                     }
-                } else if let page = pageResponse {
-                    AssignmentPickerView(pageResponse: page) { assignment in
-                        selectedAssignment = assignment
+                } else if showPractice, let client = apiClient {
+                    TopicPickerView(apiClient: client) { topic in
+                        selectedTopic = topic
                     }
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
-                            Button {
-                                pageResponse = nil
-                                selectedAssignment = nil
-                            } label: {
-                                Label("Hjem", systemImage: "house.fill")
+                            Button { showPractice = false } label: {
+                                Label("Hjem", systemImage: "chevron.left")
                             }
                         }
                     }
-                } else {
-                    HomeView(
+                } else if let p = profile {
+                    NewHomeView(
+                        profile: p,
                         serverDiscovery: serverDiscovery,
-                        onScanPage: { showScanner = true }
+                        onPractice: { showPractice = true }
                     )
                 }
             }
-        }
-        .sheet(isPresented: $showScanner) {
-            DocumentScannerView(
-                onScan: { imageData in
-                    showScanner = false
-                    scanPage(imageData: imageData)
-                },
-                onCancel: { showScanner = false }
-            )
         }
         .alert("Fejl", isPresented: .init(
             get: { errorMessage != nil },
@@ -84,30 +89,21 @@ struct ContentView: View {
         }
     }
 
-    private func scanPage(imageData: Data) {
-        guard let client = apiClient else {
-            errorMessage = "Ingen forbindelse til serveren"
-            return
-        }
+    private func startPracticeSession(topic: String, difficulty: Int) {
+        guard let client = apiClient, let p = profile else { return }
 
         isLoading = true
-        loadingMessage = "Kvante kigger på din side"
+        loadingMessage = "Kvante finder opgaver..."
 
         Task {
             do {
-                let response = try await client.scanPage(imageData: imageData)
-                pageResponse = response
-
-                // Cache session locally
-                let session = Session(
-                    id: response.sessionId,
-                    detectedLanguage: response.detectedLanguage,
-                    pageContext: response.pageContext,
-                    suggestedStart: response.suggestedStart,
-                    reasoning: response.reasoning
+                let studentId = p.backendStudentId ?? "default"
+                let session = try await client.createPracticeSession(
+                    studentId: studentId,
+                    topic: topic,
+                    difficulty: difficulty
                 )
-                modelContext.insert(session)
-                try? modelContext.save()
+                practiceSession = session
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -118,6 +114,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Session.self, Assignment.self, Submission.self],
+        .modelContainer(for: [Session.self, Assignment.self, Submission.self, StudentProfile.self],
                         inMemory: true)
 }

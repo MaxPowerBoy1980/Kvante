@@ -123,6 +123,85 @@ struct StructuredPrompt: Codable, Identifiable {
     }
 }
 
+// MARK: - Library
+
+struct TopicInfo: Codable, Identifiable {
+    var id: String { topic }
+    let topic: String
+    let name: String
+    let icon: String
+    let problemCount: Int
+    let difficulties: [Int]
+    let gradeLevels: [Int]
+
+    enum CodingKeys: String, CodingKey {
+        case topic, name, icon, difficulties
+        case problemCount = "problem_count"
+        case gradeLevels = "grade_levels"
+    }
+}
+
+struct TopicsResponse: Codable {
+    let topics: [TopicInfo]
+}
+
+// MARK: - Practice
+
+struct PracticeAssignment: Codable, Identifiable {
+    let id: String
+    let problemId: String
+    let localId: String
+    let text: String
+    let type: String
+    let topic: String
+    let difficultyEstimate: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, text, type, topic
+        case problemId = "problem_id"
+        case localId = "local_id"
+        case difficultyEstimate = "difficulty_estimate"
+    }
+}
+
+struct PracticeSessionResponse: Codable {
+    let sessionId: String
+    let assignments: [PracticeAssignment]
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case assignments
+    }
+}
+
+// MARK: - Student Registration
+
+struct StudentRegistrationResponse: Codable {
+    let studentId: String
+    let name: String
+    let gradeLevel: Int
+
+    enum CodingKeys: String, CodingKey {
+        case studentId = "student_id"
+        case name
+        case gradeLevel = "grade_level"
+    }
+}
+
+// MARK: - Conversions
+
+extension ParsedAssignment {
+    init(from practice: PracticeAssignment) {
+        self.init(
+            id: practice.id, localId: practice.localId,
+            text: practice.text, type: practice.type,
+            topic: practice.topic,
+            difficultyEstimate: practice.difficultyEstimate,
+            positionOnPage: ""
+        )
+    }
+}
+
 // MARK: - Health
 
 struct HealthResponse: Codable {

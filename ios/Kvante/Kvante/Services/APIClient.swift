@@ -142,6 +142,51 @@ actor APIClient {
         return try decoder.decode(FeedbackResponse.self, from: data)
     }
 
+    // MARK: - Library
+
+    func getTopics() async throws -> TopicsResponse {
+        let url = baseURL.appendingPathComponent("library/topics")
+        let (data, _) = try await session.data(from: url)
+        return try decoder.decode(TopicsResponse.self, from: data)
+    }
+
+    // MARK: - Student Registration
+
+    func registerStudent(name: String, gradeLevel: Int) async throws -> StudentRegistrationResponse {
+        let url = baseURL.appendingPathComponent("students/register")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = ["name": name, "grade_level": gradeLevel]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(StudentRegistrationResponse.self, from: data)
+    }
+
+    // MARK: - Practice Session
+
+    func createPracticeSession(studentId: String, topic: String, difficulty: Int, count: Int = 5) async throws -> PracticeSessionResponse {
+        let url = baseURL.appendingPathComponent("sessions/practice")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "student_id": studentId,
+            "topic": topic,
+            "difficulty": difficulty,
+            "count": count,
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(PracticeSessionResponse.self, from: data)
+    }
+
     // MARK: - Error Handling
 
     private func checkResponse(_ response: URLResponse, data: Data) throws {

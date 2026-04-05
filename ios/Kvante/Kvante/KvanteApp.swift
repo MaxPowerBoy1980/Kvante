@@ -7,6 +7,6 @@ struct KvanteApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [Session.self, Assignment.self, Submission.self])
+        .modelContainer(for: [Session.self, Assignment.self, Submission.self, StudentProfile.self])
     }
 }
