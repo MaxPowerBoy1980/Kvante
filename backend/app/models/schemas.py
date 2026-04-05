@@ -60,6 +60,7 @@ class SubmissionResponse(BaseModel):
     assignment_id: str
     session_id: str
     student_answer: str
+    correct_answer: str = ""
     methodology_sound: bool
     steps_identified: list[AnalysisStep]
     errors: list[str]

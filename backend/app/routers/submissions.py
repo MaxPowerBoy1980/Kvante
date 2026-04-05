@@ -103,6 +103,7 @@ async def submit_work(
     # Build analysis dict (compatible with existing schema)
     analysis = {
         "student_answer": student_answer,
+        "correct_answer": assignment.correct_answer or "",
         "methodology_sound": is_correct,
         "steps_identified": [],
         "errors": [] if is_correct else ["Svaret er ikke korrekt"],

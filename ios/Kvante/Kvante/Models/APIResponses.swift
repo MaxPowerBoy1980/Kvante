@@ -68,6 +68,7 @@ struct SubmissionResponse: Codable {
     let assignmentId: String
     let sessionId: String
     let studentAnswer: String
+    let correctAnswer: String
     let methodologySound: Bool
     let stepsIdentified: [AnalysisStep]
     let errors: [String]
@@ -81,6 +82,7 @@ struct SubmissionResponse: Codable {
         case assignmentId = "assignment_id"
         case sessionId = "session_id"
         case studentAnswer = "student_answer"
+        case correctAnswer = "correct_answer"
         case methodologySound = "methodology_sound"
         case stepsIdentified = "steps_identified"
         case errors

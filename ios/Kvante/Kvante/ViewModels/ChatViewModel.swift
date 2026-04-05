@@ -125,7 +125,7 @@ class ChatViewModel {
                 let isCorrect = submission.methodologySound
                 let result = AnswerResult(
                     studentAnswer: submission.studentAnswer,
-                    correctAnswer: currentAssignment.text,
+                    correctAnswer: submission.correctAnswer,
                     isCorrect: isCorrect,
                     message: isCorrect
                         ? "Flot klaret! Det er helt rigtigt."

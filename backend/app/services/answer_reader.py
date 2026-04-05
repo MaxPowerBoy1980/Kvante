@@ -13,21 +13,21 @@ from app.services.image_preprocessor import preprocess_handwritten_work  # noqa:
 
 logger = logging.getLogger(__name__)
 
-READER_PROMPT = """You are an OCR system. Read the student's handwritten answer from the photo.
+READER_PROMPT = """You are an OCR system. Read the student's handwritten FINAL ANSWER from the photo.
 
 Rules:
-- Return ONLY the final answer the student wrote (the number, fraction, or text)
-- Do NOT explain, analyze, or comment
+- Look for the number or value written AFTER the equals sign (=)
+- Return ONLY that final answer — just the number
+- Do NOT include the calculation, only the result
+- Do NOT explain or comment
 - Do NOT solve the problem yourself
-- If you can read the answer clearly, reply with just the answer
 - If you cannot read it, reply with: UNREADABLE
 
-Examples of good responses:
-- 79
-- 3/4
-- 26 cm
-- 14 rest 2
-- UNREADABLE"""
+Examples:
+- Photo shows "50 + 30 = 80" → respond: 80
+- Photo shows "3/4 + 1/4 = 1" → respond: 1
+- Photo shows "347 + 286 = 633" → respond: 633
+- Photo shows messy scribble → respond: UNREADABLE"""
 
 
 def read_student_answer(image_bytes: bytes, assignment_text: str) -> dict:
