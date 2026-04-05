@@ -35,8 +35,13 @@ class WorkAnalyzerService:
             f"Please analyze the student's handwritten work in the photo. Return JSON."
         )
         raw = self.client.send_vision(self._system_prompt, preprocessed, user_message)
+        logger.debug("Raw AI response: %s", raw[:500])
 
-        parsed = extract_json(raw)
+        try:
+            parsed = extract_json(raw)
+        except Exception as e:
+            logger.error("Failed to parse AI response. Raw (first 500 chars): %s", raw[:500])
+            raise
 
         # Safety: ensure correct_answer is NEVER in the response
         parsed.pop("correct_answer", None)

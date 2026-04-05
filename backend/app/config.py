@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     max_upload_size: int = 10 * 1024 * 1024  # 10 MB
     prompts_dir: Path = Path(__file__).parent / "prompts"
-    log_level: str = "INFO"  # INFO or DEBUG
+    log_level: str = "DEBUG"  # INFO or DEBUG
     log_dir: str = "/Users/oleserver/Library/Logs/Kvante"  # absolute path; ~ not expanded
 
     model_config = {"env_prefix": "KVANTE_", "env_file": ".env"}
