@@ -39,10 +39,12 @@ def read_student_answer(image_bytes: bytes, assignment_text: str) -> dict:
 
     # Send original image — no preprocessing. The CLAHE/grayscale pipeline
     # was designed for heavy analysis, but for simple OCR the raw image works better.
+    # IMPORTANT: Do NOT include the assignment text — the model will
+    # calculate the answer instead of reading the handwriting.
     raw = client.send_vision(
         READER_PROMPT,
         image_bytes,
-        f"The assignment is: {assignment_text}\nWhat answer did the student write?",
+        "Read the handwritten answer from the photo. What number is written after the equals sign?",
     )
 
     elapsed = time.time() - start

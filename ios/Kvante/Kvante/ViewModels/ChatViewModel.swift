@@ -119,7 +119,7 @@ class ChatViewModel {
 
                 let submission: SubmissionResponse
                 let ocrSource: String
-                if ocr.isCleanNumber && ocr.confidence > 0.5 {
+                if ocr.isCleanNumber && ocr.confidence > 0.3 {
                     // OCR succeeded — send text + full work, skip LLM vision
                     submission = try await apiClient.submitAnswer(
                         sessionId: sessionId,
