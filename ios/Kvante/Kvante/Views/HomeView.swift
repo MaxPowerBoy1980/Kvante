@@ -123,7 +123,7 @@ struct SessionCard: View {
 struct ConnectionInfoSheet: View {
     let discovery: ServerDiscovery
     @Environment(\.dismiss) private var dismiss
-    @State private var manualIP = ""
+    @State private var manualIP = "http://192.168.1.60:8000"
 
     var body: some View {
         NavigationStack {

@@ -29,11 +29,13 @@ class ExampleGeneratorService:
         """
         logger.info("Generating example for %s: '%s'", assignment_type, assignment_text)
         start = time.time()
+        lang_name = {"da": "Danish (dansk)", "en": "English"}.get(language, language)
         user_message = (
             f"Assignment type: {assignment_type}\n"
             f"Assignment topic: {assignment_topic}\n"
             f"Actual assignment (use DIFFERENT numbers): {assignment_text}\n"
-            f"Student's language: {language}\n\n"
+            f"Student's language: {lang_name}\n\n"
+            f"IMPORTANT: Write ALL text, note, and audio_cue fields in {lang_name}.\n"
             f"Create a worked example with different numbers. Return JSON."
         )
 

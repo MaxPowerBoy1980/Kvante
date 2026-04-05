@@ -9,6 +9,7 @@ actor APIClient {
         return d
     }()
     private let timeout: TimeInterval = 30
+    private let aiTimeout: TimeInterval = 90
 
     init(baseURL: URL) {
         self.baseURL = baseURL
@@ -50,7 +51,7 @@ actor APIClient {
     func getExample(sessionId: String, assignmentId: String) async throws -> ExampleResponse {
         let url = baseURL
             .appendingPathComponent("sessions/\(sessionId)/assignments/\(assignmentId)/example")
-        var request = URLRequest(url: url, timeoutInterval: timeout)
+        var request = URLRequest(url: url, timeoutInterval: aiTimeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = "{}".data(using: .utf8)
@@ -65,7 +66,7 @@ actor APIClient {
     func explainTask(sessionId: String, assignmentId: String) async throws -> FeedbackResponse {
         let url = baseURL
             .appendingPathComponent("sessions/\(sessionId)/assignments/\(assignmentId)/explain")
-        var request = URLRequest(url: url, timeoutInterval: timeout)
+        var request = URLRequest(url: url, timeoutInterval: aiTimeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = "{}".data(using: .utf8)
@@ -113,7 +114,7 @@ actor APIClient {
 
     func getFeedback(submissionId: String, language: String = "da") async throws -> FeedbackResponse {
         let url = baseURL.appendingPathComponent("feedback/")
-        var request = URLRequest(url: url, timeoutInterval: timeout)
+        var request = URLRequest(url: url, timeoutInterval: aiTimeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 

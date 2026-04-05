@@ -72,22 +72,16 @@ struct AnimatedExplanationView: View {
                 }
                 .disabled(player.isAtStart)
 
-                Button {
-                    if player.isPlaying {
-                        player.pause()
-                    } else {
-                        player.play()
-                    }
-                } label: {
-                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title2)
-                }
+                Text("Trin \(player.currentStepIndex + 1) af \(example.steps.count)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 80)
 
                 Button {
                     player.nextStep()
                 } label: {
-                    Label("Naeste trin", systemImage: "chevron.right")
-                        .font(.callout)
+                    Label("Næste trin", systemImage: "chevron.right")
+                        .font(.callout.weight(.semibold))
                 }
                 .disabled(player.isAtEnd)
             }
@@ -95,7 +89,6 @@ struct AnimatedExplanationView: View {
             .background(.ultraThinMaterial)
         }
         .navigationTitle("Eksempel")
-        .onAppear { player.play() }
     }
 }
 
@@ -128,8 +121,7 @@ struct StepCardView: View {
                 Spacer()
 
                 if isActive {
-                    Text("Afspiller")
-                        .font(.caption2)
+                    Image(systemName: "arrow.right.circle.fill")
                         .foregroundStyle(.orange)
                 }
             }

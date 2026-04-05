@@ -8,6 +8,9 @@ final class ServerDiscovery {
     var errorMessage: String?
 
     private var browser: NWBrowser?
+    private var fallbackTask: Task<Void, Never>?
+
+    private static let fallbackURL = URL(string: "http://192.168.1.60:8000")!
 
     func startSearching() {
         isSearching = true
@@ -43,6 +46,14 @@ final class ServerDiscovery {
         }
 
         browser?.start(queue: .main)
+
+        // Fallback: if Bonjour doesn't find the server within 3 seconds,
+        // try the known LAN IP directly
+        fallbackTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled, serverURL == nil else { return }
+            await tryFallbackURL()
+        }
     }
 
     func stopSearching() {
@@ -87,6 +98,21 @@ final class ServerDiscovery {
         if let url = URL(string: urlString) {
             serverURL = url
             errorMessage = nil
+        }
+    }
+
+    /// Try the known LAN IP as fallback when Bonjour fails
+    private func tryFallbackURL() async {
+        let url = Self.fallbackURL.appending(path: "health")
+        do {
+            let (_, response) = try await URLSession.shared.data(from: url)
+            if let http = response as? HTTPURLResponse, http.statusCode == 200 {
+                serverURL = Self.fallbackURL
+                isSearching = false
+                browser?.cancel()
+            }
+        } catch {
+            // Fallback failed — keep waiting for Bonjour or manual entry
         }
     }
 }
