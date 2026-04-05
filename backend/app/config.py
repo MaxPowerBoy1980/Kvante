@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-4-20250514"
     gemini_model: str = "gemini-2.0-flash"
     ollama_url: str = "http://localhost:11434"
-    ollama_text_model: str = "llama3.2-vision:11b"
-    ollama_vision_model: str = "llama3.2-vision:11b"
+    ollama_text_model: str = "qwen2.5:7b"
+    ollama_vision_model: str = "moondream"
     upload_dir: str = "uploads"
     max_upload_size: int = 10 * 1024 * 1024  # 10 MB
     prompts_dir: Path = Path(__file__).parent / "prompts"
