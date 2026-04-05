@@ -103,6 +103,10 @@ class ChatViewModel {
         }
     }
 
+    // Pending image data for confirmation flow
+    private var pendingImageData: Data?
+    private var pendingOcrFullText: String = ""
+
     func scanAnswer(_ imageData: Data) {
         // Student message with scanned image
         messages.append(ChatMessage(
@@ -110,62 +114,97 @@ class ChatViewModel {
             content: .scannedImage(imageData)
         ))
 
-        let loadingId = addLoading("Kvante kigger på dit svar...")
+        let loadingId = addLoading("Kvante tyder dit svar...")
+
+        Task { @MainActor in
+            // Step 1: OCR (Apple first, then Gemini fallback)
+            let ocr = await HandwritingOCR.recognize(imageData: imageData)
+
+            var readAnswer: String
+            var source: String
+
+            if ocr.isCleanNumber && ocr.confidence > 0.3 {
+                readAnswer = ocr.answer
+                source = "Apple OCR"
+            } else {
+                // Gemini fallback
+                do {
+                    let result = try await apiClient.submitWork(
+                        sessionId: sessionId,
+                        assignmentId: currentAssignment.id,
+                        imageData: imageData
+                    )
+                    readAnswer = result.studentAnswer
+                    source = "Gemini Vision"
+                    // If Gemini was used, we already have the submission — store it
+                    currentSubmissionId = result.submissionId
+                    pendingImageData = nil
+                    // Skip confirmation, show result directly
+                    showAnswerResult(
+                        studentAnswer: result.studentAnswer,
+                        correctAnswer: result.correctAnswer,
+                        isCorrect: result.methodologySound,
+                        source: source,
+                        ocrDebug: "OCR: \"\(ocr.fullText)\"",
+                        loadingId: loadingId
+                    )
+                    return
+                } catch {
+                    replaceLoading(loadingId, with: ChatMessage(
+                        sender: .kvante,
+                        content: .text("Hovsa, noget gik galt: \(error.localizedDescription)")
+                    ))
+                    return
+                }
+            }
+
+            // Step 2: Ask student to confirm
+            pendingImageData = imageData
+            pendingOcrFullText = ocr.fullText
+
+            replaceLoading(loadingId, with: ChatMessage(
+                sender: .kvante,
+                content: .ocrConfirm(OcrConfirmation(
+                    readText: readAnswer,
+                    imageData: imageData,
+                    source: source
+                ))
+            ))
+        }
+    }
+
+    /// Student confirmed the OCR reading is correct
+    func confirmAnswer(_ answer: String) {
+        guard let imageData = pendingImageData else { return }
+
+        // Student confirms
+        messages.append(ChatMessage(
+            sender: .student,
+            content: .text("Mit svar: \(answer)")
+        ))
+
+        let loadingId = addLoading("Tjekker dit svar...")
 
         Task { @MainActor in
             do {
-                // Step 1: Try Apple OCR on-device (instant, free)
-                let ocr = await HandwritingOCR.recognize(imageData: imageData)
-
-                let submission: SubmissionResponse
-                let ocrSource: String
-                if ocr.isCleanNumber && ocr.confidence > 0.3 {
-                    // OCR succeeded — send text + full work, skip LLM vision
-                    submission = try await apiClient.submitAnswer(
-                        sessionId: sessionId,
-                        assignmentId: currentAssignment.id,
-                        answerText: ocr.answer,
-                        fullOcrText: ocr.fullText,
-                        imageData: imageData
-                    )
-                    ocrSource = "Apple OCR"
-                } else {
-                    // OCR failed or complex answer — fall back to LLM vision
-                    submission = try await apiClient.submitWork(
-                        sessionId: sessionId,
-                        assignmentId: currentAssignment.id,
-                        imageData: imageData
-                    )
-                    ocrSource = "Gemini Vision"
-                }
-
+                let submission = try await apiClient.submitAnswer(
+                    sessionId: sessionId,
+                    assignmentId: currentAssignment.id,
+                    answerText: answer,
+                    fullOcrText: pendingOcrFullText,
+                    imageData: imageData
+                )
                 currentSubmissionId = submission.submissionId
+                pendingImageData = nil
 
-                let isCorrect = submission.methodologySound
-                let ocrDebug = ocr.fullText.isEmpty ? "" : "OCR: \"\(ocr.fullText)\""
-                let result = AnswerResult(
+                showAnswerResult(
                     studentAnswer: submission.studentAnswer,
                     correctAnswer: submission.correctAnswer,
-                    isCorrect: isCorrect,
-                    message: isCorrect
-                        ? "Flot klaret! Det er helt rigtigt."
-                        : "Ikke helt — prøv igen! Du kan også bede om hjælp.",
-                    source: ocrSource,
-                    ocrDebug: ocrDebug
+                    isCorrect: submission.methodologySound,
+                    source: "Apple OCR",
+                    ocrDebug: "",
+                    loadingId: loadingId
                 )
-
-                let chips: [ActionChipModel] = isCorrect
-                    ? [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
-                    : [
-                        ActionChipModel(id: "scan", label: "Prøv igen", icon: "camera.fill", isPrimary: true),
-                        ActionChipModel(id: "help", label: "Hjælp mig", icon: "lightbulb.fill", isPrimary: false),
-                    ]
-
-                replaceLoading(loadingId, with: ChatMessage(
-                    sender: .kvante,
-                    content: .answerResult(result),
-                    actions: chips
-                ))
             } catch {
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
@@ -173,6 +212,36 @@ class ChatViewModel {
                 ))
             }
         }
+    }
+
+    private func showAnswerResult(
+        studentAnswer: String, correctAnswer: String,
+        isCorrect: Bool, source: String, ocrDebug: String,
+        loadingId: UUID
+    ) {
+        let result = AnswerResult(
+            studentAnswer: studentAnswer,
+            correctAnswer: correctAnswer,
+            isCorrect: isCorrect,
+            message: isCorrect
+                ? "Flot klaret! Det er helt rigtigt."
+                : "Ikke helt — prøv igen! Du kan også bede om hjælp.",
+            source: source,
+            ocrDebug: ocrDebug
+        )
+
+        let chips: [ActionChipModel] = isCorrect
+            ? [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
+            : [
+                ActionChipModel(id: "scan", label: "Prøv igen", icon: "camera.fill", isPrimary: true),
+                ActionChipModel(id: "help", label: "Hjælp mig", icon: "lightbulb.fill", isPrimary: false),
+            ]
+
+        replaceLoading(loadingId, with: ChatMessage(
+            sender: .kvante,
+            content: .answerResult(result),
+            actions: chips
+        ))
     }
 
     private func handleFollowup(_ actionId: String) {

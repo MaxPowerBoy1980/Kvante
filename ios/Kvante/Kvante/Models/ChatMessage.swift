@@ -10,9 +10,16 @@ enum ChatMessageContent {
     case example(ExampleResponse)
     case scannedImage(Data)
     case feedback(FeedbackResponse)
+    case ocrConfirm(OcrConfirmation)
     case answerResult(AnswerResult)
     case loading(String)
     case assignmentIntro(ParsedAssignment)
+}
+
+struct OcrConfirmation {
+    let readText: String
+    let imageData: Data
+    let source: String
 }
 
 struct AnswerResult {

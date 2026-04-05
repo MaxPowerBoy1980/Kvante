@@ -3,6 +3,7 @@ import SwiftUI
 struct ChatBubble: View {
     let message: ChatMessage
     let onChip: (ActionChipModel) -> Void
+    var onConfirmAnswer: ((String) -> Void)?
 
     private var isKvante: Bool { message.sender == .kvante }
 
@@ -58,6 +59,8 @@ struct ChatBubble: View {
             assignmentIntroBubble(assignment)
         case .feedback(let feedback):
             feedbackBubble(feedback)
+        case .ocrConfirm(let confirmation):
+            ocrConfirmBubble(confirmation)
         case .answerResult(let result):
             answerResultBubble(result)
         case .example(let example):
@@ -139,6 +142,18 @@ struct ChatBubble: View {
         .overlay(
             BubbleShape(isFromUser: false)
                 .stroke(color.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    // MARK: - OCR Confirmation
+
+    private func ocrConfirmBubble(_ confirmation: OcrConfirmation) -> some View {
+        OcrConfirmView(
+            readText: confirmation.readText,
+            source: confirmation.source,
+            onConfirm: { answer in
+                onConfirmAnswer?(answer)
+            }
         )
     }
 

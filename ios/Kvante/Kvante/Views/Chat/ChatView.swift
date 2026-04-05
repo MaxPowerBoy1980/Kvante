@@ -10,9 +10,11 @@ struct ChatView: View {
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(viewModel.messages) { message in
-                            ChatBubble(message: message) { chip in
+                            ChatBubble(message: message, onChip: { chip in
                                 viewModel.handleChip(chip)
-                            }
+                            }, onConfirmAnswer: { answer in
+                                viewModel.confirmAnswer(answer)
+                            })
                             .id(message.id)
                         }
                     }
