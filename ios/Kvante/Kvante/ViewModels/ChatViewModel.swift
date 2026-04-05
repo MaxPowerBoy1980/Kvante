@@ -123,8 +123,8 @@ class ChatViewModel {
             var readAnswer: String
             var source: String
 
-            if ocr.isCleanNumber && !ocr.answer.isEmpty {
-                readAnswer = ocr.answer
+            if !ocr.answer.isEmpty && !ocr.fullText.isEmpty {
+                readAnswer = ocr.fullText
                 source = "Apple OCR"
             } else {
                 // Gemini fallback for reading
@@ -161,14 +161,29 @@ class ChatViewModel {
         }
     }
 
+    /// Extract the final answer from full text (e.g. "50 + 30 = 80" → "80")
+    private func extractAnswer(from text: String) -> String {
+        if let equalsRange = text.range(of: "=", options: .backwards) {
+            let after = String(text[equalsRange.upperBound...]).trimmingCharacters(in: .whitespaces)
+            let firstToken = after.components(separatedBy: .whitespaces).first ?? after
+            if !firstToken.isEmpty { return firstToken }
+        }
+        // Fallback: last number-like token
+        let tokens = text.components(separatedBy: .whitespaces)
+        if let last = tokens.last(where: { $0.first?.isNumber == true }) { return last }
+        return text.trimmingCharacters(in: .whitespaces)
+    }
+
     /// Student confirmed the OCR reading is correct
-    func confirmAnswer(_ answer: String) {
+    func confirmAnswer(_ fullText: String) {
         guard let imageData = pendingImageData else { return }
+
+        let answer = extractAnswer(from: fullText)
 
         // Student confirms
         messages.append(ChatMessage(
             sender: .student,
-            content: .text("Mit svar: \(answer)")
+            content: .text("Mit svar: \(fullText)")
         ))
 
         let loadingId = addLoading("Tjekker dit svar...")
@@ -179,7 +194,7 @@ class ChatViewModel {
                     sessionId: sessionId,
                     assignmentId: currentAssignment.id,
                     answerText: answer,
-                    fullOcrText: pendingOcrFullText,
+                    fullOcrText: fullText,
                     imageData: imageData
                 )
                 currentSubmissionId = submission.submissionId
