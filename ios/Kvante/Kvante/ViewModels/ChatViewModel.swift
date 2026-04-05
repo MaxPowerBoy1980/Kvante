@@ -122,14 +122,26 @@ class ChatViewModel {
                 )
                 currentSubmissionId = submission.submissionId
 
-                let feedback = try await apiClient.getFeedback(
-                    submissionId: submission.submissionId
+                let isCorrect = submission.methodologySound
+                let result = AnswerResult(
+                    studentAnswer: submission.studentAnswer,
+                    correctAnswer: currentAssignment.text,
+                    isCorrect: isCorrect,
+                    message: isCorrect
+                        ? "Flot klaret! Det er helt rigtigt."
+                        : "Ikke helt — prøv igen! Du kan også bede om hjælp."
                 )
 
-                let chips = feedback.structuredPrompts.map { ActionChipModel.fromPrompt($0) }
+                let chips: [ActionChipModel] = isCorrect
+                    ? [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
+                    : [
+                        ActionChipModel(id: "scan", label: "Prøv igen", icon: "camera.fill", isPrimary: true),
+                        ActionChipModel(id: "help", label: "Hjælp mig", icon: "lightbulb.fill", isPrimary: false),
+                    ]
+
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
-                    content: .feedback(feedback),
+                    content: .answerResult(result),
                     actions: chips
                 ))
             } catch {
