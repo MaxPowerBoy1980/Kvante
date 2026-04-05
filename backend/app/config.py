@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    ai_provider: str = "ollama"  # "gemini", "claude", or "ollama"
+    ai_provider: str = "gemini"  # "gemini", "claude", or "ollama"
     anthropic_api_key: str = ""
     google_api_key: str = ""
     db_path: str = "kvante.db"
@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     port: int = 8000
     confidence_threshold: float = 0.6
     claude_model: str = "claude-sonnet-4-20250514"
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash"
     ollama_url: str = "http://localhost:11434"
     ollama_text_model: str = "qwen2.5:7b"
     ollama_vision_model: str = "minicpm-v"
