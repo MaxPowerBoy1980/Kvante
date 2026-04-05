@@ -368,20 +368,25 @@ struct ChatBubble: View {
 // MARK: - Typing Dots Animation
 
 struct TypingDots: View {
-    @State private var phase = 0.0
+    @State private var active = 0
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             ForEach(0..<3) { i in
                 Circle()
-                    .fill(Color.purple.opacity(0.7))
-                    .frame(width: 7, height: 7)
-                    .offset(y: sin(phase + Double(i) * 0.8) * 4)
+                    .fill(Color.purple)
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(active == i ? 1.4 : 0.7)
+                    .opacity(active == i ? 1.0 : 0.3)
             }
         }
-        .onAppear {
-            withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
-                phase = .pi * 2
+        .onAppear { animate() }
+    }
+
+    private func animate() {
+        Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                active = (active + 1) % 3
             }
         }
     }
