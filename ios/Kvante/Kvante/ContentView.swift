@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var selectedTopic: TopicInfo?
     @State private var practiceSession: PracticeSessionResponse?
     @State private var sessionHistory: [SessionSummary] = []
+    @State private var selectedSession: SessionSummary?
 
     private var profile: StudentProfile? { profiles.first }
 
@@ -44,6 +45,11 @@ struct ContentView: View {
                         }
                     )
                     .toolbar(.hidden, for: .navigationBar)
+                } else if let session = selectedSession {
+                    SessionDashboardView(
+                        session: session,
+                        onBack: { selectedSession = nil }
+                    )
                 } else if let topic = selectedTopic {
                     DifficultyPickerView(topic: topic) { difficulty in
                         startPracticeSession(topic: topic.topic, difficulty: difficulty)
@@ -73,7 +79,9 @@ struct ContentView: View {
                         onPractice: { showPractice = true },
                         onWeekly: { startWeeklySession() },
                         sessionHistory: sessionHistory,
-                        onTapSession: { _ in }  // Dashboard in Task 4
+                        onTapSession: { session in
+                            selectedSession = session
+                        }
                     )
                     .task { await loadSessionHistory() }
                 }
