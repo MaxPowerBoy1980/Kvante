@@ -15,17 +15,19 @@ logger = logging.getLogger(__name__)
 
 READER_PROMPT = """You are an OCR system. Read the student's handwritten FINAL ANSWER from the photo.
 
+The photo shows a student's handwritten columnar arithmetic (stacked vertically).
+Read EACH DIGIT of the answer carefully, one at a time, left to right.
+
 Rules:
-- Look for the number or value written AFTER the equals sign (=)
-- Return ONLY that final answer — just the number
-- Do NOT include the calculation, only the result
-- Do NOT explain or comment
-- Do NOT solve the problem yourself
+- The answer is the bottom number, below the horizontal line
+- Read ONLY that final answer — just the number, nothing else
+- Read what is ACTUALLY WRITTEN, do NOT calculate the answer yourself
+- Pay close attention to distinguish: 4 vs 9, 1 vs 7, 3 vs 8, 5 vs 6
+- Do NOT explain or comment — return ONLY the number
 - If you cannot read it, reply with: UNREADABLE
 
 Examples:
 - Photo shows "50 + 30 = 80" → respond: 80
-- Photo shows "3/4 + 1/4 = 1" → respond: 1
 - Photo shows "347 + 286 = 633" → respond: 633
 - Photo shows messy scribble → respond: UNREADABLE"""
 
@@ -37,14 +39,12 @@ def read_student_answer(image_bytes: bytes, assignment_text: str) -> dict:
 
     client = get_ai_client()
 
-    # Send original image — no preprocessing. The CLAHE/grayscale pipeline
-    # was designed for heavy analysis, but for simple OCR the raw image works better.
-    # IMPORTANT: Do NOT include the assignment text — the model will
-    # calculate the answer instead of reading the handwriting.
     raw = client.send_vision(
         READER_PROMPT,
         image_bytes,
-        "Read the handwritten answer from the photo. What number is written after the equals sign?",
+        f"The student is solving: {assignment_text}\n"
+        f"Read the handwritten answer below the line. What number did the student write? "
+        f"Read each digit carefully.",
     )
 
     elapsed = time.time() - start
