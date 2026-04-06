@@ -12,6 +12,7 @@ class AnimationPlayer {
     private(set) var cumulativeCrossedOut: Int = 0
     private(set) var cumulativeRows: Int = 2
     private(set) var cumulativeGrouped: Int = 0
+    private(set) var cumulativeGridState: GridState?
 
     var currentStep: AnimationStep? {
         guard currentStepIndex < steps.count else { return nil }
@@ -55,6 +56,7 @@ class AnimationPlayer {
         cumulativeCrossedOut = 0
         cumulativeRows = 2
         cumulativeGrouped = 0
+        cumulativeGridState = nil
         isPlaying = false
         autoAdvanceTask?.cancel()
     }
@@ -87,6 +89,7 @@ class AnimationPlayer {
         case "number_line":
             let jumps = step.visual.intParam("jumps") ?? 1
             return 2.0 + Double(jumps) * 0.5
+        case "stacked_arithmetic": return 2.5
         default: return 2.5
         }
     }
@@ -105,6 +108,11 @@ class AnimationPlayer {
             break // Just placing, not grouping
         case ("grouping", "form_group"):
             cumulativeGrouped += v.intParam("size") ?? 0
+        case ("stacked_arithmetic", _):
+            if v.action == "setup" {
+                cumulativeGridState = GridState.from(visual: v)
+            }
+            cumulativeGridState?.apply(visual: v)
         default: break
         }
     }

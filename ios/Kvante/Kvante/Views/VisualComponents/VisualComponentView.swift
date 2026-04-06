@@ -9,16 +9,19 @@ struct VisualComponentView: View {
     let cumulativeCrossedOut: Int
     let cumulativeRows: Int
     let cumulativeGrouped: Int
+    let cumulativeGridState: GridState?
 
     init(visual: VisualInstruction, animate: Bool,
          cumulativeObjects: Int = 0, cumulativeCrossedOut: Int = 0,
-         cumulativeRows: Int = 2, cumulativeGrouped: Int = 0) {
+         cumulativeRows: Int = 2, cumulativeGrouped: Int = 0,
+         cumulativeGridState: GridState? = nil) {
         self.visual = visual
         self.animate = animate
         self.cumulativeObjects = cumulativeObjects
         self.cumulativeCrossedOut = cumulativeCrossedOut
         self.cumulativeRows = cumulativeRows
         self.cumulativeGrouped = cumulativeGrouped
+        self.cumulativeGridState = cumulativeGridState
     }
 
     var body: some View {
@@ -44,6 +47,12 @@ struct VisualComponentView: View {
             BarModelVisualView(visual: visual, animate: animate)
         case "coordinate_grid":
             CoordinateGridVisualView(visual: visual, animate: animate)
+        case "stacked_arithmetic":
+            if let state = cumulativeGridState {
+                StackedArithmeticView(visual: visual, animate: animate, gridState: state)
+            } else {
+                StackedArithmeticView(visual: visual, animate: animate, gridState: GridState.from(visual: visual))
+            }
         default:
             // Fallback: unknown visual type — show nothing (text is shown by parent)
             EmptyView()
