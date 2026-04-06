@@ -11,19 +11,19 @@ struct LoadingView: View {
             // Friendly animated icon
             Image(systemName: "sparkle.magnifyingglass")
                 .font(.system(size: 64))
-                .foregroundStyle(.orange)
+                .foregroundStyle(KvanteTheme.Colors.primary)
                 .symbolEffect(.pulse, options: .repeating)
 
             Text(message + String(repeating: ".", count: dotCount))
                 .font(.title2)
                 .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 .onReceive(timer) { _ in
                     dotCount = (dotCount + 1) % 4
                 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.background)
+        .background(KvanteTheme.Colors.backgroundStart)
     }
 }
 

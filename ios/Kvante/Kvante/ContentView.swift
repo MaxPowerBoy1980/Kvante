@@ -23,6 +23,9 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
+            ZStack {
+                KvanteTheme.Colors.background.ignoresSafeArea()
+
             Group {
                 if isLoading {
                     LoadingView(message: loadingMessage)
@@ -74,6 +77,7 @@ struct ContentView: View {
                         onPractice: { showPractice = true }
                     )
                 }
+            }
             }
         }
         .alert("Fejl", isPresented: .init(
