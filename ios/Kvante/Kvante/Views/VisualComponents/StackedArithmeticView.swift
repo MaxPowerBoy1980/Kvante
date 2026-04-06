@@ -88,20 +88,27 @@ struct StackedArithmeticView: View {
 
     var body: some View {
         let state = gridState
-        VStack(spacing: 12) {
-            if let expr = state.currentExpression {
-                Text(expr)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.teal)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.teal.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
-                    .transition(.scale.combined(with: .opacity))
-            }
+        // Guard: don't render grid if arrays don't match columns
+        if state.columns.isEmpty
+            || state.topDigits.count != state.columns.count
+            || state.bottomDigits.count != state.columns.count {
+            EmptyView()
+        } else {
+            VStack(spacing: 12) {
+                if let expr = state.currentExpression {
+                    Text(expr)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.teal)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.teal.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                        .transition(.scale.combined(with: .opacity))
+                }
 
-            gridView(state: state)
+                gridView(state: state)
+            }
+            .padding(16)
         }
-        .padding(16)
     }
 
     @ViewBuilder
