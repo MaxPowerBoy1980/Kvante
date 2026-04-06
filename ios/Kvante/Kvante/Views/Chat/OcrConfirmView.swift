@@ -13,7 +13,7 @@ struct OcrConfirmView: View {
             // Header
             HStack(spacing: 10) {
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: KvanteTheme.Shapes.avatarRadius)
                         .fill(KvanteTheme.Colors.kvanteAvatar)
                         .frame(width: 36, height: 36)
                     Text("🤖")
@@ -22,7 +22,7 @@ struct OcrConfirmView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Jeg har scannet dit billede!")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(KvanteTheme.Colors.textPrimary)
+                        .foregroundStyle(KvanteTheme.Colors.ink)
                     Text("Er det her rigtigt?")
                         .font(.caption)
                         .foregroundStyle(KvanteTheme.Colors.textSecondary)
@@ -40,7 +40,7 @@ struct OcrConfirmView: View {
                         HStack {
                             TextField("Skriv dit svar", text: $correctedText)
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundStyle(KvanteTheme.Colors.textPrimary)
+                                .foregroundStyle(KvanteTheme.Colors.ink)
                             Button {
                                 let answer = correctedText.trimmingCharacters(in: .whitespaces)
                                 if !answer.isEmpty { onConfirm(answer) }
@@ -55,11 +55,11 @@ struct OcrConfirmView: View {
                         HStack {
                             Text(readText)
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundStyle(KvanteTheme.Colors.textPrimary)
+                                .foregroundStyle(KvanteTheme.Colors.ink)
                             Spacer()
                             Image(systemName: "pencil.circle.fill")
                                 .font(.title3)
-                                .foregroundStyle(KvanteTheme.Colors.mutedText)
+                                .foregroundStyle(KvanteTheme.Colors.textMuted)
                         }
                     }
                 }
@@ -81,10 +81,12 @@ struct OcrConfirmView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(KvanteTheme.Colors.success, in: RoundedRectangle(cornerRadius: 14))
                         .foregroundStyle(.white)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(KvanteTheme.TactileButtonStyle(
+                        fill: KvanteTheme.Colors.success,
+                        shadow: KvanteTheme.Colors.successShadow
+                    ))
 
                     Button {
                         correctedText = readText
@@ -94,8 +96,8 @@ struct OcrConfirmView: View {
                             .font(.subheadline.weight(.medium))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(KvanteTheme.Colors.muted, in: RoundedRectangle(cornerRadius: 14))
-                            .foregroundStyle(KvanteTheme.Colors.textPrimary)
+                            .background(KvanteTheme.Colors.muted, in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.buttonRadius))
+                            .foregroundStyle(KvanteTheme.Colors.ink)
                     }
                     .buttonStyle(.plain)
                 }
@@ -107,10 +109,10 @@ struct OcrConfirmView: View {
                 .foregroundStyle(KvanteTheme.Colors.textSecondary)
         }
         .padding(16)
-        .background(KvanteTheme.Colors.kvanteBubble, in: RoundedRectangle(cornerRadius: 22))
+        .background(Color.white, in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 22)
-                .stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 1)
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                .stroke(KvanteTheme.Colors.inkSubtle, lineWidth: 2)
         )
     }
 }

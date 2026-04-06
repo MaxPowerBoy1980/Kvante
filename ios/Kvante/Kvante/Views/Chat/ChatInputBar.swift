@@ -8,66 +8,67 @@ struct ChatInputBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider().opacity(0.2)
-
-            HStack(spacing: 10) {
-                // + menu button
+            HStack(spacing: 8) {
+                // + button
                 Menu {
-                    Button {
-                        onCamera()
-                    } label: {
-                        Label("Scan mit svar", systemImage: "camera.fill")
+                    Button { onCamera() } label: {
+                        Label("Scan mit svar", systemImage: "camera")
                     }
-                    Button {
-                        onHelp()
-                    } label: {
-                        Label("Hjælp mig med opgaven", systemImage: "lightbulb.fill")
+                    Button { onHelp() } label: {
+                        Label("Hjælp mig med opgaven", systemImage: "lightbulb")
                     }
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 30))
-                        .foregroundStyle(KvanteTheme.Colors.primary)
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(KvanteTheme.Colors.textMuted)
+                        .frame(width: 44, height: 44)
                 }
 
                 // Text field
-                HStack(spacing: 8) {
-                    TextField("Skriv til Kvante...", text: $text)
-                        .font(.subheadline)
-                        .foregroundStyle(KvanteTheme.Colors.textPrimary)
-                        .submitLabel(.send)
-                        .onSubmit { if !text.trimmingCharacters(in: .whitespaces).isEmpty { onSend() } }
-
-                    Button(action: onCamera) {
-                        Image(systemName: "camera.fill")
-                            .font(.body)
-                            .foregroundStyle(KvanteTheme.Colors.mutedText)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(KvanteTheme.Colors.muted, in: Capsule())
+                TextField("Skriv dit svar her...", text: $text)
+                    .font(.body)
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+                    .submitLabel(.send)
+                    .onSubmit { if !text.trimmingCharacters(in: .whitespaces).isEmpty { onSend() } }
 
                 // Send button
                 Button {
-                    if !text.trimmingCharacters(in: .whitespaces).isEmpty {
-                        onSend()
-                    }
+                    if !text.trimmingCharacters(in: .whitespaces).isEmpty { onSend() }
                 } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 30))
-                        .foregroundStyle(
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(
                             text.trimmingCharacters(in: .whitespaces).isEmpty
                                 ? KvanteTheme.Colors.sendInactive
-                                : KvanteTheme.Colors.sendActive
+                                : KvanteTheme.Colors.sendActive,
+                            in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.smallRadius)
+                        )
+                        .shadow(
+                            color: text.trimmingCharacters(in: .whitespaces).isEmpty
+                                ? .clear
+                                : KvanteTheme.Colors.primaryShadow,
+                            radius: 0, y: KvanteTheme.Shapes.buttonShadowHeight
                         )
                 }
                 .buttonStyle(.plain)
                 .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 8)
             .padding(.vertical, 8)
-            .background(KvanteTheme.Colors.backgroundStart.opacity(0.95))
+            .background(
+                RoundedRectangle(cornerRadius: KvanteTheme.Shapes.inputRadius)
+                    .fill(Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: KvanteTheme.Shapes.inputRadius)
+                            .stroke(KvanteTheme.Colors.inkSubtle, lineWidth: 2)
+                    )
+                    .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
+            )
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(KvanteTheme.Colors.cream)
     }
 }

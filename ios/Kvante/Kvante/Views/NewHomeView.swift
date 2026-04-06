@@ -8,94 +8,136 @@ struct NewHomeView: View {
 
     var body: some View {
         ZStack {
-            KvanteTheme.Colors.background.ignoresSafeArea()
-
-            // Subtle decorative circles
-            GeometryReader { geo in
-                Circle()
-                    .fill(KvanteTheme.Colors.tipBorder.opacity(0.3))
-                    .frame(width: 120, height: 120)
-                    .offset(x: geo.size.width - 60, y: -30)
-                Circle()
-                    .fill(KvanteTheme.Colors.success.opacity(0.15))
-                    .frame(width: 90, height: 90)
-                    .offset(x: -30, y: geo.size.height - 200)
-            }
+            KvanteTheme.Colors.cream.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header with avatar + greeting
-                HStack(spacing: 14) {
-                    Text(profile.avatarName)
+                Spacer()
+
+                // Kvante avatar
+                ZStack {
+                    RoundedRectangle(cornerRadius: KvanteTheme.Shapes.avatarRadius * 2)
+                        .fill(KvanteTheme.Colors.kvanteAvatar)
+                        .frame(width: 80, height: 80)
+                    Text("🤖")
                         .font(.system(size: 44))
-                        .frame(width: 56, height: 56)
-                        .background(
-                            Circle()
-                                .fill(.white)
-                                .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
-                        )
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Hej \(profile.name)!")
-                            .font(KvanteTheme.Fonts.greeting)
-                            .foregroundStyle(KvanteTheme.Colors.textPrimary)
-                        if serverDiscovery.serverURL == nil {
-                            Text(serverDiscovery.isSearching
-                                ? "Leder efter serveren..."
-                                : "Ingen server fundet")
-                                .font(.caption)
-                                .foregroundStyle(KvanteTheme.Colors.mutedText)
-                        } else {
-                            Text("Klar til matematik?")
-                                .font(.subheadline)
-                                .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                        }
-                    }
-
-                    Spacer()
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
+                .padding(.bottom, 20)
+
+                // Greeting
+                Text("Hej, \(profile.name)! 👋")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+
+                Text("Klar til at blive endnu skarpere til matematik i dag?")
+                    .font(.subheadline)
+                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                    .padding(.top, 8)
 
                 Spacer()
 
-                // Card-style action buttons
+                // Two cards side by side
                 HStack(spacing: 16) {
-                    // Ugematematik — primary
-                    Button(action: {}) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "book.closed")
-                                .font(.system(size: 36, weight: .semibold))
-                            Text("Ugematematik")
-                                .font(KvanteTheme.Fonts.buttonLabel)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 130)
-                    }
-                    .buttonStyle(KvanteTheme.TactileButtonStyle.primary)
-                    .disabled(true)
-                    .opacity(0.5)
+                    // Ugematematik card
+                    homeCard(
+                        iconName: "book.closed",
+                        iconColor: KvanteTheme.Colors.primary,
+                        title: "Ugematematik",
+                        subtitle: "Dine opgaver venter",
+                        buttonLabel: "Start opgaver",
+                        buttonStyle: KvanteTheme.TactileButtonStyle.primary,
+                        action: {},
+                        disabled: true
+                    )
 
-                    // Øvelser — secondary
-                    Button(action: onPractice) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "dumbbell")
-                                .font(.system(size: 36, weight: .semibold))
-                            Text("Øvelser")
-                                .font(KvanteTheme.Fonts.buttonLabel)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 130)
-                    }
-                    .buttonStyle(KvanteTheme.TactileButtonStyle.secondary)
-                    .disabled(serverDiscovery.serverURL == nil)
-                    .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
+                    // Øvelser card
+                    homeCard(
+                        iconName: "dumbbell",
+                        iconColor: KvanteTheme.Colors.teal,
+                        title: "Øvelser",
+                        subtitle: "Træn de emner du har sværest ved",
+                        buttonLabel: "Vælg øvelse",
+                        buttonStyle: KvanteTheme.TactileButtonStyle.secondary,
+                        action: onPractice,
+                        disabled: serverDiscovery.serverURL == nil
+                    )
                 }
                 .padding(.horizontal, 24)
+
+                // Server status
+                if serverDiscovery.serverURL == nil {
+                    Text(serverDiscovery.isSearching
+                        ? "Leder efter serveren..."
+                        : "Ingen server fundet")
+                        .font(.caption)
+                        .foregroundStyle(KvanteTheme.Colors.textMuted)
+                        .padding(.top, 12)
+                }
 
                 Spacer()
             }
         }
+    }
+
+    // MARK: - Home Card
+
+    private func homeCard(
+        iconName: String,
+        iconColor: Color,
+        title: String,
+        subtitle: String,
+        buttonLabel: String,
+        buttonStyle: KvanteTheme.TactileButtonStyle,
+        action: @escaping () -> Void,
+        disabled: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Icon box
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.iconBoxRadius)
+                .fill(iconColor.opacity(0.1))
+                .frame(width: 48, height: 48)
+                .overlay(
+                    Image(systemName: iconName)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(iconColor)
+                )
+
+            // Title + subtitle
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            // CTA button
+            Button(action: action) {
+                Text(buttonLabel)
+                    .font(KvanteTheme.Fonts.buttonLabel)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(buttonStyle)
+            .disabled(disabled)
+            .opacity(disabled ? 0.5 : 1)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .frame(height: 200)
+        .background(
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                .fill(KvanteTheme.Colors.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                        .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 2)
+                )
+        )
     }
 }
