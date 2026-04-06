@@ -280,7 +280,7 @@ struct StackedArithmeticView: View {
             if !hidden {
                 Text("\(digit)")
                     .font(.custom("Marker Felt", size: 28))
-                    .foregroundStyle(isCrossedOut ? .secondary : .primary)
+                    .foregroundStyle(isCrossedOut ? KvanteTheme.Colors.ink.opacity(0.3) : KvanteTheme.Colors.ink)
             }
 
             if isCrossedOut {
