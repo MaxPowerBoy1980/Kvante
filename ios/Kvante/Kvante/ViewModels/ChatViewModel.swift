@@ -218,7 +218,7 @@ class ChatViewModel {
                 // Show intro message
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
-                    content: .text("Her er et eksempel med andre tal: **\(example.exampleProblem)**")
+                    content: .text("Her er et eksempel med andre tal: \(example.exampleProblem)")
                 ))
 
                 // Show first step
