@@ -9,6 +9,19 @@ struct ChatView: View {
             // Chat header
             chatHeader
 
+            // Progress pill
+            if viewModel.allAssignments.count > 1 {
+                ProgressPillView(
+                    currentIndex: viewModel.currentAssignmentIndex,
+                    totalCount: viewModel.totalAssignments,
+                    completedIds: viewModel.completedAssignmentIds,
+                    assignments: viewModel.allAssignments,
+                    onTapAssignment: { index in
+                        viewModel.jumpToAssignment(index)
+                    }
+                )
+            }
+
             // Messages
             ScrollViewReader { proxy in
                 ScrollView {
