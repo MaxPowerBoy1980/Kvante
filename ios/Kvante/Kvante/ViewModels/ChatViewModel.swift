@@ -22,9 +22,11 @@ class ChatViewModel {
     /// Whether current assignment uses stacked arithmetic (numbers > 30)
     private var isStackedArithmetic: Bool {
         let text = currentAssignment.text
-        let hasOperator = text.contains("+") || text.contains("-")
+        let topic = currentAssignment.topic
+        let isAddSub = topic == "addition" || topic == "subtraction"
+            || text.contains("+") || text.contains("-")
         let numbers = text.matches(of: /\d+/).compactMap { Int(String($0.output)) }
-        return hasOperator && numbers.contains(where: { $0 > 30 })
+        return isAddSub && numbers.contains(where: { $0 > 30 })
     }
 
     // Callback for parent to advance to next assignment
