@@ -34,14 +34,31 @@ def should_use_stacked(assignment_type: str, assignment_text: str,
                        assignment_topic: str = "") -> bool:
     """Decide if stacked arithmetic visual is appropriate.
 
-    Uses stacked for addition/subtraction when any number is > 30.
-    Below 30, dots/object_collection is more pedagogically appropriate.
+    Uses stacked for addition/subtraction when:
+    - Any number is > 30, OR
+    - Any number has decimals (e.g. 3,4 + 2,8)
+    Below 30 with no decimals, dots/object_collection is more appropriate.
     """
     op = _detect_operation(assignment_type, assignment_text, assignment_topic)
     if op is None:
         return False
+    # Decimals always use stacked — dots make no sense for 3,4
+    if re.search(r'\d+[,.]\d+', assignment_text):
+        return True
     numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
     return any(n > 30 for n in numbers)
+
+
+def _parse_numbers(text: str) -> list[float]:
+    """Parse numbers from text, handling Danish decimal comma and dot notation.
+
+    '3,4 + 2,8' → [3.4, 2.8]
+    '45 + 78' → [45.0, 78.0]
+    'Regn ud: 3.4 + 2.8' → [3.4, 2.8]
+    """
+    # Match decimal numbers (comma or dot) or plain integers
+    matches = re.findall(r'\d+[,.]\d+|\d+', text)
+    return [float(m.replace(",", ".")) for m in matches]
 
 
 def should_use_short_division(topic: str) -> bool:
@@ -152,8 +169,32 @@ class ExampleGeneratorService:
         logger.info("Generating stacked example for %s: '%s'", assignment_type, assignment_text)
         start = time.time()
 
+        # Check if assignment has decimals — if so, scale up to integers
+        has_decimals = bool(re.search(r'\d+[,.]\d+', assignment_text))
+        decimal_places = 0
+        if has_decimals:
+            parsed = _parse_numbers(assignment_text)
+            decimal_places = max(
+                len(str(n).split(".")[-1]) if "." in str(n) else 0
+                for n in parsed
+            )
+
         # Step 1: Pick example numbers (deterministic, no LLM)
         a, b = StackedArithmeticService.pick_example_numbers(assignment_type, assignment_text)
+
+        if has_decimals:
+            # Scale example numbers to have similar decimal range
+            # e.g. for 1 decimal place, pick numbers 10-99 and display as 1.0-9.9
+            scale = 10 ** decimal_places
+            lo = scale
+            hi = scale * 10 - 1
+            import random
+            for _ in range(50):
+                a = random.randint(lo, hi)
+                b = random.randint(lo, hi)
+                if assignment_type == "subtraction" and a < b:
+                    a, b = b, a
+                break
 
         # Step 2: Compute steps (deterministic)
         groups = StackedArithmeticService.compute_steps(assignment_type, a, b)
@@ -162,7 +203,14 @@ class ExampleGeneratorService:
         texts = StackedArithmeticService.generate_text(groups, assignment_type)
 
         # Step 4: Assemble ExampleResponse
-        op_symbol = "+" if assignment_type == "addition" else "-"
+        op_symbol = "+" if assignment_type == "addition" else "−"
+
+        # Format numbers for display (with decimals if original had them)
+        def fmt(n: int) -> str:
+            if has_decimals and decimal_places > 0:
+                scale = 10 ** decimal_places
+                return f"{n / scale:.{decimal_places}f}".replace(".", ",")
+            return str(n)
         steps = []
         for i, (group, text_obj) in enumerate(zip(groups, texts)):
             action = group["group"]
@@ -199,7 +247,13 @@ class ExampleGeneratorService:
             })
 
         # Step 5: Add "now try yours" — show student's own problem in grid form
-        student_numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
+        parsed_nums = _parse_numbers(assignment_text)
+        student_numbers = []
+        if has_decimals and decimal_places > 0:
+            scale = 10 ** decimal_places
+            student_numbers = [int(round(n * scale)) for n in parsed_nums]
+        else:
+            student_numbers = [int(n) for n in parsed_nums]
         if len(student_numbers) >= 2:
             sa, sb = student_numbers[0], student_numbers[1]
             if assignment_type == "subtraction" and sa < sb:
@@ -230,7 +284,7 @@ class ExampleGeneratorService:
         logger.info("Generated stacked example in %.3fs: %s %s %s", elapsed, a, op_symbol, b)
 
         return {
-            "example_problem": f"{a} {op_symbol} {b} = ?",
+            "example_problem": f"Regn ud: {fmt(a)} {op_symbol} {fmt(b)}",
             "pedagogy": "concrete-first",
             "steps": steps,
             "note": "",
