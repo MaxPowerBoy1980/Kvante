@@ -27,7 +27,7 @@ struct ContentView: View {
                 if isLoading {
                     LoadingView(message: loadingMessage)
                 } else if profile == nil {
-                    OnboardingView(apiClient: apiClient) {}
+                    ChatOnboardingView(apiClient: apiClient) {}
                 } else if let session = practiceSession, let client = apiClient {
                     PracticeSessionView(
                         sessionId: session.sessionId,
