@@ -70,38 +70,44 @@ enum KvanteTheme {
     }
 
     // MARK: - Fonts
+    //
+    // Clean geometric sans-serif (SF Pro default) — not rounded.
+    // Wide apertures, professional but friendly. Like Inter/Montserrat.
 
     enum Fonts {
-        static func rounded(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-            .system(size: size, weight: weight, design: .rounded)
+        static func clean(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+            .system(size: size, weight: weight, design: .default)
         }
 
-        static let greeting = Font.system(size: 28, weight: .bold, design: .rounded)
-        static let assignmentText = Font.system(size: 28, weight: .bold, design: .rounded)
-        static let buttonLabel = Font.system(size: 15, weight: .bold, design: .rounded)
+        static let greeting = Font.system(size: 28, weight: .bold)
+        static let assignmentText = Font.system(size: 26, weight: .bold)
+        static let buttonLabel = Font.system(size: 16, weight: .semibold)
         static let body = Font.body
         static let caption = Font.caption
-        static let captionBold = Font.caption.weight(.bold)
+        static let captionBold = Font.caption.weight(.semibold)
         static let subtitle = Font.subheadline
     }
 
     // MARK: - Shapes
+    //
+    // Consistent, subtle rounding — clean/sturdy, not bubbly.
+    // 16px standard. Nothing above 20px.
 
     enum Shapes {
-        static let bubbleRadius: CGFloat = 20
-        static let cardRadius: CGFloat = 18
+        static let radius: CGFloat = 16
+        static let bubbleRadius: CGFloat = 16
+        static let cardRadius: CGFloat = 16
         static let buttonRadius: CGFloat = 16
-        static let inputRadius: CGFloat = 20
-        static let smallRadius: CGFloat = 14
-        static let buttonShadowHeight: CGFloat = 6
+        static let inputRadius: CGFloat = 16
+        static let smallRadius: CGFloat = 12
+        static let buttonShadowHeight: CGFloat = 5
     }
 
     // MARK: - Button Styles
+    //
+    // Flat-top depth: crisp darker bottom edge (5px).
+    // Feels like a firm, satisfying press — not a squishy toy.
 
-    /// Tactile 3D button that looks like a pressable plastic block (Toca Boca style)
-    /// - Solid darker bottom border creates depth
-    /// - 2px dark brown outline makes it pop against cream background
-    /// - Press animation: button moves down and shadow disappears
     struct TactileButtonStyle: ButtonStyle {
         let fillColor: Color
         let shadowColor: Color

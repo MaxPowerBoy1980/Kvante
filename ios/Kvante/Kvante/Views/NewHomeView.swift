@@ -63,14 +63,14 @@ struct NewHomeView: View {
                     // Ugematematik — primary
                     Button(action: {}) {
                         VStack(spacing: 12) {
-                            Image(systemName: "book.closed.fill")
-                                .font(.system(size: 40, weight: .medium))
+                            Image(systemName: "book.closed")
+                                .font(.system(size: 36, weight: .semibold))
                             Text("Ugematematik")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .font(KvanteTheme.Fonts.buttonLabel)
                         }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 140)
+                        .frame(height: 130)
                     }
                     .buttonStyle(KvanteTheme.TactileButtonStyle.primary)
                     .disabled(true)
@@ -79,14 +79,14 @@ struct NewHomeView: View {
                     // Øvelser — secondary
                     Button(action: onPractice) {
                         VStack(spacing: 12) {
-                            Image(systemName: "dumbbell.fill")
-                                .font(.system(size: 40, weight: .medium))
+                            Image(systemName: "dumbbell")
+                                .font(.system(size: 36, weight: .semibold))
                             Text("Øvelser")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .font(KvanteTheme.Fonts.buttonLabel)
                         }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 140)
+                        .frame(height: 130)
                     }
                     .buttonStyle(KvanteTheme.TactileButtonStyle.secondary)
                     .disabled(serverDiscovery.serverURL == nil)

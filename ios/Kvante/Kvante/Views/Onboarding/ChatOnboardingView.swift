@@ -87,10 +87,10 @@ struct ChatOnboardingView: View {
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text("Kvante")
-                    .font(KvanteTheme.Fonts.rounded(17, weight: .bold))
+                    .font(KvanteTheme.Fonts.clean(17, weight: .bold))
                     .foregroundStyle(KvanteTheme.Colors.textPrimary)
                 Text("Din matematik-hjælper")
-                    .font(KvanteTheme.Fonts.rounded(13))
+                    .font(KvanteTheme.Fonts.clean(13))
                     .foregroundStyle(KvanteTheme.Colors.textSecondary)
             }
             Spacer()
@@ -182,7 +182,7 @@ struct ChatOnboardingView: View {
                     handleGradeSelected(grade)
                 } label: {
                     Text("\(grade). klasse")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(KvanteTheme.Fonts.buttonLabel)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
