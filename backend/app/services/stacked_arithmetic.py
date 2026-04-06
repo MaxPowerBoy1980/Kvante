@@ -92,4 +92,54 @@ class StackedArithmeticService:
 
     @staticmethod
     def _addition(a: int, b: int) -> list[dict]:
-        raise NotImplementedError("Addition not yet implemented")
+        assert a >= 0 and b >= 0, "Both numbers must be non-negative"
+        answer = a + b
+        num_digits = max(len(str(a)), len(str(b)), len(str(answer)))
+        columns = COLUMN_NAMES[num_digits]
+        top = StackedArithmeticService._to_digits(a, num_digits)
+        bottom = StackedArithmeticService._to_digits(b, num_digits)
+
+        groups = [
+            {
+                "group": "setup",
+                "operation": "addition",
+                "columns": columns,
+                "top": top,
+                "bottom": bottom,
+            }
+        ]
+
+        carry = 0
+        for i in range(num_digits - 1, -1, -1):
+            col = columns[i]
+            t = top[i]
+            bot = bottom[i]
+            total = t + bot + carry
+
+            if carry > 0:
+                expression = f"{t} + {bot} + {carry} = {total}"
+            else:
+                expression = f"{t} + {bot} = {total}"
+
+            result_digit = total % 10
+            new_carry = total // 10
+
+            groups.append({
+                "group": "compute",
+                "column": col,
+                "expression": expression,
+                "result_value": result_digit,
+            })
+
+            if new_carry > 0 and i > 0:
+                groups.append({
+                    "group": "carry",
+                    "from_column": col,
+                    "to_column": columns[i - 1],
+                    "carry_value": new_carry,
+                })
+
+            carry = new_carry
+
+        groups.append({"group": "answer", "value": answer})
+        return groups
