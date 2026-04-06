@@ -136,29 +136,14 @@ class TestAddition:
         assert compute_tens[0]["result_value"] == 5
 
 
-from unittest.mock import MagicMock
 from app.services.example_generator import ExampleGeneratorService
 
 
 class TestIntegration:
     def test_stacked_arithmetic_flow(self):
-        """ExampleGeneratorService uses stacked arithmetic for large-number addition."""
-        pick_numbers_response = '{"a": 67, "b": 85}'
-        write_text_response = '[\
-            {"text": "Vi skriver tallene op i kolonner", "audio_cue": "Vi skriver tallene op"},\
-            {"text": "7 plus 5 er 12 — vi skriver 2 og husker 1", "audio_cue": "7 plus 5 er 12"},\
-            {"text": "6 plus 8 plus 1 er 15 — vi skriver 5 og husker 1", "audio_cue": "6 plus 8 plus 1 er 15"},\
-            {"text": "Vi har 1 tilbage — vi skriver 1 i hundreder", "audio_cue": "Vi skriver 1 i hundreder"},\
-            {"text": "1 plus 0 plus 0 er 1", "audio_cue": "1 plus 0 er 1"},\
-            {"text": "Svaret er 152", "audio_cue": "Svaret er 152"}\
-        ]'
-
+        """generate_stacked_example is fully deterministic — no LLM needed."""
         service = ExampleGeneratorService.__new__(ExampleGeneratorService)
-        mock_client = MagicMock()
-        mock_client.send_text = MagicMock(side_effect=[pick_numbers_response, write_text_response])
-        service.client = mock_client
-        service._system_prompt = "test prompt"
-        service._stacked_text_prompt = "write Danish text"
+        # No mock client needed — stacked path doesn't call LLM
 
         result = service.generate_stacked_example(
             assignment_type="addition",
@@ -166,13 +151,68 @@ class TestIntegration:
             language="da",
         )
 
-        assert result["example_problem"] == "67 + 85 = ?"
         assert len(result["steps"]) >= 3
         assert result["steps"][0]["visual"]["type"] == "stacked_arithmetic"
         assert result["steps"][0]["visual"]["action"] == "setup"
         assert result["steps"][0]["phase"] == "concrete"
-        assert result["steps"][0]["text"] == "Vi skriver tallene op i kolonner"
+        assert result["steps"][0]["text"] == "Vi stiller tallene op i kolonner"
         assert result["steps"][-1]["visual"]["action"] == "answer"
+        # Example numbers should be different from student's
+        assert "45" not in result["example_problem"]
+        assert "78" not in result["example_problem"]
+
+
+class TestDanishText:
+    def test_addition_text(self):
+        """Danish text templates for addition steps."""
+        from app.services.stacked_arithmetic import StackedArithmeticService
+        groups = StackedArithmeticService.compute_steps("addition", 57, 36)
+        texts = StackedArithmeticService.generate_text(groups, "addition")
+        assert texts[0]["text"] == "Vi stiller tallene op i kolonner"
+        # Compute ones: 7 + 6 = 13
+        assert "7 + 6 = 13" in texts[1]["text"]
+        assert "enere" in texts[1]["text"]
+        assert texts[-1]["text"] == "Svaret er 93"
+
+    def test_subtraction_borrow_text(self):
+        """Danish text templates for subtraction with borrow."""
+        from app.services.stacked_arithmetic import StackedArithmeticService
+        groups = StackedArithmeticService.compute_steps("subtraction", 83, 47)
+        texts = StackedArithmeticService.generate_text(groups, "subtraction")
+        # Should have borrow text
+        borrow_texts = [t for t, g in zip(texts, groups) if g["group"] == "borrow"]
+        assert len(borrow_texts) == 1
+        assert "låner" in borrow_texts[0]["text"]
+
+    def test_text_count_matches_groups(self):
+        """Number of text entries must match number of groups."""
+        from app.services.stacked_arithmetic import StackedArithmeticService
+        groups = StackedArithmeticService.compute_steps("addition", 999, 1)
+        texts = StackedArithmeticService.generate_text(groups, "addition")
+        assert len(texts) == len(groups)
+
+
+class TestNumberPicker:
+    def test_picks_different_numbers(self):
+        """Example numbers must differ from student's."""
+        from app.services.stacked_arithmetic import StackedArithmeticService
+        a, b = StackedArithmeticService.pick_example_numbers("addition", "45 + 78")
+        assert a != 45 and a != 78
+        assert b != 45 and b != 78
+
+    def test_similar_magnitude(self):
+        """Example numbers should be in similar range."""
+        from app.services.stacked_arithmetic import StackedArithmeticService
+        a, b = StackedArithmeticService.pick_example_numbers("addition", "345 + 278")
+        assert 100 <= a <= 999
+        assert 100 <= b <= 999
+
+    def test_subtraction_a_gte_b(self):
+        """For subtraction, a must be >= b."""
+        from app.services.stacked_arithmetic import StackedArithmeticService
+        for _ in range(20):
+            a, b = StackedArithmeticService.pick_example_numbers("subtraction", "500 - 200")
+            assert a >= b
 
 
 class TestRouter:

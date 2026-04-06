@@ -144,13 +144,25 @@ class ChatViewModel {
         let step = pendingExampleSteps[currentExampleStepIndex]
         let isLast = currentExampleStepIndex == pendingExampleSteps.count - 1
 
+        // Build cumulative GridState for stacked arithmetic
+        var gridState: GridState? = nil
+        if step.visual.type == "stacked_arithmetic" {
+            for i in 0...currentExampleStepIndex {
+                let s = pendingExampleSteps[i]
+                if s.visual.action == "setup" {
+                    gridState = GridState.from(visual: s.visual)
+                }
+                gridState?.apply(visual: s.visual)
+            }
+        }
+
         let chips: [ActionChipModel] = isLast
             ? []
             : [ActionChipModel(id: "next_step", label: "Næste trin →", icon: "arrow.right", isPrimary: false)]
 
         messages.append(ChatMessage(
             sender: .kvante,
-            content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count),
+            content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count, gridState),
             actions: chips
         ))
 

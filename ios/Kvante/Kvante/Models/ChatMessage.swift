@@ -8,7 +8,7 @@ enum ChatSender {
 enum ChatMessageContent {
     case text(String)
     case example(ExampleResponse)
-    case exampleStep(AnimationStep, Int, Int)  // step, stepNumber, totalSteps
+    case exampleStep(AnimationStep, Int, Int, GridState?)  // step, stepNumber, totalSteps, gridState
     case scannedImage(Data)
     case feedback(FeedbackResponse)
     case ocrConfirm(OcrConfirmation)

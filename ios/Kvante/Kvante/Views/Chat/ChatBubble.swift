@@ -85,8 +85,8 @@ struct ChatBubble: View {
             answerResultBubble(result)
         case .example(let example):
             exampleBubble(example)
-        case .exampleStep(let step, let num, let total):
-            exampleStepBubble(step, stepNumber: num, total: total)
+        case .exampleStep(let step, let num, let total, let gridState):
+            exampleStepBubble(step, stepNumber: num, total: total, gridState: gridState)
         case .tip(let text):
             tipBubble(text)
         case .scannedImage(let data):
@@ -253,7 +253,7 @@ struct ChatBubble: View {
 
     // MARK: - Example Step (one step per message)
 
-    private func exampleStepBubble(_ step: AnimationStep, stepNumber: Int, total: Int) -> some View {
+    private func exampleStepBubble(_ step: AnimationStep, stepNumber: Int, total: Int, gridState: GridState? = nil) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             // Step header
             HStack(spacing: 8) {
@@ -279,7 +279,8 @@ struct ChatBubble: View {
                 cumulativeObjects: 0,
                 cumulativeCrossedOut: 0,
                 cumulativeRows: 2,
-                cumulativeGrouped: 0
+                cumulativeGrouped: 0,
+                cumulativeGridState: gridState
             )
             .frame(maxWidth: .infinity)
         }

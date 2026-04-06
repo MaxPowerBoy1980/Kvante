@@ -136,57 +136,25 @@ class ExampleGeneratorService:
         assignment_text: str,
         language: str = "da",
     ) -> dict:
-        """Generate a stacked arithmetic example with deterministic math steps."""
+        """Generate a stacked arithmetic example — fully deterministic, no LLM."""
         from app.services.stacked_arithmetic import StackedArithmeticService
 
         logger.info("Generating stacked example for %s: '%s'", assignment_type, assignment_text)
         start = time.time()
 
-        lang_name = {"da": "Danish (dansk)", "en": "English"}.get(language, language)
+        # Step 1: Pick example numbers (deterministic, no LLM)
+        a, b = StackedArithmeticService.pick_example_numbers(assignment_type, assignment_text)
 
-        # Step 1: LLM picks example numbers
-        pick_prompt = (
-            f"The student's assignment is: {assignment_text}\n"
-            f"Pick TWO different numbers for a {assignment_type} example. "
-            f"The numbers MUST be different from the student's numbers. "
-            f"Use numbers appropriate for folkeskole (9-13 year olds). "
-            f"Return JSON: {{\"a\": <number>, \"b\": <number>}}"
-        )
-        raw_numbers = self.client.send_text(
-            "You pick example numbers for a math tutoring app. Return only JSON.",
-            pick_prompt,
-        )
-        numbers = extract_json(raw_numbers)
-        a, b = numbers["a"], numbers["b"]
-
-        # For subtraction, ensure a >= b
-        if assignment_type == "subtraction" and a < b:
-            a, b = b, a
-
-        # Step 2: Deterministic step computation
+        # Step 2: Compute steps (deterministic)
         groups = StackedArithmeticService.compute_steps(assignment_type, a, b)
 
-        # Step 3: LLM writes Danish text per step
-        if not hasattr(self, '_stacked_text_prompt'):
-            self._stacked_text_prompt = (
-                settings.prompts_dir / "stacked_arithmetic_text.txt"
-            ).read_text()
-
-        text_prompt = (
-            f"CRITICAL: Write ALL text in {lang_name}.\n\n"
-            + self._stacked_text_prompt
-        )
-        raw_text = self.client.send_text(
-            text_prompt,
-            f"Animation groups:\n{json.dumps(groups, ensure_ascii=False)}",
-        )
-        texts = extract_json(raw_text)
+        # Step 3: Generate Danish text (deterministic templates)
+        texts = StackedArithmeticService.generate_text(groups, assignment_type)
 
         # Step 4: Assemble ExampleResponse
-        from itertools import zip_longest
         op_symbol = "+" if assignment_type == "addition" else "-"
         steps = []
-        for i, (group, text_obj) in enumerate(zip_longest(groups, texts, fillvalue={})):
+        for i, (group, text_obj) in enumerate(zip(groups, texts)):
             action = group["group"]
             visual = {"type": "stacked_arithmetic", "action": action}
 
@@ -215,13 +183,13 @@ class ExampleGeneratorService:
             steps.append({
                 "step": i + 1,
                 "phase": "concrete",
-                "text": text_obj.get("text", ""),
+                "text": text_obj["text"],
                 "visual": visual,
                 "audio_cue": text_obj.get("audio_cue", ""),
             })
 
         elapsed = time.time() - start
-        logger.info("Generated stacked example in %.1fs: %s %s %s", elapsed, a, op_symbol, b)
+        logger.info("Generated stacked example in %.3fs: %s %s %s", elapsed, a, op_symbol, b)
 
         return {
             "example_problem": f"{a} {op_symbol} {b} = ?",

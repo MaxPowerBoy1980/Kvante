@@ -3,6 +3,8 @@
 Given an operation and two numbers, produces the exact sequence of
 grouped animation steps. No LLM involved — pure arithmetic.
 """
+import random
+import re
 
 COLUMN_NAMES = {
     1: ["E"],
@@ -143,3 +145,86 @@ class StackedArithmeticService:
 
         groups.append({"group": "answer", "value": answer})
         return groups
+
+    # --- Danish text templates ---
+
+    COLUMN_DANISH = {
+        "E": "enere", "Ti": "tiere", "H": "hundreder",
+        "T": "tusinder", "Tt": "titusinder",
+    }
+
+    @staticmethod
+    def generate_text(groups: list[dict], operation: str) -> list[dict]:
+        """Generate deterministic Danish text for each step group."""
+        col_name = StackedArithmeticService.COLUMN_DANISH
+        texts = []
+
+        for group in groups:
+            action = group["group"]
+
+            if action == "setup":
+                texts.append({
+                    "text": "Vi stiller tallene op i kolonner",
+                    "audio_cue": "Vi stiller tallene op i kolonner",
+                })
+            elif action == "compute":
+                col = group["column"]
+                expr = group["expression"]
+                result = group["result_value"]
+                cn = col_name.get(col, col)
+                texts.append({
+                    "text": f"{expr} — vi skriver {result} i {cn}",
+                    "audio_cue": expr,
+                })
+            elif action == "carry":
+                to_col = group["to_column"]
+                cn = col_name.get(to_col, to_col)
+                texts.append({
+                    "text": f"Vi husker 1 i {cn}",
+                    "audio_cue": f"Vi husker 1 i {cn}",
+                })
+            elif action == "borrow":
+                col = group["column"]
+                cross_col = group["cross_out_column"]
+                cn = col_name.get(col, col)
+                ccn = col_name.get(cross_col, cross_col)
+                texts.append({
+                    "text": f"Vi kan ikke i {cn} — vi låner fra {ccn}",
+                    "audio_cue": f"Vi låner fra {ccn}",
+                })
+            elif action == "answer":
+                value = group["value"]
+                texts.append({
+                    "text": f"Svaret er {value}",
+                    "audio_cue": f"Svaret er {value}",
+                })
+            else:
+                texts.append({"text": "", "audio_cue": ""})
+
+        return texts
+
+    # --- Random example number generation ---
+
+    @staticmethod
+    def pick_example_numbers(operation: str, assignment_text: str) -> tuple[int, int]:
+        """Pick example numbers different from the student's, in a similar range."""
+        student_numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
+
+        if student_numbers:
+            max_num = max(student_numbers)
+            num_digits = len(str(max_num))
+        else:
+            num_digits = 2
+
+        lo = 10 ** (num_digits - 1)
+        hi = 10 ** num_digits - 1
+
+        for _ in range(50):
+            a = random.randint(lo, hi)
+            b = random.randint(lo, hi)
+            if operation == "subtraction" and a < b:
+                a, b = b, a
+            if a not in student_numbers and b not in student_numbers:
+                return a, b
+
+        return lo + 1, lo + 2
