@@ -52,7 +52,9 @@ struct ChatView: View {
                 text: $viewModel.inputText,
                 onSend: { viewModel.sendMessage() },
                 onCamera: { viewModel.showScanner = true },
-                onHelp: { viewModel.requestHelp() }
+                onHelp: { viewModel.requestHelp() },
+                onExplainDifferent: { viewModel.requestExplainDifferent() },
+                onSkip: { viewModel.advanceToNextAssignment() }
             )
         }
         .background(KvanteTheme.Colors.cream)

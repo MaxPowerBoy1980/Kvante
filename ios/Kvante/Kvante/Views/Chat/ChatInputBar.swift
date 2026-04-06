@@ -5,6 +5,8 @@ struct ChatInputBar: View {
     let onSend: () -> Void
     let onCamera: () -> Void
     let onHelp: () -> Void
+    var onExplainDifferent: (() -> Void)?
+    var onSkip: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,7 +17,17 @@ struct ChatInputBar: View {
                         Label("Scan mit svar", systemImage: "camera")
                     }
                     Button { onHelp() } label: {
-                        Label("Hjælp mig med opgaven", systemImage: "lightbulb")
+                        Label("Vis eksempel", systemImage: "lightbulb")
+                    }
+                    if let explain = onExplainDifferent {
+                        Button { explain() } label: {
+                            Label("Forklar anderledes", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    if let skip = onSkip {
+                        Button { skip() } label: {
+                            Label("Spring over", systemImage: "forward")
+                        }
                     }
                 } label: {
                     Image(systemName: "plus")
