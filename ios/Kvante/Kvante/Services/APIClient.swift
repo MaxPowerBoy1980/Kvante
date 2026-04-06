@@ -76,6 +76,27 @@ actor APIClient {
         return try decoder.decode(FeedbackResponse.self, from: data)
     }
 
+    // MARK: - Chat
+
+    func sendChat(sessionId: String, assignmentId: String, message: String) async throws -> String {
+        let url = baseURL.appendingPathComponent("chat/")
+        var request = URLRequest(url: url, timeoutInterval: aiTimeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: String] = [
+            "session_id": sessionId,
+            "assignment_id": assignmentId,
+            "message": message
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        let result = try decoder.decode([String: String].self, from: data)
+        return result["reply"] ?? ""
+    }
+
     // MARK: - Submit Work
 
     func submitWork(sessionId: String, assignmentId: String, imageData: Data) async throws -> SubmissionResponse {

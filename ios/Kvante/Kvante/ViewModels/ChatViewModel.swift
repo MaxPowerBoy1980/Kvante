@@ -87,13 +87,14 @@ class ChatViewModel {
 
         Task { @MainActor in
             do {
-                let response = try await apiClient.explainTask(
+                let reply = try await apiClient.sendChat(
                     sessionId: sessionId,
-                    assignmentId: currentAssignment.id
+                    assignmentId: currentAssignment.id,
+                    message: text
                 )
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
-                    content: .text(response.feedbackText)
+                    content: .text(reply)
                 ))
             } catch {
                 replaceLoading(loadingId, with: ChatMessage(
