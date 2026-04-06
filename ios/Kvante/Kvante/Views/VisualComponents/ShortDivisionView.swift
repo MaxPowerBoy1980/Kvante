@@ -152,25 +152,43 @@ struct ShortDivisionView: View {
                         .stroke(KvanteTheme.Colors.ink, lineWidth: 3)
                 )
 
-            ForEach(Array(state.rows.enumerated()), id: \.offset) { idx, row in
+            if state.rows.isEmpty {
+                // Setup: show dividend as a whole number to the left
                 HStack(spacing: 0) {
-                    groupValueCell(row: row, idx: idx, cellSize: cellSize)
+                    let dividendText = state.digits.map { String($0) }.joined()
+                    Text(dividendText)
+                        .font(.custom("Marker Felt", size: 28))
+                        .foregroundStyle(KvanteTheme.Colors.ink)
+                        .frame(width: 60, height: cellSize)
 
                     Rectangle()
                         .fill(KvanteTheme.Colors.ink)
-                        .frame(width: 3)
+                        .frame(width: 3, height: cellSize)
 
-                    quotientDigitCell(row: row, idx: idx, cellSize: cellSize)
+                    Text("?")
+                        .font(.custom("Marker Felt", size: 28))
+                        .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.3))
+                        .frame(width: cellSize, height: cellSize)
                 }
-                .transition(.move(edge: .leading).combined(with: .opacity))
+            } else {
+                ForEach(Array(state.rows.enumerated()), id: \.offset) { idx, row in
+                    HStack(spacing: 0) {
+                        groupValueCell(row: row, idx: idx, cellSize: cellSize)
+
+                        Rectangle()
+                            .fill(KvanteTheme.Colors.ink)
+                            .frame(width: 3)
+
+                        quotientDigitCell(row: row, idx: idx, cellSize: cellSize)
+                    }
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                }
             }
 
-            if !state.rows.isEmpty {
-                Rectangle()
-                    .fill(KvanteTheme.Colors.ink)
-                    .frame(height: 3)
-                    .frame(width: 120)
-            }
+            Rectangle()
+                .fill(KvanteTheme.Colors.ink)
+                .frame(height: 3)
+                .frame(width: 120)
         }
     }
 
