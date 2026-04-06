@@ -106,3 +106,36 @@ class ErrorResponse(BaseModel):
     message: str
     student_message: str = ""
     detail: str = ""
+
+
+# --- Chat Persistence ---
+
+class ChatMessageCreate(BaseModel):
+    sender: str
+    content_type: str
+    content: dict
+    assignment_id: str | None = None
+
+
+class ChatMessageOut(BaseModel):
+    id: str
+    session_id: str
+    assignment_id: str | None
+    sender: str
+    content_type: str
+    content: dict
+    created_at: str
+
+
+class SaveMessagesRequest(BaseModel):
+    session_id: str
+    messages: list[ChatMessageCreate]
+
+
+class SaveMessagesResponse(BaseModel):
+    saved_count: int
+
+
+class LoadMessagesResponse(BaseModel):
+    session_id: str
+    messages: list[ChatMessageOut]
