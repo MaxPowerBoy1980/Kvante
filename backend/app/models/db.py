@@ -67,6 +67,8 @@ class Session(Base):
     detected_language: Mapped[str] = mapped_column(String, default="da")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     status: Mapped[str] = mapped_column(String, default="active")
+    name: Mapped[str] = mapped_column(String, default="")
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Assignment(Base):
@@ -82,6 +84,9 @@ class Assignment(Base):
     difficulty_estimate: Mapped[int] = mapped_column(Integer, default=1)
     correct_answer: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="not_started")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    feedback_summary: Mapped[str | None] = mapped_column(String, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Submission(Base):
@@ -95,4 +100,16 @@ class Submission(Base):
     analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     feedback_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     attempt_number: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(String, ForeignKey("sessions.id"), nullable=False, index=True)
+    assignment_id: Mapped[str | None] = mapped_column(String, ForeignKey("assignments.id"), nullable=True)
+    sender: Mapped[str] = mapped_column(String, nullable=False)
+    content_type: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
