@@ -86,6 +86,12 @@ struct StackedArithmeticView: View {
     let animate: Bool
     let gridState: GridState
 
+    /// Returns true if the digit at index is a leading zero (all digits left of it are also zero).
+    private func isLeadingZero(digits: [Int], at index: Int) -> Bool {
+        guard digits[index] == 0 else { return false }
+        return digits[0...index].allSatisfy { $0 == 0 }
+    }
+
     var body: some View {
         let state = gridState
         // Guard: don't render grid if arrays don't match columns
@@ -143,6 +149,7 @@ struct StackedArithmeticView: View {
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
+                    let hidden = isLeadingZero(digits: state.topDigits, at: idx)
                     digitCell(
                         digit: state.topDigits[idx],
                         col: col,
@@ -150,7 +157,8 @@ struct StackedArithmeticView: View {
                         replacement: state.replacements[col],
                         carry: state.carries[col],
                         isActive: state.activeColumn == col,
-                        cellSize: cellSize
+                        cellSize: cellSize,
+                        hidden: hidden
                     )
                 }
             }
@@ -163,10 +171,12 @@ struct StackedArithmeticView: View {
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
+                    let hidden = isLeadingZero(digits: state.bottomDigits, at: idx)
                     plainDigitCell(
                         digit: state.bottomDigits[idx],
                         isActive: state.activeColumn == col,
-                        cellSize: cellSize
+                        cellSize: cellSize,
+                        hidden: hidden
                     )
                 }
             }
@@ -195,16 +205,19 @@ struct StackedArithmeticView: View {
     @ViewBuilder
     private func digitCell(digit: Int, col: String, isCrossedOut: Bool,
                            replacement: Int?, carry: Int?,
-                           isActive: Bool, cellSize: CGFloat) -> some View {
+                           isActive: Bool, cellSize: CGFloat,
+                           hidden: Bool = false) -> some View {
         ZStack {
             if isActive {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.teal.opacity(0.1))
             }
 
-            Text("\(digit)")
-                .font(.custom("Marker Felt", size: 28))
-                .foregroundStyle(isCrossedOut ? .secondary : .primary)
+            if !hidden {
+                Text("\(digit)")
+                    .font(.custom("Marker Felt", size: 28))
+                    .foregroundStyle(isCrossedOut ? .secondary : .primary)
+            }
 
             if isCrossedOut {
                 Path { path in
@@ -237,15 +250,18 @@ struct StackedArithmeticView: View {
     }
 
     @ViewBuilder
-    private func plainDigitCell(digit: Int, isActive: Bool, cellSize: CGFloat) -> some View {
+    private func plainDigitCell(digit: Int, isActive: Bool, cellSize: CGFloat,
+                                hidden: Bool = false) -> some View {
         ZStack {
             if isActive {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.teal.opacity(0.1))
             }
-            Text("\(digit)")
-                .font(.custom("Marker Felt", size: 28))
-                .foregroundStyle(.primary)
+            if !hidden {
+                Text("\(digit)")
+                    .font(.custom("Marker Felt", size: 28))
+                    .foregroundStyle(.primary)
+            }
         }
         .frame(width: cellSize, height: cellSize)
         .overlay(alignment: .leading) {
