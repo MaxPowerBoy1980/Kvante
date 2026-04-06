@@ -182,23 +182,12 @@ struct ChatOnboardingView: View {
                     handleGradeSelected(grade)
                 } label: {
                     Text("\(grade). klasse")
-                        .font(KvanteTheme.Fonts.rounded(15, weight: .bold))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 18)
-                        .padding(.vertical, 10)
-                        .background(
-                            KvanteTheme.Colors.primary,
-                            in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.buttonRadius)
-                        )
-                        .overlay(alignment: .bottom) {
-                            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.buttonRadius)
-                                .fill(KvanteTheme.Colors.primaryShadow)
-                                .frame(height: 3)
-                                .offset(y: 3)
-                        }
-                        .shadow(color: KvanteTheme.Colors.primaryShadow.opacity(0.4), radius: 0, x: 0, y: 3)
+                        .padding(.vertical, 12)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(KvanteTheme.TactileButtonStyle.primary)
             }
         }
     }
@@ -326,14 +315,14 @@ struct ChatOnboardingView: View {
     }
 
     private func handleAvatarSelected(_ avatar: (emoji: String, name: String)) {
-        selectedAvatar = avatar.name
+        selectedAvatar = avatar.emoji
         disableLastPicker()
 
         addStudentBubble(avatar.emoji)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             addKvanteBubble("Perfekt! Så er vi klar 🤖")
-            register(name: selectedName, grade: selectedGrade, avatar: avatar.name)
+            register(name: selectedName, grade: selectedGrade, avatar: avatar.emoji)
         }
     }
 

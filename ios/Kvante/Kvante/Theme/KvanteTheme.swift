@@ -90,10 +90,61 @@ enum KvanteTheme {
     enum Shapes {
         static let bubbleRadius: CGFloat = 20
         static let cardRadius: CGFloat = 18
-        static let buttonRadius: CGFloat = 20
+        static let buttonRadius: CGFloat = 16
         static let inputRadius: CGFloat = 20
         static let smallRadius: CGFloat = 14
-        static let buttonShadowOffset: CGFloat = 4
+        static let buttonShadowHeight: CGFloat = 6
+    }
+
+    // MARK: - Button Styles
+
+    /// Tactile 3D button that looks like a pressable plastic block (Toca Boca style)
+    /// - Solid darker bottom border creates depth
+    /// - 2px dark brown outline makes it pop against cream background
+    /// - Press animation: button moves down and shadow disappears
+    struct TactileButtonStyle: ButtonStyle {
+        let fillColor: Color
+        let shadowColor: Color
+        let outlineColor: Color
+
+        init(fill: Color, shadow: Color, outline: Color = Colors.textPrimary) {
+            self.fillColor = fill
+            self.shadowColor = shadow
+            self.outlineColor = outline
+        }
+
+        /// Primary orange button
+        static var primary: TactileButtonStyle {
+            TactileButtonStyle(fill: Colors.primary, shadow: Colors.primaryShadow)
+        }
+
+        /// Teal/green secondary button
+        static var secondary: TactileButtonStyle {
+            TactileButtonStyle(fill: Colors.teal, shadow: Colors.tealShadow)
+        }
+
+        func makeBody(configuration: Configuration) -> some View {
+            let pressed = configuration.isPressed
+            configuration.label
+                .offset(y: pressed ? Shapes.buttonShadowHeight : 0)
+                .background(
+                    RoundedRectangle(cornerRadius: Shapes.buttonRadius)
+                        .fill(shadowColor)
+                        .offset(y: Shapes.buttonShadowHeight)
+                        .opacity(pressed ? 0 : 1)
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: Shapes.buttonRadius)
+                        .fill(fillColor)
+                        .offset(y: pressed ? Shapes.buttonShadowHeight : 0)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Shapes.buttonRadius)
+                        .stroke(outlineColor.opacity(0.3), lineWidth: 2)
+                        .offset(y: pressed ? Shapes.buttonShadowHeight : 0)
+                )
+                .animation(.easeInOut(duration: 0.1), value: pressed)
+        }
     }
 
     // MARK: - Avatars

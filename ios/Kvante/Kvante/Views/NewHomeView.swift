@@ -10,6 +10,7 @@ struct NewHomeView: View {
         ZStack {
             KvanteTheme.Colors.background.ignoresSafeArea()
 
+            // Subtle decorative circles
             GeometryReader { geo in
                 Circle()
                     .fill(KvanteTheme.Colors.tipBorder.opacity(0.3))
@@ -22,6 +23,7 @@ struct NewHomeView: View {
             }
 
             VStack(spacing: 0) {
+                // Header with avatar + greeting
                 HStack(spacing: 14) {
                     Text(profile.avatarName)
                         .font(.system(size: 44))
@@ -56,44 +58,37 @@ struct NewHomeView: View {
 
                 Spacer()
 
-                HStack(spacing: 14) {
+                // Card-style action buttons
+                HStack(spacing: 16) {
+                    // Ugematematik — primary
                     Button(action: {}) {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 12) {
                             Image(systemName: "book.closed.fill")
-                                .font(.system(size: 24))
+                                .font(.system(size: 40, weight: .medium))
                             Text("Ugematematik")
-                                .font(KvanteTheme.Fonts.buttonLabel)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
                         .foregroundStyle(.white)
-                        .background(
-                            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.buttonRadius)
-                                .fill(KvanteTheme.Colors.primary)
-                                .shadow(color: KvanteTheme.Colors.primaryShadow, radius: 0, y: KvanteTheme.Shapes.buttonShadowOffset)
-                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 140)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(KvanteTheme.TactileButtonStyle.primary)
                     .disabled(true)
                     .opacity(0.5)
 
+                    // Øvelser — secondary
                     Button(action: onPractice) {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 12) {
                             Image(systemName: "dumbbell.fill")
-                                .font(.system(size: 24))
+                                .font(.system(size: 40, weight: .medium))
                             Text("Øvelser")
-                                .font(KvanteTheme.Fonts.buttonLabel)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
                         .foregroundStyle(.white)
-                        .background(
-                            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.buttonRadius)
-                                .fill(KvanteTheme.Colors.teal)
-                                .shadow(color: KvanteTheme.Colors.tealShadow, radius: 0, y: KvanteTheme.Shapes.buttonShadowOffset)
-                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 140)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(KvanteTheme.TactileButtonStyle.secondary)
                     .disabled(serverDiscovery.serverURL == nil)
                     .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
                 }
