@@ -14,6 +14,9 @@ COLUMN_NAMES = {
     5: ["Tt", "T", "H", "Ti", "E"],
 }
 
+# Fractional column names for decimal arithmetic
+DECIMAL_COLUMNS = ["td", "hd"]  # tiendedele, hundrededele
+
 
 class StackedArithmeticService:
     @staticmethod
@@ -151,6 +154,7 @@ class StackedArithmeticService:
     COLUMN_DANISH = {
         "E": "enere", "Ti": "tiere", "H": "hundreder",
         "T": "tusinder", "Tt": "titusinder",
+        "td": "tiendedele", "hd": "hundrededele",
     }
 
     @staticmethod

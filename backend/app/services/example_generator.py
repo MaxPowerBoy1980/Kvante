@@ -164,7 +164,7 @@ class ExampleGeneratorService:
         language: str = "da",
     ) -> dict:
         """Generate a stacked arithmetic example — fully deterministic, no LLM."""
-        from app.services.stacked_arithmetic import StackedArithmeticService, COLUMN_NAMES
+        from app.services.stacked_arithmetic import StackedArithmeticService, COLUMN_NAMES, DECIMAL_COLUMNS
 
         logger.info("Generating stacked example for %s: '%s'", assignment_type, assignment_text)
         start = time.time()
@@ -180,37 +180,43 @@ class ExampleGeneratorService:
             )
 
         # Step 1: Pick example numbers (deterministic, no LLM)
-        a, b = StackedArithmeticService.pick_example_numbers(assignment_type, assignment_text)
-
         if has_decimals:
-            # Scale example numbers to have similar decimal range
-            # e.g. for 1 decimal place, pick numbers 10-99 and display as 1.0-9.9
+            # Pick numbers in the scaled integer range
+            import random
             scale = 10 ** decimal_places
             lo = scale
             hi = scale * 10 - 1
-            import random
+            student_parsed = _parse_numbers(assignment_text)
+            student_scaled = [int(round(n * scale)) for n in student_parsed]
             for _ in range(50):
                 a = random.randint(lo, hi)
                 b = random.randint(lo, hi)
                 if assignment_type == "subtraction" and a < b:
                     a, b = b, a
-                break
+                if a not in student_scaled and b not in student_scaled:
+                    break
+        else:
+            a, b = StackedArithmeticService.pick_example_numbers(assignment_type, assignment_text)
 
-        # Step 2: Compute steps (deterministic)
+        # Step 2: Compute steps (deterministic — works on integers)
         groups = StackedArithmeticService.compute_steps(assignment_type, a, b)
 
-        # Step 3: Generate Danish text (deterministic templates)
+        # Step 3: For decimals, remap column names and format answer
+        if has_decimals and decimal_places > 0:
+            groups = self._apply_decimal_columns(groups, decimal_places)
+
+        # Step 4: Generate Danish text (uses remapped column names)
         texts = StackedArithmeticService.generate_text(groups, assignment_type)
 
-        # Step 4: Assemble ExampleResponse
+        # Step 5: Assemble ExampleResponse
         op_symbol = "+" if assignment_type == "addition" else "−"
 
-        # Format numbers for display (with decimals if original had them)
         def fmt(n: int) -> str:
             if has_decimals and decimal_places > 0:
-                scale = 10 ** decimal_places
-                return f"{n / scale:.{decimal_places}f}".replace(".", ",")
+                s = 10 ** decimal_places
+                return f"{n / s:.{decimal_places}f}".replace(".", ",")
             return str(n)
+
         steps = []
         for i, (group, text_obj) in enumerate(zip(groups, texts)):
             action = group["group"]
@@ -246,9 +252,8 @@ class ExampleGeneratorService:
                 "audio_cue": text_obj.get("audio_cue", ""),
             })
 
-        # Step 5: Add "now try yours" — show student's own problem in grid form
+        # Step 6: Add "now try yours" — show student's own problem in grid form
         parsed_nums = _parse_numbers(assignment_text)
-        student_numbers = []
         if has_decimals and decimal_places > 0:
             scale = 10 ** decimal_places
             student_numbers = [int(round(n * scale)) for n in parsed_nums]
@@ -262,6 +267,8 @@ class ExampleGeneratorService:
             if assignment_type == "addition":
                 s_digits = max(s_digits, len(str(sa + sb)))
             s_columns = COLUMN_NAMES.get(s_digits, COLUMN_NAMES[2])
+            if has_decimals and decimal_places > 0:
+                s_columns = self._remap_columns(s_columns, decimal_places)
             s_top = StackedArithmeticService._to_digits(sa, s_digits)
             s_bottom = StackedArithmeticService._to_digits(sb, s_digits)
 
@@ -289,6 +296,68 @@ class ExampleGeneratorService:
             "steps": steps,
             "note": "",
         }
+
+    @staticmethod
+    def _remap_columns(columns: list[str], decimal_places: int) -> list[str]:
+        """Remap integer column names to include decimal positions.
+
+        For decimal_places=1: ["Ti", "E"] → ["E", "td"]
+        For decimal_places=2: ["H", "Ti", "E"] → ["E", "td", "hd"]
+        """
+        from app.services.stacked_arithmetic import COLUMN_NAMES as CN, DECIMAL_COLUMNS
+        int_cols = len(columns) - decimal_places
+        whole_names = list(CN.get(max(int_cols, 1), ["E"]))
+        frac_names = DECIMAL_COLUMNS[:decimal_places]
+        return whole_names + frac_names
+
+    @staticmethod
+    def _apply_decimal_columns(groups: list[dict], decimal_places: int) -> list[dict]:
+        """Post-process compute_steps output to use decimal column names and format answer."""
+        from app.services.stacked_arithmetic import DECIMAL_COLUMNS
+
+        for group in groups:
+            action = group["group"]
+            if action == "setup":
+                old_cols = group["columns"]
+                group["columns"] = ExampleGeneratorService._remap_columns(old_cols, decimal_places)
+            elif action in ("compute", "borrow"):
+                # Remap column references
+                if "column" in group:
+                    old_cols = None
+                    for g in groups:
+                        if g["group"] == "setup":
+                            old_cols = g["columns"]
+                            break
+                    # Column name is already remapped in setup, compute uses column by name
+                    # We need to find which position this column was and use new name
+            elif action == "answer":
+                # Format answer with comma
+                val = group["value"]
+                scale = 10 ** decimal_places
+                formatted = f"{val / scale:.{decimal_places}f}".replace(".", ",")
+                group["value"] = formatted
+
+        # Remap column names in compute/carry/borrow steps
+        # Find old→new column mapping from setup
+        old_columns = None
+        new_columns = None
+        for g in groups:
+            if g["group"] == "setup":
+                new_columns = g["columns"]
+                # Reconstruct old columns from the count
+                from app.services.stacked_arithmetic import COLUMN_NAMES as CN
+                n = len(new_columns)
+                old_columns = CN.get(n, CN[min(n, 5)])
+                break
+
+        if old_columns and new_columns and len(old_columns) == len(new_columns):
+            col_map = {old: new for old, new in zip(old_columns, new_columns)}
+            for group in groups:
+                for key in ("column", "cross_out_column", "from_column", "to_column"):
+                    if key in group and group[key] in col_map:
+                        group[key] = col_map[group[key]]
+
+        return groups
 
     def generate_short_division_example(self, assignment_text: str, language: str = "da") -> dict:
         """Generate a short division example — fully deterministic, no LLM."""
