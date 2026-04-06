@@ -12,7 +12,20 @@ class ChatViewModel {
 
     // MARK: - Context
 
-    private(set) var currentAssignment: ParsedAssignment
+    // Multi-assignment state
+    private(set) var allAssignments: [ParsedAssignment]
+    var currentAssignmentIndex: Int = 0
+    var completedAssignmentIds: Set<String> = []
+    var attemptCounts: [String: Int] = [:]
+
+    var currentAssignment: ParsedAssignment {
+        allAssignments[currentAssignmentIndex]
+    }
+
+    var totalAssignments: Int { allAssignments.count }
+    var completedCount: Int { completedAssignmentIds.count }
+    var isSetComplete: Bool { completedAssignmentIds.count == allAssignments.count }
+
     let sessionId: String
     let apiClient: APIClient
 
@@ -29,13 +42,12 @@ class ChatViewModel {
         return isAddSub && numbers.contains(where: { $0 > 30 })
     }
 
-    // Callback for parent to advance to next assignment
-    var onNextAssignment: (() -> Void)?
+    var onSetComplete: (() -> Void)?
 
     // MARK: - Init
 
-    init(assignment: ParsedAssignment, sessionId: String, apiClient: APIClient) {
-        self.currentAssignment = assignment
+    init(assignments: [ParsedAssignment], sessionId: String, apiClient: APIClient) {
+        self.allAssignments = assignments
         self.sessionId = sessionId
         self.apiClient = apiClient
         sendWelcome()
@@ -57,6 +69,72 @@ class ChatViewModel {
         messages.append(welcome)
     }
 
+    // MARK: - Multi-assignment Navigation
+
+    func advanceToNextAssignment() {
+        completedAssignmentIds.insert(currentAssignment.id)
+
+        if isSetComplete {
+            onSetComplete?()
+            return
+        }
+
+        // Move to next unfinished assignment
+        if currentAssignmentIndex < allAssignments.count - 1 {
+            currentAssignmentIndex += 1
+        }
+
+        // Reset submission tracking for new assignment
+        currentSubmissionId = nil
+
+        // Introduce next assignment in chat
+        let intro = ChatMessage(
+            sender: .kvante,
+            content: .assignmentIntro(currentAssignment)
+        )
+        messages.append(intro)
+
+        let prompt = ChatMessage(
+            sender: .kvante,
+            content: .text("Her er din næste opgave. Brug + knappen for at scanne dit svar eller bede om hjælp.")
+        )
+        messages.append(prompt)
+    }
+
+    func jumpToAssignment(_ index: Int) {
+        guard index >= 0 && index < allAssignments.count else { return }
+        currentAssignmentIndex = index
+        currentSubmissionId = nil
+
+        // If not yet introduced, introduce it
+        let assignment = allAssignments[index]
+        let alreadyIntroduced = messages.contains { msg in
+            if case .assignmentIntro(let a) = msg.content {
+                return a.id == assignment.id
+            }
+            return false
+        }
+        if !alreadyIntroduced {
+            messages.append(ChatMessage(sender: .kvante, content: .assignmentIntro(assignment)))
+        }
+    }
+
+    func requestExplainDifferent() {
+        guard let submissionId = currentSubmissionId else {
+            messages.append(ChatMessage(sender: .kvante, content: .text("Prøv først at løse opgaven, så kan jeg forklare på en anden måde.")))
+            return
+        }
+        let loadingId = addLoading("Kvante tænker...")
+        Task { @MainActor in
+            do {
+                let response = try await apiClient.sendFollowup(submissionId: submissionId, action: "explain_different")
+                replaceLoading(loadingId, with: ChatMessage(sender: .kvante, content: .feedback(response)))
+            } catch {
+                replaceLoading(loadingId, with: ChatMessage(sender: .kvante, content: .text("Beklager, jeg kunne ikke forklare på en anden måde lige nu.")))
+            }
+        }
+    }
+
     // MARK: - Actions
 
     func handleChip(_ chip: ActionChipModel) {
@@ -66,7 +144,7 @@ class ChatViewModel {
         case "scan":
             showScanner = true
         case "next_assignment":
-            onNextAssignment?()
+            advanceToNextAssignment()
             return
         case "try_again":
             tryAgain()
@@ -228,6 +306,7 @@ class ChatViewModel {
             } else {
                 // Stacked arithmetic: LLM Vision reads the columnar handwriting.
                 // submitWork already creates the submission and validates the answer.
+                attemptCounts[currentAssignment.id, default: 0] += 1
                 do {
                     let result = try await apiClient.submitWork(
                         sessionId: sessionId,
@@ -345,6 +424,7 @@ class ChatViewModel {
     /// Student confirmed the OCR reading is correct
     func confirmAnswer(_ fullText: String) {
         guard let imageData = pendingImageData else { return }
+        attemptCounts[currentAssignment.id, default: 0] += 1
 
         let answer = extractAnswer(from: fullText)
 

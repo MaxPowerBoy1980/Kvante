@@ -103,11 +103,11 @@ struct PracticeSessionView: View {
         guard let assignment = currentAssignment else { return }
         let parsed = ParsedAssignment(from: assignment)
         let vm = ChatViewModel(
-            assignment: parsed,
+            assignments: [parsed],
             sessionId: sessionId,
             apiClient: apiClient
         )
-        vm.onNextAssignment = { advanceToNext() }
+        vm.onSetComplete = { advanceToNext() }
         chatViewModel = vm
     }
 
