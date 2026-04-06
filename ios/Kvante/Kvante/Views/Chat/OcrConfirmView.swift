@@ -14,7 +14,7 @@ struct OcrConfirmView: View {
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(Color(red: 0.3, green: 0.3, blue: 0.5))
+                        .fill(KvanteTheme.Colors.kvanteAvatar)
                         .frame(width: 36, height: 36)
                     Text("🤖")
                         .font(.system(size: 16))
@@ -22,10 +22,10 @@ struct OcrConfirmView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Jeg har scannet dit billede!")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(KvanteTheme.Colors.textPrimary)
                     Text("Er det her rigtigt?")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 }
             }
 
@@ -34,20 +34,20 @@ struct OcrConfirmView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("DIT SVAR")
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(KvanteTheme.Colors.success)
 
                     if isEditing {
                         HStack {
                             TextField("Skriv dit svar", text: $correctedText)
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(KvanteTheme.Colors.textPrimary)
                             Button {
                                 let answer = correctedText.trimmingCharacters(in: .whitespaces)
                                 if !answer.isEmpty { onConfirm(answer) }
                             } label: {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.title2)
-                                    .foregroundStyle(.green)
+                                    .foregroundStyle(KvanteTheme.Colors.success)
                             }
                             .disabled(correctedText.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
@@ -55,16 +55,16 @@ struct OcrConfirmView: View {
                         HStack {
                             Text(readText)
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(KvanteTheme.Colors.textPrimary)
                             Spacer()
                             Image(systemName: "pencil.circle.fill")
                                 .font(.title3)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(KvanteTheme.Colors.mutedText)
                         }
                     }
                 }
                 .padding(14)
-                .background(Color(.systemGray6).opacity(0.3), in: RoundedRectangle(cornerRadius: 14))
+                .background(KvanteTheme.Colors.muted, in: RoundedRectangle(cornerRadius: 14))
             }
 
             // Buttons
@@ -81,7 +81,7 @@ struct OcrConfirmView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color(red: 0.2, green: 0.55, blue: 0.5), in: RoundedRectangle(cornerRadius: 14))
+                        .background(KvanteTheme.Colors.success, in: RoundedRectangle(cornerRadius: 14))
                         .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
@@ -94,12 +94,8 @@ struct OcrConfirmView: View {
                             .font(.subheadline.weight(.medium))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color(.systemGray5).opacity(0.3), in: RoundedRectangle(cornerRadius: 14))
-                            .foregroundStyle(.white)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                            )
+                            .background(KvanteTheme.Colors.muted, in: RoundedRectangle(cornerRadius: 14))
+                            .foregroundStyle(KvanteTheme.Colors.textPrimary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -108,13 +104,13 @@ struct OcrConfirmView: View {
             // Source
             Text(source)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
         }
         .padding(16)
-        .background(Color(red: 0.14, green: 0.14, blue: 0.18), in: RoundedRectangle(cornerRadius: 22))
+        .background(KvanteTheme.Colors.kvanteBubble, in: RoundedRectangle(cornerRadius: 22))
         .overlay(
             RoundedRectangle(cornerRadius: 22)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 1)
         )
     }
 }

@@ -26,26 +26,27 @@ struct ChatInputBar: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 30))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(KvanteTheme.Colors.primary)
                 }
 
                 // Text field
                 HStack(spacing: 8) {
                     TextField("Skriv til Kvante...", text: $text)
                         .font(.subheadline)
+                        .foregroundStyle(KvanteTheme.Colors.textPrimary)
                         .submitLabel(.send)
                         .onSubmit { if !text.trimmingCharacters(in: .whitespaces).isEmpty { onSend() } }
 
                     Button(action: onCamera) {
                         Image(systemName: "camera.fill")
                             .font(.body)
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(KvanteTheme.Colors.mutedText)
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color(.systemGray6), in: Capsule())
+                .background(KvanteTheme.Colors.muted, in: Capsule())
 
                 // Send button
                 Button {
@@ -57,8 +58,8 @@ struct ChatInputBar: View {
                         .font(.system(size: 30))
                         .foregroundStyle(
                             text.trimmingCharacters(in: .whitespaces).isEmpty
-                                ? Color(.systemGray4)
-                                : .blue
+                                ? KvanteTheme.Colors.sendInactive
+                                : KvanteTheme.Colors.sendActive
                         )
                 }
                 .buttonStyle(.plain)
@@ -66,7 +67,7 @@ struct ChatInputBar: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
+            .background(KvanteTheme.Colors.backgroundStart.opacity(0.95))
         }
     }
 }

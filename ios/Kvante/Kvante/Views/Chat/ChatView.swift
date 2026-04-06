@@ -20,6 +20,7 @@ struct ChatView: View {
                     }
                     .padding(.vertical, 16)
                 }
+                .background(KvanteTheme.Colors.backgroundStart)
                 .onChange(of: viewModel.messages.count) { _, _ in
                     if let last = viewModel.messages.last {
                         withAnimation(.easeOut(duration: 0.3)) {
@@ -37,6 +38,7 @@ struct ChatView: View {
                 onHelp: { viewModel.requestHelp() }
             )
         }
+        .background(KvanteTheme.Colors.backgroundStart)
         .navigationTitle("Kvante")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $viewModel.showScanner) {
