@@ -14,7 +14,7 @@ enum CelebrationTier {
 enum ChatMessageContent {
     case text(String)
     case example(ExampleResponse)
-    case exampleStep(AnimationStep, Int, Int, GridState?)  // step, stepNumber, totalSteps, gridState
+    case exampleStep(AnimationStep, Int, Int, GridState?, ShortDivisionState?)  // step, stepNumber, totalSteps, gridState, shortDivisionState
     case scannedImage(Data)
     case feedback(FeedbackResponse)
     case ocrConfirm(OcrConfirmation)

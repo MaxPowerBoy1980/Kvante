@@ -238,15 +238,21 @@ class ChatViewModel {
         let step = pendingExampleSteps[currentExampleStepIndex]
         let isLast = currentExampleStepIndex == pendingExampleSteps.count - 1
 
-        // Build cumulative GridState for stacked arithmetic
+        // Build cumulative state for stacked arithmetic or short division
         var gridState: GridState? = nil
-        if step.visual.type == "stacked_arithmetic" {
-            for i in 0...currentExampleStepIndex {
-                let s = pendingExampleSteps[i]
+        var shortDivisionState: ShortDivisionState? = nil
+        for i in 0...currentExampleStepIndex {
+            let s = pendingExampleSteps[i]
+            if s.visual.type == "stacked_arithmetic" {
                 if s.visual.action == "setup" {
                     gridState = GridState.from(visual: s.visual)
                 }
                 gridState?.apply(visual: s.visual)
+            } else if s.visual.type == "short_division" {
+                if s.visual.action == "setup" {
+                    shortDivisionState = ShortDivisionState.from(visual: s.visual)
+                }
+                shortDivisionState?.apply(visual: s.visual)
             }
         }
 
@@ -256,7 +262,7 @@ class ChatViewModel {
 
         messages.append(ChatMessage(
             sender: .kvante,
-            content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count, gridState),
+            content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count, gridState, shortDivisionState),
             actions: chips
         ))
 
@@ -357,7 +363,7 @@ class ChatViewModel {
                             )
                             messages.append(ChatMessage(
                                 sender: .kvante,
-                                content: .exampleStep(step, 1, 1, completedState),
+                                content: .exampleStep(step, 1, 1, completedState, nil),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
                             ))
                         } else {
