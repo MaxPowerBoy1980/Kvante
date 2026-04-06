@@ -19,6 +19,14 @@ class ChatViewModel {
     // Track submission for follow-ups
     private var currentSubmissionId: String?
 
+    /// Whether current assignment uses stacked arithmetic (numbers > 30)
+    private var isStackedArithmetic: Bool {
+        let text = currentAssignment.text
+        let hasOperator = text.contains("+") || text.contains("-")
+        let numbers = text.matches(of: /\d+/).compactMap { Int(String($0.output)) }
+        return hasOperator && numbers.contains(where: { $0 > 30 })
+    }
+
     // Callback for parent to advance to next assignment
     var onNextAssignment: (() -> Void)?
 
@@ -183,25 +191,46 @@ class ChatViewModel {
         let loadingId = addLoading("Kvante tyder dit svar...")
 
         Task { @MainActor in
-            // Step 1: Try Apple OCR first (instant, on-device)
-            let ocr = await HandwritingOCR.recognize(imageData: imageData, assignmentText: currentAssignment.text)
-
             var readAnswer: String
             var source: String
 
-            if !ocr.answer.isEmpty && !ocr.fullText.isEmpty {
-                readAnswer = ocr.fullText
-                source = "Apple OCR"
+            // For stacked arithmetic (numbers > 30), use LLM Vision directly —
+            // Apple OCR can't read columnar handwriting.
+            let useVision = isStackedArithmetic
+
+            if !useVision {
+                // Simple problems: Apple OCR first (instant, on-device)
+                let ocr = await HandwritingOCR.recognize(imageData: imageData, assignmentText: currentAssignment.text)
+                if !ocr.answer.isEmpty && !ocr.fullText.isEmpty {
+                    readAnswer = ocr.fullText
+                    source = "Apple OCR"
+                } else {
+                    // Fall through to LLM Vision
+                    do {
+                        let result = try await apiClient.submitWork(
+                            sessionId: sessionId,
+                            assignmentId: currentAssignment.id,
+                            imageData: imageData
+                        )
+                        readAnswer = result.studentAnswer
+                        source = "Gemini Vision"
+                    } catch {
+                        replaceLoading(loadingId, with: ChatMessage(
+                            sender: .kvante,
+                            content: .text("Hovsa, noget gik galt: \(error.localizedDescription)")
+                        ))
+                        return
+                    }
+                }
             } else {
-                // Gemini fallback for reading
+                // Stacked arithmetic: LLM Vision reads the columnar handwriting
                 do {
-                    // Use submitWork just to read — but we need the answer text
                     let result = try await apiClient.submitWork(
                         sessionId: sessionId,
                         assignmentId: currentAssignment.id,
                         imageData: imageData
                     )
-                    readAnswer = result.studentAnswer
+                    readAnswer = "\(currentAssignment.text.contains("+") ? "+" : "-") = \(result.studentAnswer)"
                     source = "Gemini Vision"
                 } catch {
                     replaceLoading(loadingId, with: ChatMessage(
@@ -214,7 +243,7 @@ class ChatViewModel {
 
             // Step 2: ALWAYS ask student to confirm
             pendingImageData = imageData
-            pendingOcrFullText = ocr.fullText
+            pendingOcrFullText = readAnswer
 
             replaceLoading(loadingId, with: ChatMessage(
                 sender: .kvante,
