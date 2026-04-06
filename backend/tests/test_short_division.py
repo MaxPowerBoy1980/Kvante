@@ -228,3 +228,40 @@ class TestRouting:
         assert result["steps"][-1]["visual"]["action"] == "setup"
 
         assert "588" not in result["example_problem"]
+
+
+class TestEndToEnd:
+    def test_full_response_validates_against_schema(self):
+        """ExampleResponse from short division passes Pydantic validation."""
+        from pydantic import ValidationError
+        from app.models.schemas import ExampleResponse as ExampleResponseModel
+
+        service = ExampleGeneratorService.__new__(ExampleGeneratorService)
+        result = service.generate_short_division_example(
+            assignment_text="Regn ud: 84 ÷ 4",
+            language="da",
+        )
+        # Should not raise
+        ExampleResponseModel(**result)
+
+    def test_all_visuals_are_short_division(self):
+        """All steps should have visual type short_division."""
+        service = ExampleGeneratorService.__new__(ExampleGeneratorService)
+        result = service.generate_short_division_example(
+            assignment_text="Regn ud: 589 ÷ 4",
+            language="da",
+        )
+        for step in result["steps"]:
+            assert step["visual"]["type"] == "short_division"
+
+    def test_remainder_flow_includes_fraction(self):
+        """Assignments with remainder include fraction step."""
+        from app.services.short_division import ShortDivisionService
+        steps = ShortDivisionService.compute_steps(589, 4)
+        assert any(s["step"] == "show_fraction" for s in steps)
+
+    def test_no_remainder_flow_skips_fraction(self):
+        """Assignments without remainder skip fraction/decimal steps."""
+        from app.services.short_division import ShortDivisionService
+        steps = ShortDivisionService.compute_steps(588, 4)
+        assert not any(s["step"] == "show_fraction" for s in steps)
