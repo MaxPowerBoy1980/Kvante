@@ -62,6 +62,10 @@ struct VisualInstruction: Codable {
         return nil
     }
 
+    func boolParam(_ key: String) -> Bool? {
+        params[key]?.value as? Bool
+    }
+
     func stringParam(_ key: String) -> String? {
         params[key]?.value as? String
     }
