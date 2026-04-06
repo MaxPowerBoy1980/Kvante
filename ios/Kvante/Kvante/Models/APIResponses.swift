@@ -157,9 +157,10 @@ struct PracticeAssignment: Codable, Identifiable {
     let type: String
     let topic: String
     let difficultyEstimate: Int
+    let position: Int?  // Add after difficultyEstimate — optional for backwards compat
 
     enum CodingKeys: String, CodingKey {
-        case id, text, type, topic
+        case id, text, type, topic, position
         case problemId = "problem_id"
         case localId = "local_id"
         case difficultyEstimate = "difficulty_estimate"
@@ -202,6 +203,59 @@ extension ParsedAssignment {
             positionOnPage: ""
         )
     }
+}
+
+// MARK: - Weekly / Session History
+
+struct WeeklySessionResponse: Codable {
+    let sessionId: String
+    let name: String
+    let assignments: [PracticeAssignment]
+
+    enum CodingKeys: String, CodingKey {
+        case name, assignments
+        case sessionId = "session_id"
+    }
+}
+
+struct SessionSummary: Codable, Identifiable {
+    let sessionId: String
+    let name: String
+    let mode: String
+    let topic: String?
+    let status: String
+    let assignmentCount: Int
+    let completedCount: Int
+    let createdAt: String
+    let completedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name, mode, topic, status
+        case sessionId = "session_id"
+        case assignmentCount = "assignment_count"
+        case completedCount = "completed_count"
+        case createdAt = "created_at"
+        case completedAt = "completed_at"
+    }
+
+    var id: String { sessionId }
+    var isCompleted: Bool { status == "completed" }
+
+    var displayDate: String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        if let date = formatter.date(from: createdAt) {
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "da_DK")
+            df.dateFormat = "d. MMM"
+            return df.string(from: date)
+        }
+        return ""
+    }
+}
+
+struct SessionHistoryResponse: Codable {
+    let sessions: [SessionSummary]
 }
 
 // MARK: - Health

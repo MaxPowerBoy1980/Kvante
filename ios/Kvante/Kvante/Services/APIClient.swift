@@ -252,6 +252,42 @@ actor APIClient {
         return try decoder.decode(PracticeSessionResponse.self, from: data)
     }
 
+    // MARK: - Weekly Assignments
+
+    func createWeeklySession(studentId: String, gradeLevel: Int, count: Int = 6) async throws -> WeeklySessionResponse {
+        let body: [String: Any] = [
+            "student_id": studentId,
+            "grade_level": gradeLevel,
+            "count": count,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        var request = URLRequest(url: baseURL.appendingPathComponent("sessions/weekly"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = data
+        request.timeoutInterval = 30
+        let (responseData, response) = try await session.data(for: request)
+        try checkResponse(response, data: responseData)
+        return try decoder.decode(WeeklySessionResponse.self, from: responseData)
+    }
+
+    func getSessionHistory(studentId: String) async throws -> SessionHistoryResponse {
+        let url = baseURL.appendingPathComponent("students/\(studentId)/sessions")
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(SessionHistoryResponse.self, from: data)
+    }
+
+    func completeSession(sessionId: String) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("sessions/\(sessionId)/complete"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+    }
+
     // MARK: - Error Handling
 
     private func checkResponse(_ response: URLResponse, data: Data) throws {
