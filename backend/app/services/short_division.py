@@ -4,7 +4,6 @@ Given a dividend and single-digit divisor, produces the exact sequence of
 animation steps. No LLM involved — pure arithmetic.
 """
 import random
-import re
 
 
 class ShortDivisionService:
@@ -87,12 +86,17 @@ class ShortDivisionService:
         num_digits = len(str(dividend))
         lo = 10 ** (num_digits - 1)
         hi = 10 ** num_digits - 1
+        has_remainder = dividend % divisor != 0
         possible_divisors = [d for d in range(2, 10) if d != divisor]
 
-        for _ in range(50):
+        for _ in range(100):
             ex_divisor = random.choice(possible_divisors)
             ex_dividend = random.randint(lo, hi)
-            if ex_dividend != dividend:
+            if ex_dividend == dividend:
+                continue
+            # Match difficulty: example should have remainder iff student's does
+            ex_has_remainder = ex_dividend % ex_divisor != 0
+            if ex_has_remainder == has_remainder:
                 return ex_dividend, ex_divisor
 
         return lo + 1, possible_divisors[0]
@@ -116,12 +120,14 @@ class ShortDivisionService:
                 rem = s["remainder"]
                 divisor = steps[0]["divisor"]
 
-                if i == 1:  # First process_digit (right after setup)
+                prev_step = steps[i - 1] if i > 1 else None
+                prev_rem = prev_step.get("remainder", 0) if prev_step else 0
+
+                if i == 1 or prev_rem == 0:
+                    # First digit or no carry — simple form
                     text = f"{gv} divideret med {divisor} giver {qd}, rest {rem}"
                 else:
-                    prev_step = steps[i - 1]
-                    prev_rem = prev_step.get("remainder", 0)
-                    digit = gv % 10 if prev_rem > 0 else gv
+                    digit = gv % 10
                     text = (
                         f"Resten {prev_rem} sættes foran {digit}, det giver {gv}. "
                         f"{gv} divideret med {divisor} giver {qd}, rest {rem}"
