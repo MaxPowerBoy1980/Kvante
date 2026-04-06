@@ -10,11 +10,13 @@ struct VisualComponentView: View {
     let cumulativeRows: Int
     let cumulativeGrouped: Int
     let cumulativeGridState: GridState?
+    let cumulativeShortDivisionState: ShortDivisionState?
 
     init(visual: VisualInstruction, animate: Bool,
          cumulativeObjects: Int = 0, cumulativeCrossedOut: Int = 0,
          cumulativeRows: Int = 2, cumulativeGrouped: Int = 0,
-         cumulativeGridState: GridState? = nil) {
+         cumulativeGridState: GridState? = nil,
+         cumulativeShortDivisionState: ShortDivisionState? = nil) {
         self.visual = visual
         self.animate = animate
         self.cumulativeObjects = cumulativeObjects
@@ -22,6 +24,7 @@ struct VisualComponentView: View {
         self.cumulativeRows = cumulativeRows
         self.cumulativeGrouped = cumulativeGrouped
         self.cumulativeGridState = cumulativeGridState
+        self.cumulativeShortDivisionState = cumulativeShortDivisionState
     }
 
     var body: some View {
@@ -52,6 +55,13 @@ struct VisualComponentView: View {
                 StackedArithmeticView(visual: visual, animate: animate, gridState: state)
             } else {
                 StackedArithmeticView(visual: visual, animate: animate, gridState: GridState.from(visual: visual))
+            }
+        case "short_division":
+            if let state = cumulativeShortDivisionState {
+                ShortDivisionView(visual: visual, animate: animate, state: state)
+            } else {
+                ShortDivisionView(visual: visual, animate: animate,
+                                  state: ShortDivisionState.from(visual: visual))
             }
         default:
             // Fallback: unknown visual type — show nothing (text is shown by parent)
