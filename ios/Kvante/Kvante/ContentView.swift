@@ -35,19 +35,14 @@ struct ContentView: View {
                     PracticeSessionView(
                         sessionId: session.sessionId,
                         assignments: session.assignments,
-                        apiClient: client
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button {
-                                practiceSession = nil
-                                selectedTopic = nil
-                                showPractice = false
-                            } label: {
-                                Label("Afslut", systemImage: "xmark")
-                            }
+                        apiClient: client,
+                        onBack: {
+                            practiceSession = nil
+                            selectedTopic = nil
+                            showPractice = false
                         }
-                    }
+                    )
+                    .toolbar(.hidden, for: .navigationBar)
                 } else if let topic = selectedTopic {
                     DifficultyPickerView(topic: topic) { difficulty in
                         startPracticeSession(topic: topic.topic, difficulty: difficulty)

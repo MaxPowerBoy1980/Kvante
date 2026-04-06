@@ -4,6 +4,7 @@ struct PracticeSessionView: View {
     let sessionId: String
     let assignments: [PracticeAssignment]
     let apiClient: APIClient
+    var onBack: (() -> Void)?
 
     @State private var currentIndex = 0
     @State private var chatViewModel: ChatViewModel?
@@ -27,7 +28,7 @@ struct PracticeSessionView: View {
             if isSessionComplete {
                 completionView
             } else if let vm = chatViewModel {
-                ChatView(viewModel: vm)
+                ChatView(viewModel: vm, onBack: onBack)
             }
         }
         .navigationBarTitleDisplayMode(.inline)

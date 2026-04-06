@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
-    @Environment(\.dismiss) private var dismiss
+    var onBack: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,7 +64,7 @@ struct ChatView: View {
             // Back button (leading)
             HStack {
                 Button {
-                    dismiss()
+                    onBack?()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
