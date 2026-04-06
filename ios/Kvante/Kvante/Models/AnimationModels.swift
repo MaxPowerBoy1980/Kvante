@@ -57,7 +57,9 @@ struct VisualInstruction: Codable {
     // MARK: - Typed accessors
 
     func intParam(_ key: String) -> Int? {
-        params[key]?.value as? Int
+        if let i = params[key]?.value as? Int { return i }
+        if let d = params[key]?.value as? Double { return Int(d) }
+        return nil
     }
 
     func stringParam(_ key: String) -> String? {
@@ -73,7 +75,11 @@ struct VisualInstruction: Codable {
 
     func intArrayParam(_ key: String) -> [Int]? {
         if let arr = params[key]?.value as? [AnyCodable] {
-            return arr.compactMap { $0.value as? Int }
+            return arr.compactMap {
+                if let i = $0.value as? Int { return i }
+                if let d = $0.value as? Double { return Int(d) }
+                return nil
+            }
         }
         return nil
     }
