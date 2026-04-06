@@ -242,10 +242,22 @@ class ChatViewModel {
                         studentAnswer: result.studentAnswer,
                         correctAnswer: result.correctAnswer,
                         isCorrect: result.methodologySound,
-                        source: "Gemini Vision",
+                        source: "",
                         ocrDebug: "",
                         loadingId: loadingId
                     )
+
+                    // For correct stacked arithmetic: explain what the student did
+                    if result.methodologySound {
+                        let explanation = buildStackedExplanation(
+                            answer: result.studentAnswer
+                        )
+                        messages.append(ChatMessage(
+                            sender: .kvante,
+                            content: .text(explanation),
+                            actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
+                        ))
+                    }
 
                     // Request feedback for wrong answers
                     if !result.methodologySound {
@@ -393,6 +405,41 @@ class ChatViewModel {
             content: .answerResult(result),
             actions: chips
         ))
+    }
+
+    /// Build a deterministic explanation of how the student solved a stacked arithmetic problem.
+    private func buildStackedExplanation(answer: String) -> String {
+        let text = currentAssignment.text
+        let numbers = text.matches(of: /\d+/).compactMap { Int(String($0.output)) }
+        guard numbers.count >= 2 else {
+            return "Flot! Du har løst opgaven korrekt ved at stille tallene op i kolonner."
+        }
+
+        let a = numbers[0]
+        let b = numbers[1]
+        let topic = currentAssignment.topic
+        let isAddition = topic == "addition" || text.contains("+")
+        let op = isAddition ? "plus" : "minus"
+        let result = isAddition ? a + b : a - b
+
+        // Check if there were carries/borrows
+        var hasCarry = false
+        if isAddition {
+            let aDigits = String(a).map { Int(String($0))! }
+            let bDigits = String(b).map { Int(String($0))! }
+            let maxLen = max(aDigits.count, bDigits.count)
+            let aPadded = Array(repeating: 0, count: maxLen - aDigits.count) + aDigits
+            let bPadded = Array(repeating: 0, count: maxLen - bDigits.count) + bDigits
+            for i in stride(from: maxLen - 1, through: 0, by: -1) {
+                if aPadded[i] + bPadded[i] >= 10 { hasCarry = true; break }
+            }
+        }
+
+        if hasCarry {
+            return "Du stillede \(a) og \(b) op i kolonner, lagde sammen fra enerne og huskede at flytte tiere videre. Det gav \(result) — helt rigtigt!"
+        } else {
+            return "Du stillede \(a) og \(b) op i kolonner og lagde dem \(op) kolonne for kolonne. Det gav \(result) — helt rigtigt!"
+        }
     }
 
     private func handleFollowup(_ actionId: String) {
