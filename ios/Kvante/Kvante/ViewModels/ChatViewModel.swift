@@ -223,25 +223,57 @@ class ChatViewModel {
                     }
                 }
             } else {
-                // Stacked arithmetic: LLM Vision reads the columnar handwriting
+                // Stacked arithmetic: LLM Vision reads the columnar handwriting.
+                // submitWork already creates the submission and validates the answer.
                 do {
                     let result = try await apiClient.submitWork(
                         sessionId: sessionId,
                         assignmentId: currentAssignment.id,
                         imageData: imageData
                     )
-                    readAnswer = "\(currentAssignment.text.contains("+") ? "+" : "-") = \(result.studentAnswer)"
-                    source = "Gemini Vision"
+                    currentSubmissionId = result.submissionId
+                    pendingImageData = nil
+
+                    // Show result directly — no confirmation needed
+                    showAnswerResult(
+                        studentAnswer: result.studentAnswer,
+                        correctAnswer: result.correctAnswer,
+                        isCorrect: result.methodologySound,
+                        source: "Gemini Vision",
+                        ocrDebug: "",
+                        loadingId: loadingId
+                    )
+
+                    // Request feedback for wrong answers
+                    if !result.methodologySound {
+                        let feedbackLoadingId = addLoading("Kvante kigger på din metode...")
+                        do {
+                            let feedback = try await apiClient.getFeedback(
+                                submissionId: result.submissionId
+                            )
+                            let chips = feedback.structuredPrompts.map { ActionChipModel.fromPrompt($0) }
+                            replaceLoading(feedbackLoadingId, with: ChatMessage(
+                                sender: .kvante,
+                                content: .feedback(feedback),
+                                actions: chips
+                            ))
+                        } catch {
+                            replaceLoading(feedbackLoadingId, with: ChatMessage(
+                                sender: .kvante,
+                                content: .text("Prøv igen — tryk + for hjælp hvis du sidder fast.")
+                            ))
+                        }
+                    }
                 } catch {
                     replaceLoading(loadingId, with: ChatMessage(
                         sender: .kvante,
                         content: .text("Hovsa, noget gik galt: \(error.localizedDescription)")
                     ))
-                    return
                 }
+                return
             }
 
-            // Step 2: ALWAYS ask student to confirm
+            // Step 2: For non-stacked, ask student to confirm OCR
             pendingImageData = imageData
             pendingOcrFullText = readAnswer
 
