@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     confidence_threshold: float = 0.6
-    claude_model: str = "claude-sonnet-4-20250514"
+    claude_model: str = "claude-haiku-4-5-20251001"
     gemini_model: str = "gemini-2.5-flash"
     ollama_url: str = "http://localhost:11434"
     ollama_text_model: str = "qwen2.5:7b"
