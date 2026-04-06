@@ -104,11 +104,13 @@ struct ChatBubble: View {
                 in: bubbleShape
             )
             .overlay(
-                isKvante
-                    ? bubbleShape.stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 2)
-                    : nil
+                bubbleShape.stroke(
+                    isKvante
+                        ? KvanteTheme.Colors.kvanteBubbleBorder
+                        : KvanteTheme.Colors.tealShadow.opacity(0.3),
+                    lineWidth: isKvante ? 2 : 1
+                )
             )
-            .shadow(color: isKvante ? .clear : KvanteTheme.Colors.studentBubbleShadow, radius: 0, y: 4)
     }
 
     // MARK: - Assignment Intro
