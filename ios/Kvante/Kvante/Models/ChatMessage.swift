@@ -5,6 +5,12 @@ enum ChatSender {
     case student
 }
 
+enum CelebrationTier {
+    case routine
+    case persevered
+    case setComplete
+}
+
 enum ChatMessageContent {
     case text(String)
     case example(ExampleResponse)
@@ -16,6 +22,7 @@ enum ChatMessageContent {
     case loading(String)
     case assignmentIntro(ParsedAssignment)
     case tip(String)
+    case celebration(CelebrationTier)
 }
 
 struct OcrConfirmation {

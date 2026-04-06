@@ -75,6 +75,11 @@ class ChatViewModel {
         completedAssignmentIds.insert(currentAssignment.id)
 
         if isSetComplete {
+            let celebration = ChatMessage(
+                sender: .kvante,
+                content: .celebration(.setComplete)
+            )
+            messages.append(celebration)
             onSetComplete?()
             return
         }
@@ -502,15 +507,24 @@ class ChatViewModel {
             ocrDebug: ocrDebug
         )
 
-        let chips: [ActionChipModel] = isCorrect
-            ? [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
-            : []
+        let chips: [ActionChipModel] = []  // chips moved to celebration
 
         replaceLoading(loadingId, with: ChatMessage(
             sender: .kvante,
             content: .answerResult(result),
             actions: chips
         ))
+
+        // Add celebration for correct answers
+        if isCorrect {
+            let attempts = attemptCounts[currentAssignment.id, default: 1]
+            let tier: CelebrationTier = attempts >= 2 ? .persevered : .routine
+            messages.append(ChatMessage(
+                sender: .kvante,
+                content: .celebration(tier),
+                actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
+            ))
+        }
     }
 
     /// Build a deterministic explanation of how the student solved a stacked arithmetic problem.

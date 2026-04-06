@@ -85,6 +85,8 @@ struct ChatBubble: View {
             scannedImageBubble(data)
         case .loading(let text):
             loadingBubble(text)
+        case .celebration(let tier):
+            CelebrationView(tier: tier)
         }
     }
 
