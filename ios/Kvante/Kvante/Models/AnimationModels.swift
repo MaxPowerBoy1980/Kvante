@@ -9,6 +9,17 @@ struct VisualInstruction: Codable {
     let action: String
     let params: [String: AnyCodable]
 
+    /// Programmatic init for creating visual instructions in code.
+    static func make(type: String, action: String) -> VisualInstruction {
+        VisualInstruction(type: type, action: action, params: [:])
+    }
+
+    private init(type: String, action: String, params: [String: AnyCodable]) {
+        self.type = type
+        self.action = action
+        self.params = params
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: DynamicCodingKey.self)
         type = try container.decode(String.self, forKey: DynamicCodingKey(stringValue: "type")!)
@@ -77,6 +88,14 @@ struct AnimationStep: Identifiable, Codable {
     let text: String
     let visual: VisualInstruction
     let audioCue: String
+
+    init(step: Int, phase: String, text: String, visual: VisualInstruction, audioCue: String) {
+        self.step = step
+        self.phase = phase
+        self.text = text
+        self.visual = visual
+        self.audioCue = audioCue
+    }
 
     enum CodingKeys: String, CodingKey {
         case step, phase, text, visual

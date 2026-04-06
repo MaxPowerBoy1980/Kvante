@@ -35,6 +35,70 @@ struct GridState {
         return GridState(columns: columns, operation: operation, top: top, bottom: bottom)
     }
 
+    /// Build a completed grid showing the full solved computation with carries/borrows.
+    static func completed(a: Int, b: Int, operation: String) -> GridState {
+        let columnNames: [[String]] = [
+            ["E"], ["Ti", "E"], ["H", "Ti", "E"],
+            ["T", "H", "Ti", "E"], ["Tt", "T", "H", "Ti", "E"],
+        ]
+
+        func toDigits(_ n: Int, _ length: Int) -> [Int] {
+            var digits: [Int] = []
+            var val = n
+            for _ in 0..<length { digits.append(val % 10); val /= 10 }
+            return digits.reversed()
+        }
+
+        if operation == "addition" {
+            let answer = a + b
+            let numDigits = max(String(a).count, String(b).count, String(answer).count)
+            let cols = columnNames[numDigits - 1]
+            let top = toDigits(a, numDigits)
+            let bottom = toDigits(b, numDigits)
+            var state = GridState(columns: cols, operation: operation, top: top, bottom: bottom)
+
+            var carry = 0
+            for i in stride(from: numDigits - 1, through: 0, by: -1) {
+                let total = top[i] + bottom[i] + carry
+                state.answerDigits[i] = total % 10
+                let newCarry = total / 10
+                if newCarry > 0 && i > 0 {
+                    state.carries[cols[i - 1]] = newCarry
+                }
+                carry = newCarry
+            }
+            state.showAnswer = true
+            return state
+        } else {
+            // Subtraction
+            let numDigits = max(String(a).count, String(b).count)
+            let cols = columnNames[numDigits - 1]
+            let top = toDigits(a, numDigits)
+            let bottom = toDigits(b, numDigits)
+            var state = GridState(columns: cols, operation: operation, top: top, bottom: bottom)
+
+            var working = top
+            for i in stride(from: numDigits - 1, through: 0, by: -1) {
+                if working[i] < bottom[i] {
+                    // Borrow
+                    var j = i - 1
+                    while j >= 0 && working[j] == 0 { j -= 1 }
+                    if j >= 0 {
+                        for k in j..<i {
+                            state.crossedOut[cols[k]] = true
+                            state.replacements[cols[k]] = working[k] - 1
+                            working[k] -= 1
+                            working[k + 1] += 10
+                        }
+                    }
+                }
+                state.answerDigits[i] = working[i] - bottom[i]
+            }
+            state.showAnswer = true
+            return state
+        }
+    }
+
     mutating func apply(visual: VisualInstruction) {
         let action = visual.action
 

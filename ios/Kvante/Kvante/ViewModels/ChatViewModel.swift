@@ -247,16 +247,42 @@ class ChatViewModel {
                         loadingId: loadingId
                     )
 
-                    // For correct stacked arithmetic: explain what the student did
+                    // For correct stacked arithmetic: show completed grid + explanation
                     if result.methodologySound {
                         let explanation = buildStackedExplanation(
                             answer: result.studentAnswer
                         )
-                        messages.append(ChatMessage(
-                            sender: .kvante,
-                            content: .text(explanation),
-                            actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
-                        ))
+                        // Build completed grid visual
+                        let text = currentAssignment.text
+                        let numbers = text.matches(of: /\d+/).compactMap { Int(String($0.output)) }
+                        if numbers.count >= 2 {
+                            let a = numbers[0], b = numbers[1]
+                            let topic = currentAssignment.topic
+                            let op = (topic == "addition" || text.contains("+")) ? "addition" : "subtraction"
+                            let completedState = GridState.completed(a: a, b: b, operation: op)
+
+                            // Create a dummy visual instruction for the setup
+                            let dummyVisual = VisualInstruction.make(
+                                type: "stacked_arithmetic", action: "answer"
+                            )
+                            let step = AnimationStep(
+                                step: 1, phase: "concrete",
+                                text: explanation,
+                                visual: dummyVisual,
+                                audioCue: ""
+                            )
+                            messages.append(ChatMessage(
+                                sender: .kvante,
+                                content: .exampleStep(step, 1, 1, completedState),
+                                actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
+                            ))
+                        } else {
+                            messages.append(ChatMessage(
+                                sender: .kvante,
+                                content: .text(explanation),
+                                actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
+                            ))
+                        }
                     }
 
                     // Request feedback for wrong answers
