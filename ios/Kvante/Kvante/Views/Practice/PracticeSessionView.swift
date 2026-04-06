@@ -6,66 +6,19 @@ struct PracticeSessionView: View {
     let apiClient: APIClient
     var onBack: (() -> Void)?
 
-    @State private var currentIndex = 0
     @State private var chatViewModel: ChatViewModel?
-    @State private var completedCount = 0
-
-    private var currentAssignment: PracticeAssignment? {
-        guard currentIndex < assignments.count else { return nil }
-        return assignments[currentIndex]
-    }
-
-    private var isSessionComplete: Bool {
-        currentIndex >= assignments.count
-    }
+    @State private var isComplete = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Progress bar
-            progressBar
-
-            // Content
-            if isSessionComplete {
+            if isComplete {
                 completionView
             } else if let vm = chatViewModel {
                 ChatView(viewModel: vm, onBack: onBack)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { setupCurrentAssignment() }
-    }
-
-    // MARK: - Progress
-
-    private var progressBar: some View {
-        VStack(spacing: 4) {
-            HStack {
-                Text("Opgave \(currentIndex + 1) af \(assignments.count)")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                Spacer()
-                Text("\(completedCount) løst")
-                    .font(.caption)
-                    .foregroundStyle(KvanteTheme.Colors.success)
-            }
-            .padding(.horizontal, 20)
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(KvanteTheme.Colors.muted)
-                        .frame(height: 8)
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(KvanteTheme.Colors.successGradient)
-                        .frame(width: geo.size.width * CGFloat(currentIndex) / CGFloat(max(assignments.count, 1)), height: 8)
-                        .animation(.easeInOut, value: currentIndex)
-                }
-            }
-            .frame(height: 8)
-            .padding(.horizontal, 20)
-        }
-        .padding(.vertical, 8)
-        .background(KvanteTheme.Colors.backgroundStart.opacity(0.95))
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear { setupSession() }
     }
 
     // MARK: - Completion
@@ -76,47 +29,47 @@ struct PracticeSessionView: View {
 
             ZStack {
                 Circle()
-                    .fill(KvanteTheme.Colors.success.opacity(0.15))
-                    .frame(width: 100, height: 100)
+                    .fill(KvanteTheme.Colors.success.opacity(0.1))
+                    .frame(width: 120, height: 120)
                 Image(systemName: "checkmark")
-                    .font(.system(size: 44, weight: .bold))
+                    .font(.system(size: 48, weight: .bold))
                     .foregroundStyle(KvanteTheme.Colors.success)
             }
 
             Text("Flot klaret!")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(KvanteTheme.Colors.textPrimary)
+                .font(.system(size: 32, weight: .bold))
+                .foregroundStyle(KvanteTheme.Colors.ink)
 
             Text("Du har gennemført alle \(assignments.count) opgaver")
-                .font(.title3)
+                .font(.body)
                 .foregroundStyle(KvanteTheme.Colors.textSecondary)
+
+            Button(action: { onBack?() }) {
+                Text("Tilbage til forsiden")
+                    .font(KvanteTheme.Fonts.buttonLabel)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(KvanteTheme.TactileButtonStyle.primary)
+            .padding(.top, 12)
 
             Spacer()
         }
         .frame(maxWidth: .infinity)
-        .background(KvanteTheme.Colors.backgroundStart)
+        .background(KvanteTheme.Colors.cream)
     }
 
     // MARK: - Setup
 
-    private func setupCurrentAssignment() {
-        guard let assignment = currentAssignment else { return }
-        let parsed = ParsedAssignment(from: assignment)
+    private func setupSession() {
+        let parsed = assignments.map { ParsedAssignment(from: $0) }
         let vm = ChatViewModel(
-            assignments: [parsed],
+            assignments: parsed,
             sessionId: sessionId,
             apiClient: apiClient
         )
-        vm.onSetComplete = { advanceToNext() }
+        vm.onSetComplete = { isComplete = true }
         chatViewModel = vm
-    }
-
-    private func advanceToNext() {
-        completedCount += 1
-        currentIndex += 1
-        chatViewModel = nil
-        if !isSessionComplete {
-            setupCurrentAssignment()
-        }
     }
 }
