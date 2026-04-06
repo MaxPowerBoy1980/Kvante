@@ -184,7 +184,7 @@ class ChatViewModel {
 
         Task { @MainActor in
             // Step 1: Try Apple OCR first (instant, on-device)
-            let ocr = await HandwritingOCR.recognize(imageData: imageData)
+            let ocr = await HandwritingOCR.recognize(imageData: imageData, assignmentText: currentAssignment.text)
 
             var readAnswer: String
             var source: String

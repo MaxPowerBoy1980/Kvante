@@ -13,7 +13,8 @@ enum HandwritingOCR {
     }
 
     /// Recognize handwriting in an image.
-    static func recognize(imageData: Data) async -> Result {
+    /// Pass assignmentText (e.g. "Regn ud: 347 + 286") for context-aware parsing.
+    static func recognize(imageData: Data, assignmentText: String = "") async -> Result {
         guard let image = UIImage(data: imageData),
               let cgImage = image.cgImage else {
             return Result(fullText: "", answer: "", confidence: 0, isCleanNumber: false)
@@ -35,8 +36,10 @@ enum HandwritingOCR {
                     }
                 }
 
-                let fullText = reconstructStackedArithmetic(lines: lines.map(\.0))
-                    ?? lines.map(\.0).joined(separator: " ")
+                let rawLines = lines.map(\.0)
+                let fullText = reconstructStackedArithmetic(lines: rawLines)
+                    ?? reconstructFromAssignmentContext(ocrLines: rawLines, assignmentText: assignmentText)
+                    ?? rawLines.joined(separator: " ")
                 let avgConfidence = lines.map(\.1).reduce(0, +) / Float(max(lines.count, 1))
 
                 let answer = extractAnswer(from: fullText)
@@ -123,6 +126,58 @@ enum HandwritingOCR {
         }
 
         return "\(operands[0]) \(op) \(operands[1]) = \(answer)"
+    }
+
+    /// Use the known assignment to interpret OCR numbers.
+    /// If assignment is "347 + 286" and OCR found numbers [11, 347, 286, 633],
+    /// reconstruct as "347 + 286 = 633".
+    private static func reconstructFromAssignmentContext(ocrLines: [String], assignmentText: String) -> String? {
+        guard !assignmentText.isEmpty else { return nil }
+
+        // Extract operator from assignment
+        let op: String
+        if assignmentText.contains("+") {
+            op = "+"
+        } else if assignmentText.contains("-") {
+            op = "-"
+        } else {
+            return nil
+        }
+
+        // Extract numbers from assignment text
+        let assignmentNumbers = assignmentText.matches(of: /\d+/).map { Int(String($0.output))! }
+        guard assignmentNumbers.count >= 2 else { return nil }
+        let a = assignmentNumbers[0]
+        let b = assignmentNumbers[1]
+
+        // Extract ALL numbers from OCR output (across all lines)
+        let allOcrText = ocrLines.joined(separator: " ")
+        let ocrNumbers = allOcrText.matches(of: /\d+/).map { Int(String($0.output))! }
+        guard !ocrNumbers.isEmpty else { return nil }
+
+        // Check if OCR found the assignment operands
+        let foundA = ocrNumbers.contains(a)
+        let foundB = ocrNumbers.contains(b)
+
+        if foundA && foundB {
+            // Find the answer: a number that's NOT one of the operands
+            // (or the last number if all match)
+            let candidates = ocrNumbers.filter { $0 != a && $0 != b }
+            if let answer = candidates.last {
+                return "\(a) \(op) \(b) = \(answer)"
+            }
+            // If no candidate (e.g., operand repeated), use last OCR number
+            if let last = ocrNumbers.last, last != a || last != b {
+                return "\(a) \(op) \(b) = \(last)"
+            }
+        }
+
+        // Partial match: if we find at least one operand + an answer-like number
+        if let lastNum = ocrNumbers.last, (foundA || foundB) {
+            return "\(a) \(op) \(b) = \(lastNum)"
+        }
+
+        return nil
     }
 
     /// Extract the final answer from recognized text.
