@@ -44,6 +44,11 @@ def should_use_stacked(assignment_type: str, assignment_text: str,
     return any(n > 30 for n in numbers)
 
 
+def should_use_short_division(topic: str) -> bool:
+    """All division topics use slikkepindsmetoden."""
+    return topic == "division"
+
+
 class ExampleGeneratorService:
     def __init__(self):
         self.client = get_ai_client()
@@ -66,6 +71,11 @@ class ExampleGeneratorService:
         if detected_op and should_use_stacked(assignment_type, assignment_text, assignment_topic):
             return self.generate_stacked_example(
                 assignment_type=detected_op,
+                assignment_text=assignment_text,
+                language=language,
+            )
+        if should_use_short_division(assignment_topic):
+            return self.generate_short_division_example(
                 assignment_text=assignment_text,
                 language=language,
             )
@@ -223,6 +233,86 @@ class ExampleGeneratorService:
             "example_problem": f"{a} {op_symbol} {b} = ?",
             "pedagogy": "concrete-first",
             "steps": steps,
+            "note": "",
+        }
+
+    def generate_short_division_example(self, assignment_text: str, language: str = "da") -> dict:
+        """Generate a short division example — fully deterministic, no LLM."""
+        from app.services.short_division import ShortDivisionService
+
+        logger.info("Generating short division example for: '%s'", assignment_text)
+        start = time.time()
+
+        # Parse dividend and divisor from assignment text
+        numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
+        if len(numbers) >= 2:
+            student_dividend, student_divisor = numbers[0], numbers[1]
+        else:
+            student_dividend, student_divisor = 84, 4
+
+        ex_dividend, ex_divisor = ShortDivisionService.pick_example_numbers(student_dividend, student_divisor)
+        computed = ShortDivisionService.compute_steps(ex_dividend, ex_divisor)
+        texts = ShortDivisionService.generate_text(computed)
+
+        anim_steps = []
+        for i, (s, text_obj) in enumerate(zip(computed, texts)):
+            action = s["step"]
+            visual = {"type": "short_division", "action": action}
+
+            if action == "setup":
+                visual["dividend"] = s["dividend"]
+                visual["divisor"] = s["divisor"]
+                visual["digits"] = s["digits"]
+            elif action == "process_digit":
+                visual["position"] = s["position"]
+                visual["group_value"] = s["group_value"]
+                visual["quotient_digit"] = s["quotient_digit"]
+                visual["remainder"] = s["remainder"]
+                visual["leading"] = s["leading"]
+                visual["expression"] = s["expression"]
+            elif action == "show_remainder":
+                visual["remainder"] = s["remainder"]
+                visual["divisor"] = s["divisor"]
+            elif action == "show_fraction":
+                visual["whole"] = s["whole"]
+                visual["numerator"] = s["numerator"]
+                visual["denominator"] = s["denominator"]
+            elif action == "show_decimal":
+                visual["decimal_result"] = s["decimal_result"]
+            elif action == "reveal":
+                visual["result"] = s["result"]
+
+            anim_steps.append({
+                "step": i + 1,
+                "phase": "concrete",
+                "text": text_obj["text"],
+                "visual": visual,
+                "audio_cue": text_obj.get("audio_cue", ""),
+            })
+
+        # "Try yours" step
+        student_digits = [int(d) for d in str(student_dividend)]
+        anim_steps.append({
+            "step": len(anim_steps) + 1,
+            "phase": "concrete",
+            "text": "Prøv nu selv med din opgave — stil den op på samme måde!",
+            "visual": {
+                "type": "short_division",
+                "action": "setup",
+                "dividend": student_dividend,
+                "divisor": student_divisor,
+                "digits": student_digits,
+            },
+            "audio_cue": "Prøv nu selv med din opgave",
+        })
+
+        elapsed = time.time() - start
+        logger.info("Generated short division example in %.3fs: %s ÷ %s", elapsed, ex_dividend, ex_divisor)
+
+        return {
+            "example_problem": f"{ex_dividend} ÷ {ex_divisor} = ?",
+            "pedagogy": "concrete-first",
+            "steps": anim_steps,
             "note": "",
         }
 

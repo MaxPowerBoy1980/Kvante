@@ -195,3 +195,36 @@ class TestPickExampleNumbers:
         for _ in range(20):
             _, ex_divisor = ShortDivisionService.pick_example_numbers(588, 4)
             assert 2 <= ex_divisor <= 9
+
+
+from app.services.example_generator import ExampleGeneratorService, should_use_short_division
+
+
+class TestRouting:
+    def test_should_use_short_division(self):
+        assert should_use_short_division("division") is True
+        assert should_use_short_division("addition") is False
+        assert should_use_short_division("subtraction") is False
+        assert should_use_short_division("multiplikation") is False
+
+    def test_short_division_example_flow(self):
+        """generate_short_division_example is fully deterministic — no LLM needed."""
+        service = ExampleGeneratorService.__new__(ExampleGeneratorService)
+        result = service.generate_short_division_example(
+            assignment_text="Regn ud: 588 ÷ 4",
+            language="da",
+        )
+        assert len(result["steps"]) >= 4
+        assert result["steps"][0]["visual"]["type"] == "short_division"
+        assert result["steps"][0]["visual"]["action"] == "setup"
+        assert result["steps"][0]["phase"] == "concrete"
+        assert "divideret med" in result["steps"][0]["text"]
+
+        reveal_steps = [s for s in result["steps"] if s["visual"]["action"] == "reveal"]
+        assert len(reveal_steps) == 1
+
+        assert result["steps"][-1]["text"] == "Prøv nu selv med din opgave — stil den op på samme måde!"
+        assert result["steps"][-1]["visual"]["type"] == "short_division"
+        assert result["steps"][-1]["visual"]["action"] == "setup"
+
+        assert "588" not in result["example_problem"]
