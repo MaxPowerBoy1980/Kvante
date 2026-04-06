@@ -436,7 +436,7 @@ class ChatViewModel {
         }
 
         if hasCarry {
-            return "Du stillede \(a) og \(b) op i kolonner, lagde sammen fra enerne og huskede at flytte tiere videre. Det gav \(result) — helt rigtigt!"
+            return "Du stillede \(a) og \(b) op i kolonner, lagde sammen fra enerne og brugte mente til at flytte tiere videre. Det gav \(result) — helt rigtigt!"
         } else {
             return "Du stillede \(a) og \(b) op i kolonner og lagde dem \(op) kolonne for kolonne. Det gav \(result) — helt rigtigt!"
         }

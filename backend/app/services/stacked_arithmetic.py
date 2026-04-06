@@ -180,8 +180,8 @@ class StackedArithmeticService:
                 to_col = group["to_column"]
                 cn = col_name.get(to_col, to_col)
                 texts.append({
-                    "text": f"Vi husker 1 i {cn}",
-                    "audio_cue": f"Vi husker 1 i {cn}",
+                    "text": f"Mente: vi flytter 1 til {cn}",
+                    "audio_cue": f"Mente: vi flytter 1 til {cn}",
                 })
             elif action == "borrow":
                 col = group["column"]
