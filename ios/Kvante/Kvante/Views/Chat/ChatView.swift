@@ -22,6 +22,27 @@ struct ChatView: View {
                 )
             }
 
+            // Sticky assignment bar
+            HStack(spacing: 8) {
+                Text(viewModel.currentAssignment.text)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+                    .lineLimit(1)
+                Spacer()
+                Text("Opgave \(viewModel.currentAssignment.localId)")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(KvanteTheme.Colors.textMuted)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(KvanteTheme.Colors.cream)
+            .overlay(
+                Rectangle()
+                    .fill(KvanteTheme.Colors.inkSubtle)
+                    .frame(height: 1),
+                alignment: .bottom
+            )
+
             // Messages
             ScrollViewReader { proxy in
                 ScrollView {
