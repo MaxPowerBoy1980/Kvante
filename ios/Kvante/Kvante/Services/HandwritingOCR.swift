@@ -37,9 +37,11 @@ enum HandwritingOCR {
                 }
 
                 let rawLines = lines.map(\.0)
+                let rawJoined = rawLines.joined(separator: " ")
                 let fullText = reconstructStackedArithmetic(lines: rawLines)
                     ?? reconstructFromAssignmentContext(ocrLines: rawLines, assignmentText: assignmentText)
-                    ?? rawLines.joined(separator: " ")
+                    ?? reconstructFromNumbers(rawText: rawJoined)
+                    ?? rawJoined
                 let avgConfidence = lines.map(\.1).reduce(0, +) / Float(max(lines.count, 1))
 
                 let answer = extractAnswer(from: fullText)
@@ -178,6 +180,29 @@ enum HandwritingOCR {
         }
 
         return nil
+    }
+
+    /// Last resort: extract numbers and operator from raw OCR text.
+    /// "+ / 347 286 633" → "347 + 286 = 633"
+    private static func reconstructFromNumbers(rawText: String) -> String? {
+        // Find all numbers (2+ digits)
+        let allNumbers = rawText.matches(of: /\d{2,}/).map { String($0.output) }
+        guard allNumbers.count >= 3 else { return nil }
+
+        // Detect operator anywhere in the text
+        let op: String
+        if rawText.contains("+") {
+            op = "+"
+        } else if rawText.contains("-") || rawText.contains("—") {
+            op = "-"
+        } else {
+            return nil
+        }
+
+        // Use the last 3 numbers: operand, operand, answer
+        // This skips carry notation (e.g., "11" before "347")
+        let last3 = Array(allNumbers.suffix(3))
+        return "\(last3[0]) \(op) \(last3[1]) = \(last3[2])"
     }
 
     /// Extract the final answer from recognized text.
