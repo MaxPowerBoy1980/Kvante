@@ -51,16 +51,17 @@ def create_practice_session(body: PracticeRequest, db: DBSession = Depends(get_d
     db.flush()
 
     assignments = []
-    for i, problem in enumerate(selected, 1):
+    for i, problem in enumerate(selected):
         assignment = Assignment(
             session_id=session.id,
             problem_id=problem.id,
-            local_id=str(i),
+            local_id=str(i + 1),
             text=problem.text,
             type=problem.type,
             topic=problem.topic,
             difficulty_estimate=problem.difficulty,
             correct_answer=problem.correct_answer,
+            position=i,
         )
         db.add(assignment)
         assignments.append(assignment)
@@ -78,6 +79,7 @@ def create_practice_session(body: PracticeRequest, db: DBSession = Depends(get_d
                 "type": a.type,
                 "topic": a.topic,
                 "difficulty_estimate": a.difficulty_estimate,
+                "position": a.position,
             }
             for a in assignments
         ],
