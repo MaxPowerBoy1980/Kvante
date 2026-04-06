@@ -168,10 +168,10 @@ struct StackedArithmeticView: View {
                 if let expr = state.currentExpression {
                     Text(expr)
                         .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.teal)
+                        .foregroundStyle(KvanteTheme.Colors.primary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color.teal.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                        .background(KvanteTheme.Colors.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
                         .transition(.scale.combined(with: .opacity))
                 }
 
@@ -195,11 +195,11 @@ struct StackedArithmeticView: View {
                 ForEach(state.columns, id: \.self) { col in
                     Text(col)
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.4))
                         .frame(width: cellSize, height: headerHeight)
                         .overlay(alignment: .leading) {
                             Rectangle()
-                                .fill(Color.secondary.opacity(0.3))
+                                .fill(KvanteTheme.Colors.ink.opacity(0.2))
                                 .frame(width: 1)
                         }
                 }
@@ -231,7 +231,7 @@ struct StackedArithmeticView: View {
             HStack(spacing: 0) {
                 Text(opSymbol)
                     .font(.custom("Marker Felt", size: 28))
-                    .foregroundStyle(.red.opacity(0.8))
+                    .foregroundStyle(KvanteTheme.Colors.primary)
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
@@ -246,7 +246,7 @@ struct StackedArithmeticView: View {
             }
 
             Rectangle()
-                .fill(Color.secondary)
+                .fill(KvanteTheme.Colors.ink.opacity(0.5))
                 .frame(height: 2)
                 .padding(.leading, cellSize)
 
@@ -274,7 +274,7 @@ struct StackedArithmeticView: View {
         ZStack {
             if isActive {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.teal.opacity(0.1))
+                    .fill(KvanteTheme.Colors.primary.opacity(0.1))
             }
 
             if !hidden {
@@ -288,27 +288,27 @@ struct StackedArithmeticView: View {
                     path.move(to: CGPoint(x: 8, y: cellSize - 8))
                     path.addLine(to: CGPoint(x: cellSize - 8, y: 8))
                 }
-                .stroke(Color.red, lineWidth: 2)
+                .stroke(KvanteTheme.Colors.primary, lineWidth: 2)
             }
 
             if let repl = replacement {
                 Text("\(repl)")
                     .font(.custom("Marker Felt", size: 16))
-                    .foregroundStyle(.red)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
                     .offset(x: -12, y: -12)
             }
 
             if let c = carry {
                 Text("\(c)")
                     .font(.custom("Marker Felt", size: 16))
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
                     .offset(x: -12, y: -12)
             }
         }
         .frame(width: cellSize, height: cellSize)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(Color.secondary.opacity(0.3))
+                .fill(KvanteTheme.Colors.ink.opacity(0.2))
                 .frame(width: 1)
         }
     }
@@ -319,18 +319,18 @@ struct StackedArithmeticView: View {
         ZStack {
             if isActive {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.teal.opacity(0.1))
+                    .fill(KvanteTheme.Colors.primary.opacity(0.1))
             }
             if !hidden {
                 Text("\(digit)")
                     .font(.custom("Marker Felt", size: 28))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(KvanteTheme.Colors.ink)
             }
         }
         .frame(width: cellSize, height: cellSize)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(Color.secondary.opacity(0.3))
+                .fill(KvanteTheme.Colors.ink.opacity(0.2))
                 .frame(width: 1)
         }
     }
@@ -341,12 +341,12 @@ struct StackedArithmeticView: View {
         ZStack {
             if isActive {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.teal.opacity(0.1))
+                    .fill(KvanteTheme.Colors.primary.opacity(0.1))
             }
             if let d = digit {
                 Text("\(d)")
                     .font(.custom("Marker Felt", size: 28))
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
                     .shadow(color: showGlow ? .teal.opacity(0.6) : .clear, radius: showGlow ? 8 : 0)
                     .scaleEffect(showGlow ? 1.1 : 1.0)
                     .animation(.spring(duration: 0.5).repeatCount(showGlow ? 2 : 0, autoreverses: true), value: showGlow)
@@ -355,7 +355,7 @@ struct StackedArithmeticView: View {
         .frame(width: cellSize, height: cellSize)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(Color.secondary.opacity(0.3))
+                .fill(KvanteTheme.Colors.ink.opacity(0.2))
                 .frame(width: 1)
         }
     }
