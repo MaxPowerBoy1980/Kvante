@@ -137,7 +137,7 @@ class ExampleGeneratorService:
         language: str = "da",
     ) -> dict:
         """Generate a stacked arithmetic example — fully deterministic, no LLM."""
-        from app.services.stacked_arithmetic import StackedArithmeticService
+        from app.services.stacked_arithmetic import StackedArithmeticService, COLUMN_NAMES
 
         logger.info("Generating stacked example for %s: '%s'", assignment_type, assignment_text)
         start = time.time()
@@ -186,6 +186,34 @@ class ExampleGeneratorService:
                 "text": text_obj["text"],
                 "visual": visual,
                 "audio_cue": text_obj.get("audio_cue", ""),
+            })
+
+        # Step 5: Add "now try yours" — show student's own problem in grid form
+        student_numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
+        if len(student_numbers) >= 2:
+            sa, sb = student_numbers[0], student_numbers[1]
+            if assignment_type == "subtraction" and sa < sb:
+                sa, sb = sb, sa
+            s_digits = max(len(str(sa)), len(str(sb)))
+            if assignment_type == "addition":
+                s_digits = max(s_digits, len(str(sa + sb)))
+            s_columns = COLUMN_NAMES.get(s_digits, COLUMN_NAMES[2])
+            s_top = StackedArithmeticService._to_digits(sa, s_digits)
+            s_bottom = StackedArithmeticService._to_digits(sb, s_digits)
+
+            steps.append({
+                "step": len(steps) + 1,
+                "phase": "concrete",
+                "text": "Prøv nu selv med din opgave — stil den op på samme måde!",
+                "visual": {
+                    "type": "stacked_arithmetic",
+                    "action": "setup",
+                    "operation": assignment_type,
+                    "columns": s_columns,
+                    "top": s_top,
+                    "bottom": s_bottom,
+                },
+                "audio_cue": "Prøv nu selv med din opgave",
             })
 
         elapsed = time.time() - start

@@ -137,10 +137,9 @@ struct StackedArithmeticView: View {
 
             Divider()
 
+            // Top number row (no operator)
             HStack(spacing: 0) {
-                Text(opSymbol)
-                    .font(.custom("Marker Felt", size: 28))
-                    .foregroundStyle(.red.opacity(0.8))
+                Text("")
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
@@ -156,8 +155,11 @@ struct StackedArithmeticView: View {
                 }
             }
 
+            // Bottom number row (operator on left)
             HStack(spacing: 0) {
-                Text("")
+                Text(opSymbol)
+                    .font(.custom("Marker Felt", size: 28))
+                    .foregroundStyle(.red.opacity(0.8))
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in

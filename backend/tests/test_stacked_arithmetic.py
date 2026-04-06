@@ -156,7 +156,13 @@ class TestIntegration:
         assert result["steps"][0]["visual"]["action"] == "setup"
         assert result["steps"][0]["phase"] == "concrete"
         assert result["steps"][0]["text"] == "Vi stiller tallene op i kolonner"
-        assert result["steps"][-1]["visual"]["action"] == "answer"
+        # Second-to-last step is answer, last is "try yours"
+        answer_steps = [s for s in result["steps"] if s["visual"]["action"] == "answer"]
+        assert len(answer_steps) == 1
+        # Last step is "try yours" with student's numbers
+        assert result["steps"][-1]["visual"]["action"] == "setup"
+        assert result["steps"][-1]["text"] == "Prøv nu selv med din opgave — stil den op på samme måde!"
+        assert result["steps"][-1]["visual"]["top"] is not None
         # Example numbers should be different from student's
         assert "45" not in result["example_problem"]
         assert "78" not in result["example_problem"]
