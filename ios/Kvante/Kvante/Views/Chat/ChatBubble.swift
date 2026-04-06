@@ -13,7 +13,7 @@ struct ChatBubble: View {
             if isKvante {
                 Text("KVANTE")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
                     .padding(.leading, 52)
             }
 
@@ -37,7 +37,7 @@ struct ChatBubble: View {
             if !isKvante, case .text = message.content {
                 Text("DIG")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
                     .padding(.trailing, 8)
             }
 
@@ -55,13 +55,7 @@ struct ChatBubble: View {
     private var avatar: some View {
         ZStack {
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.3, green: 0.3, blue: 0.5), Color(red: 0.2, green: 0.2, blue: 0.4)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(KvanteTheme.Colors.kvanteAvatar)
                 .frame(width: 36, height: 36)
             Text("🤖")
                 .font(.system(size: 18))
@@ -101,14 +95,18 @@ struct ChatBubble: View {
     private func textBubble(_ text: String) -> some View {
         Text(text)
             .font(.body)
-            .foregroundStyle(.white)
+            .foregroundStyle(isKvante ? KvanteTheme.Colors.textPrimary : .white)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(
+                isKvante ? KvanteTheme.Colors.kvanteBubble : KvanteTheme.Colors.studentBubble,
+                in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
+            )
+            .overlay(
                 isKvante
-                    ? Color(red: 0.18, green: 0.18, blue: 0.22)
-                    : Color(red: 0.35, green: 0.3, blue: 0.65),
-                in: RoundedRectangle(cornerRadius: 20)
+                    ? RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
+                        .stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 1)
+                    : nil
             )
     }
 
@@ -117,29 +115,20 @@ struct ChatBubble: View {
     private func assignmentIntroBubble(_ assignment: ParsedAssignment) -> some View {
         VStack(spacing: 6) {
             Text(assignment.text)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(KvanteTheme.Fonts.assignmentText)
                 .foregroundStyle(.white)
             HStack(spacing: 4) {
                 Text("Opgave \(assignment.localId)")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.6))
-                ForEach(0..<min(assignment.difficultyEstimate, 5), id: \.self) { _ in
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.yellow)
-                }
+                    .foregroundStyle(.white.opacity(0.7))
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
         .padding(.horizontal, 16)
         .background(
-            LinearGradient(
-                colors: [Color(red: 0.3, green: 0.25, blue: 0.55), Color(red: 0.2, green: 0.2, blue: 0.45)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 20)
+            KvanteTheme.Colors.assignmentBackground,
+            in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
         )
     }
 
@@ -158,18 +147,22 @@ struct ChatBubble: View {
             }
             Text(feedback.feedbackText)
                 .font(.body)
-                .foregroundStyle(.white)
+                .foregroundStyle(KvanteTheme.Colors.textPrimary)
         }
         .padding(14)
-        .background(Color(red: 0.18, green: 0.18, blue: 0.22), in: RoundedRectangle(cornerRadius: 20))
+        .background(KvanteTheme.Colors.kvanteBubble, in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
+                .stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 1)
+        )
     }
 
     private func toneStyle(_ tone: String) -> (String, Color) {
         switch tone {
-        case "celebratory": return ("star.fill", .green)
-        case "encouraging": return ("hand.thumbsup.fill", .orange)
-        case "supportive": return ("heart.fill", .blue)
-        default: return ("message.fill", .blue)
+        case "celebratory": return ("checkmark.circle.fill", KvanteTheme.Colors.success)
+        case "encouraging": return ("hand.thumbsup.fill", KvanteTheme.Colors.primary)
+        case "supportive": return ("heart.fill", KvanteTheme.Colors.teal)
+        default: return ("message.fill", KvanteTheme.Colors.teal)
         }
     }
 
@@ -197,7 +190,7 @@ struct ChatBubble: View {
     // MARK: - Answer Result
 
     private func answerResultBubble(_ result: AnswerResult) -> some View {
-        let color: Color = result.isCorrect ? .green : .orange
+        let color: Color = result.isCorrect ? KvanteTheme.Colors.success : KvanteTheme.Colors.wrong
 
         return VStack(alignment: .leading, spacing: 10) {
             // Result card
@@ -205,31 +198,31 @@ struct ChatBubble: View {
                 HStack(spacing: 6) {
                     Image(systemName: "text.viewfinder")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
                     Text("Læste: **\(result.studentAnswer)**")
                         .font(.subheadline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(KvanteTheme.Colors.textPrimary)
                     Text("via \(result.source)")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 }
                 HStack(spacing: 6) {
                     Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .font(.caption)
-                        .foregroundStyle(result.isCorrect ? .green : .red)
+                        .foregroundStyle(color)
                     Text("Svar: **\(result.correctAnswer)**")
                         .font(.subheadline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(KvanteTheme.Colors.textPrimary)
                 }
                 if !result.ocrDebug.isEmpty {
                     Text(result.ocrDebug)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.systemGray6).opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
+            .background(KvanteTheme.Colors.muted.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
 
             // Feedback message
             HStack(spacing: 8) {
@@ -238,11 +231,15 @@ struct ChatBubble: View {
                     .foregroundStyle(color)
                 Text(result.message)
                     .font(.body)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(KvanteTheme.Colors.textPrimary)
             }
         }
         .padding(14)
-        .background(Color(red: 0.18, green: 0.18, blue: 0.22), in: RoundedRectangle(cornerRadius: 20))
+        .background(KvanteTheme.Colors.kvanteBubble, in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
+                .stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 1)
+        )
     }
 
     // MARK: - Example (legacy, kept for compatibility)
@@ -261,16 +258,16 @@ struct ChatBubble: View {
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
                     .frame(width: 24, height: 24)
-                    .background(Color.orange, in: Circle())
+                    .background(KvanteTheme.Colors.primary, in: Circle())
                 Text("Trin \(stepNumber) af \(total)")
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
             }
 
             // Step text
             Text(step.text)
                 .font(.body)
-                .foregroundStyle(.white)
+                .foregroundStyle(KvanteTheme.Colors.textPrimary)
 
             // Visual component
             VisualComponentView(
@@ -285,10 +282,10 @@ struct ChatBubble: View {
             .frame(maxWidth: .infinity)
         }
         .padding(14)
-        .background(Color(red: 0.14, green: 0.14, blue: 0.18), in: RoundedRectangle(cornerRadius: 20))
+        .background(KvanteTheme.Colors.kvanteBubble, in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.orange.opacity(0.15), lineWidth: 1)
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
+                .stroke(KvanteTheme.Colors.primary.opacity(0.2), lineWidth: 1)
         )
     }
 
@@ -298,26 +295,26 @@ struct ChatBubble: View {
         HStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(Color.purple.opacity(0.2))
+                    .fill(KvanteTheme.Colors.tipBackground)
                     .frame(width: 32, height: 32)
                 Image(systemName: "lightbulb.fill")
                     .font(.caption)
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(KvanteTheme.Colors.tipLabel)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Kvantes Tip")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.purple)
+                    .foregroundStyle(KvanteTheme.Colors.tipLabel)
                 Text(text)
                     .font(.subheadline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(KvanteTheme.Colors.textPrimary)
             }
         }
         .padding(12)
-        .background(Color.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
+        .background(KvanteTheme.Colors.tipBackground, in: RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+                .stroke(KvanteTheme.Colors.tipBorder, lineWidth: 1.5)
         )
     }
 
@@ -344,12 +341,16 @@ struct ChatBubble: View {
             TypingDots()
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 .italic()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(red: 0.18, green: 0.18, blue: 0.22), in: RoundedRectangle(cornerRadius: 20))
+        .background(KvanteTheme.Colors.kvanteBubble, in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
+                .stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 1)
+        )
     }
 
     // MARK: - Chips
@@ -375,7 +376,7 @@ struct TypingDots: View {
         HStack(spacing: 5) {
             ForEach(0..<3) { i in
                 Circle()
-                    .fill(Color.purple)
+                    .fill(KvanteTheme.Colors.primary)
                     .frame(width: 8, height: 8)
                     .scaleEffect(active == i ? 1.4 : 0.7)
                     .opacity(active == i ? 1.0 : 0.3)
