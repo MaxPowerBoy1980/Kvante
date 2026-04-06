@@ -181,18 +181,42 @@ struct StackedArithmeticView: View {
         }
     }
 
+    /// Decimal column names that appear after the comma
+    private static let decimalColumns: Set<String> = ["td", "hd"]
+
+    /// Index of first decimal column, or nil if no decimals
+    private func decimalStart(in columns: [String]) -> Int? {
+        columns.firstIndex { Self.decimalColumns.contains($0) }
+    }
+
+    /// Renders a comma separator (narrow, vertically centered)
+    @ViewBuilder
+    private func commaSeparator(height: CGFloat) -> some View {
+        Text(",")
+            .font(.custom("Marker Felt", size: 28))
+            .foregroundStyle(KvanteTheme.Colors.ink)
+            .frame(width: 12, height: height)
+    }
+
     @ViewBuilder
     private func gridView(state: GridState) -> some View {
         let opSymbol = state.operation == "addition" ? "+" : "−"
         let cellSize: CGFloat = 44
         let headerHeight: CGFloat = 24
+        let decStart = decimalStart(in: state.columns)
 
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Text("")
                     .frame(width: cellSize, height: headerHeight)
 
-                ForEach(state.columns, id: \.self) { col in
+                ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
+                    if idx == decStart {
+                        Text(",")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.4))
+                            .frame(width: 12, height: headerHeight)
+                    }
                     Text(col)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.4))
@@ -213,6 +237,9 @@ struct StackedArithmeticView: View {
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
+                    if idx == decStart {
+                        commaSeparator(height: cellSize)
+                    }
                     let hidden = isLeadingZero(digits: state.topDigits, at: idx)
                     digitCell(
                         digit: state.topDigits[idx],
@@ -235,6 +262,9 @@ struct StackedArithmeticView: View {
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
+                    if idx == decStart {
+                        commaSeparator(height: cellSize)
+                    }
                     let hidden = isLeadingZero(digits: state.bottomDigits, at: idx)
                     plainDigitCell(
                         digit: state.bottomDigits[idx],
@@ -250,11 +280,15 @@ struct StackedArithmeticView: View {
                 .frame(height: 2)
                 .padding(.leading, cellSize)
 
+            // Answer row
             HStack(spacing: 0) {
                 Text("")
                     .frame(width: cellSize, height: cellSize)
 
                 ForEach(Array(state.columns.enumerated()), id: \.offset) { idx, col in
+                    if idx == decStart {
+                        commaSeparator(height: cellSize)
+                    }
                     answerDigitCell(
                         digit: state.answerDigits[idx],
                         isActive: state.activeColumn == col,
