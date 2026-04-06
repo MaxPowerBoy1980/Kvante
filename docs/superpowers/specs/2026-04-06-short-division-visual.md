@@ -8,7 +8,9 @@
 
 Ny visual type `short_division` der viser kort division med slikkepindsmetoden — den notation danske folkeskoleelever lærer. Divisor i cirkel øverst, lodret streg, progressive tal til venstre, resultatcifre til højre.
 
-Understøtter hele kæden: hel division → rest → brøk → decimal.
+Understøtter hele kæden: hel division → rest → brøk → decimal (kun terminerende decimaler — se edge cases).
+
+Kun encifret divisor. Tocifret divisor hører til lang division (galgemanden) og er ikke i scope.
 
 ## Eksempel
 
@@ -42,17 +44,17 @@ _____|_____
 
 | Case | Eksempel | Håndtering |
 |------|----------|------------|
-| Første ciffer < divisor | 2488 ÷ 4 | group akkumulerer cifre indtil group >= divisor (skriv 0 i kvotienten for hvert ciffer der ikke rækker) |
+| Første ciffer < divisor | 248 ÷ 4 = 62 | Første ciffer (2) giver quotient_digit 0 — dette er en ledende nul og vises *ikke* i resultatet. Resten (2) bæres videre, næste group bliver 24. Output har `quotient_digit: 0` med `leading: true` som iOS-viewet skjuler |
 | Store tal (4-5 cifre) | 12480 ÷ 8 | Flere rækker, samme flow |
-| Rest | 589 ÷ 4 | Vis rest → brøk → decimal |
-| Nul i kvotienten | 612 ÷ 6 = 102 | 01 ÷ 6 = 0 rest 1, skriv 0 |
-| Tocifret divisor | 864 ÷ 12 | Samme layout, større grupper |
+| Rest med terminerende decimal | 589 ÷ 4 | Vis rest → brøk → decimal (147,25) |
+| Rest med ikke-terminerende decimal | 10 ÷ 3 | Vis rest → brøk (3 1/3) — spring `show_decimal` over. Decimalen terminerer ikke og ville forvirre eleven |
+| Nul i kvotienten (midt i tal) | 612 ÷ 6 = 102 | 01 ÷ 6 = 0 rest 1, skriv 0. Nulcifre *midt i* resultatet vises altid — det er kun *ledende* nuller der skjules |
 
 ## Routing
 
 Alle divisionsopgaver bruger slikkepindsmetoden. Ingen `should_use_stacked()`-lignende logik nødvendig — `topic == "division"` er nok.
 
-`pick_example_numbers()` matcher antal cifre i dividend og divisor til elevens opgave.
+`pick_example_numbers()` matcher antal cifre i dividend og encifret divisor til elevens opgave.
 
 ---
 
@@ -64,42 +66,48 @@ Deterministisk Python — ingen LLM til matematik.
 
 #### `compute_steps(dividend: int, divisor: int) → list[dict]`
 
-Algoritme:
+Algoritme (encifret divisor):
 1. Konvertér dividend til ciffer-array
 2. Start med `group = 0`
 3. For hvert ciffer venstre-til-højre: `group = group * 10 + digit`
-   - Hvis `group < divisor`: `quotient_digit = 0`, behold `group` som rest (skriv kun 0 hvis det ikke er første ciffer)
-   - Hvis `group >= divisor`: `quotient_digit = group // divisor`, `group = group % divisor`
-4. Når alle cifre er behandlet og `group > 0`: generer rest → brøk → decimal
+   - `quotient_digit = group // divisor`
+   - `remainder = group % divisor`
+   - `group = remainder` (bæres til næste iteration)
+   - Markér `leading: true` hvis alle foregående quotient_digits er 0 og dette også er 0
+4. Når alle cifre er behandlet og `group > 0`:
+   - Altid: generer `show_remainder` og `show_fraction`
+   - Kun hvis decimalen terminerer (dvs. nævneren kun har faktorerne 2 og 5): generer `show_decimal`
+   - Ellers: stop ved brøken — eleven ser fx "3 1/3" som slutresultat
 
-Dette håndterer alle cases ensartet — encifret divisor, tocifret divisor, og tilfælde hvor flere cifre skal akkumuleres før divisor "går op".
-
-Returnerer grupper:
+Returnerer steps:
 
 ```python
 [
-    {"group": "setup", "dividend": 589, "divisor": 4, "digits": [5, 8, 9]},
-    {"group": "process_digit", "position": 0, "group_value": 5,
-     "quotient_digit": 1, "remainder": 1},
-    {"group": "process_digit", "position": 1, "group_value": 18,
-     "quotient_digit": 4, "remainder": 2},
-    {"group": "process_digit", "position": 2, "group_value": 29,
-     "quotient_digit": 7, "remainder": 1},
-    {"group": "show_remainder", "remainder": 1, "divisor": 4},
-    {"group": "show_fraction", "whole": 147, "numerator": 1, "denominator": 4},
-    {"group": "show_decimal", "decimal_result": "147,25"},
-    {"group": "reveal", "result": "147,25"}
+    {"step": "setup", "dividend": 589, "divisor": 4, "digits": [5, 8, 9]},
+    {"step": "process_digit", "position": 0, "group_value": 5,
+     "quotient_digit": 1, "remainder": 1, "leading": False,
+     "expression": "5 ÷ 4 = 1 rest 1"},
+    {"step": "process_digit", "position": 1, "group_value": 18,
+     "quotient_digit": 4, "remainder": 2, "leading": False,
+     "expression": "18 ÷ 4 = 4 rest 2"},
+    {"step": "process_digit", "position": 2, "group_value": 29,
+     "quotient_digit": 7, "remainder": 1, "leading": False,
+     "expression": "29 ÷ 4 = 7 rest 1"},
+    {"step": "show_remainder", "remainder": 1, "divisor": 4},
+    {"step": "show_fraction", "whole": 147, "numerator": 1, "denominator": 4},
+    {"step": "show_decimal", "decimal_result": "147,25"},
+    {"step": "reveal", "result": "147,25"}
 ]
 ```
 
-#### `pick_example_numbers(assignment_text: str) → tuple[int, int]`
+#### `pick_example_numbers(dividend: int, divisor: int) → tuple[int, int]`
 
-- Parser dividend og divisor fra opgavetekst
-- Vælger nye tal med samme antal cifre i dividend og divisor
+- Tager de strukturerede tal direkte (routeren i `example_generator.py` parser fra assignment)
+- Vælger nye tal med samme antal cifre i dividend, og encifret divisor
 - Sikrer at eksempeltallene er forskellige fra elevens
-- Vælger tal der giver pæne resultater i samme sværhedsgrad
+- Vælger tal der giver resultater i samme sværhedsgrad (med/uden rest matcher)
 
-#### `generate_text(groups: list[dict]) → list[str]`
+#### `generate_text(steps: list[dict]) → list[str]`
 
 Danske templates:
 - setup: "Vi skal finde ud af hvad {dividend} divideret med {divisor} giver"
@@ -107,17 +115,19 @@ Danske templates:
 - process_digit (følgende): "Resten {prev_remainder} sættes foran {next_digit}, det giver {group}. {group} divideret med {divisor} giver {quotient}, rest {remainder}"
 - show_remainder: "Vi har rest {remainder}"
 - show_fraction: "Det skriver vi som brøken {num}/{den}"
-- show_decimal: "{num}/{den} er det samme som {decimal} — så svaret er {result}"
+- show_decimal (kun terminerende): "{num}/{den} er det samme som {decimal} — så svaret er {result}"
 - reveal (ingen rest): "Svaret er {result}"
+- reveal (med brøk, ikke-terminerende): "Svaret er {whole} og {num}/{den}"
 
 ### Integration i `example_generator.py`
 
 - Ny funktion `should_use_short_division(topic)` → `True` hvis `topic == "division"`
 - `generate_example()` router til `generate_short_division_example()`:
-  1. `pick_example_numbers(assignment_text)`
-  2. `compute_steps(dividend, divisor)`
-  3. `generate_text(groups)`
-  4. Saml til `ExampleResponse` med `AnimationStep`-liste
+  1. Parser dividend og divisor fra assignment (struktureret data)
+  2. `pick_example_numbers(dividend, divisor)` → nye eksempeltal
+  3. `compute_steps(ex_dividend, ex_divisor)` → deterministiske steps
+  4. `generate_text(steps)` → danske tekster
+  5. Saml til `ExampleResponse` med `AnimationStep`-liste
 
 ### VisualInstruction actions
 
@@ -126,7 +136,7 @@ Type: `"short_division"`
 | Action | Flat params |
 |--------|-------------|
 | `setup` | `dividend: int`, `divisor: int`, `digits: [int]` |
-| `process_digit` | `position: int`, `group_value: int`, `quotient_digit: int`, `remainder: int`, `expression: str` |
+| `process_digit` | `position: int`, `group_value: int`, `quotient_digit: int`, `remainder: int`, `leading: bool`, `expression: str` |
 | `show_remainder` | `remainder: int`, `divisor: int` |
 | `show_fraction` | `whole: int`, `numerator: int`, `denominator: int` |
 | `show_decimal` | `decimal_result: str` |
@@ -215,4 +225,5 @@ Danske templates til `generate_text()`. Ingen LLM — rent template-baseret.
 
 - Lang division (2a — bracket-metoden)
 - Komma-notation (spec 2b — den alternative inline-notation)
+- Tocifret divisor (fx 864 ÷ 12) — hører til lang division i dansk folkeskole, ikke slikkepindsmetoden
 - Multiplikation (kryds/lang) — separat feature
