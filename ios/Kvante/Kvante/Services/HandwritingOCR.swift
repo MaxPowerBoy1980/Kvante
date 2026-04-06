@@ -35,7 +35,8 @@ enum HandwritingOCR {
                     }
                 }
 
-                let fullText = lines.map(\.0).joined(separator: " ")
+                let fullText = reconstructStackedArithmetic(lines: lines.map(\.0))
+                    ?? lines.map(\.0).joined(separator: " ")
                 let avgConfidence = lines.map(\.1).reduce(0, +) / Float(max(lines.count, 1))
 
                 let answer = extractAnswer(from: fullText)
@@ -61,6 +62,67 @@ enum HandwritingOCR {
                 continuation.resume(returning: Result(fullText: "", answer: "", confidence: 0, isCleanNumber: false))
             }
         }
+    }
+
+    /// Detect stacked arithmetic (columnar) layout from OCR lines.
+    /// Input lines like ["568", "+ 275", "843"] or ["11", "568", "+ 275", "843"]
+    /// Output: "568 + 275 = 843"
+    private static func reconstructStackedArithmetic(lines: [String]) -> String? {
+        guard lines.count >= 2 else { return nil }
+
+        // Clean each line: trim whitespace
+        let cleaned = lines.map { $0.trimmingCharacters(in: .whitespaces) }
+
+        // Find the operator line (starts with + or -)
+        var opSymbol: String?
+        var operands: [String] = []
+        var answerLine: String?
+
+        for line in cleaned {
+            // Skip empty lines and lines that look like horizontal rules
+            if line.isEmpty || line.allSatisfy({ $0 == "-" || $0 == "_" || $0 == "—" }) {
+                continue
+            }
+
+            // Line starts with operator: "+ 275" or "- 47"
+            if let first = line.first, (first == "+" || first == "-" || first == "×" || first == "x") {
+                let rest = String(line.dropFirst()).trimmingCharacters(in: .whitespaces)
+                if rest.allSatisfy({ $0.isNumber || $0 == "." || $0 == "," }) && !rest.isEmpty {
+                    opSymbol = String(first) == "x" ? "×" : String(first)
+                    operands.append(rest)
+                    continue
+                }
+            }
+
+            // Pure number line
+            let digits = line.filter { $0.isNumber }
+            if digits.count >= line.filter({ !$0.isWhitespace }).count / 2 && !digits.isEmpty {
+                operands.append(digits)
+            }
+        }
+
+        // Need at least 2 operands (numbers) and ideally an operator
+        guard operands.count >= 2 else { return nil }
+        // If no operator found, can't reconstruct
+        guard let op = opSymbol else { return nil }
+
+        // Last operand is the answer (below the line)
+        answerLine = operands.removeLast()
+
+        // If we have a small carry number before the first operand, skip it
+        // e.g., ["11", "568", "275"] → "11" is the carry notation
+        if operands.count > 2 {
+            // Keep only the two largest numbers as operands
+            operands = Array(operands.suffix(2))
+        }
+
+        guard operands.count >= 1, let answer = answerLine else { return nil }
+
+        if operands.count == 1 {
+            return "\(operands[0]) \(op) ? = \(answer)"
+        }
+
+        return "\(operands[0]) \(op) \(operands[1]) = \(answer)"
     }
 
     /// Extract the final answer from recognized text.
