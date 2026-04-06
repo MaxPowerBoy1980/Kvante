@@ -17,7 +17,7 @@ struct DifficultyPickerView: View {
             VStack(spacing: 8) {
                 Image(systemName: topic.icon)
                     .font(.system(size: 40))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
                 Text(topic.name)
                     .font(.title2.weight(.bold))
             }
@@ -35,9 +35,10 @@ struct DifficultyPickerView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(info.label)
                                     .font(.headline)
+                                    .foregroundStyle(KvanteTheme.Colors.textPrimary)
                                 Text(info.description)
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
                             }
 
                             Spacer()
@@ -45,15 +46,22 @@ struct DifficultyPickerView: View {
                             if available {
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
                             } else {
                                 Text("Ingen opgaver")
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(KvanteTheme.Colors.mutedText)
                             }
                         }
                         .padding(16)
-                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16))
+                        .background(
+                            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                                .fill(KvanteTheme.Colors.kvanteBubble)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                                        .stroke(KvanteTheme.Colors.kvanteBubbleBorder, lineWidth: 1)
+                                )
+                        )
                         .opacity(available ? 1 : 0.4)
                     }
                     .buttonStyle(.plain)
@@ -64,6 +72,7 @@ struct DifficultyPickerView: View {
 
             Spacer()
         }
+        .background(KvanteTheme.Colors.backgroundStart)
         .navigationTitle("Vælg sværhedsgrad")
     }
 }

@@ -41,30 +41,30 @@ struct PracticeSessionView: View {
             HStack {
                 Text("Opgave \(currentIndex + 1) af \(assignments.count)")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 Spacer()
                 Text("\(completedCount) løst")
                     .font(.caption)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(KvanteTheme.Colors.success)
             }
             .padding(.horizontal, 20)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color(.systemGray5))
-                        .frame(height: 6)
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.orange)
-                        .frame(width: geo.size.width * CGFloat(currentIndex) / CGFloat(max(assignments.count, 1)), height: 6)
+                        .fill(KvanteTheme.Colors.muted)
+                        .frame(height: 8)
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(KvanteTheme.Colors.successGradient)
+                        .frame(width: geo.size.width * CGFloat(currentIndex) / CGFloat(max(assignments.count, 1)), height: 8)
                         .animation(.easeInOut, value: currentIndex)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 8)
             .padding(.horizontal, 20)
         }
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
+        .background(KvanteTheme.Colors.backgroundStart.opacity(0.95))
     }
 
     // MARK: - Completion
@@ -73,18 +73,27 @@ struct PracticeSessionView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Text("🎉")
-                .font(.system(size: 72))
+            ZStack {
+                Circle()
+                    .fill(KvanteTheme.Colors.success.opacity(0.15))
+                    .frame(width: 100, height: 100)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 44, weight: .bold))
+                    .foregroundStyle(KvanteTheme.Colors.success)
+            }
 
             Text("Flot klaret!")
                 .font(.system(size: 32, weight: .bold, design: .rounded))
+                .foregroundStyle(KvanteTheme.Colors.textPrimary)
 
             Text("Du har gennemført alle \(assignments.count) opgaver")
                 .font(.title3)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
 
             Spacer()
         }
+        .frame(maxWidth: .infinity)
+        .background(KvanteTheme.Colors.backgroundStart)
     }
 
     // MARK: - Setup

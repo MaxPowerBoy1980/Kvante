@@ -9,15 +9,15 @@ struct TopicPickerView: View {
     @State private var errorMessage: String?
 
     private let topicColors: [String: Color] = [
-        "addition": .orange,
-        "subtraktion": .red,
-        "multiplikation": .blue,
-        "division": .indigo,
-        "broeker": .purple,
-        "decimaltal": .teal,
-        "geometri": .green,
-        "ligninger": .pink,
-        "procent": .yellow,
+        "addition": KvanteTheme.Colors.primary,
+        "subtraktion": Color(hex: "e74c3c"),
+        "multiplikation": Color(hex: "3498db"),
+        "division": Color(hex: "6c5ce7"),
+        "broeker": Color(hex: "9b59b6"),
+        "decimaltal": KvanteTheme.Colors.teal,
+        "geometri": KvanteTheme.Colors.success,
+        "ligninger": Color(hex: "e84393"),
+        "procent": Color(hex: "f39c12"),
     ]
 
     var body: some View {
@@ -45,6 +45,7 @@ struct TopicPickerView: View {
                     }
                     .padding(20)
                 }
+                .background(KvanteTheme.Colors.backgroundStart)
             }
         }
         .navigationTitle("Vælg emne")
@@ -78,16 +79,17 @@ struct TopicCard: View {
 
             Text(topic.name)
                 .font(.headline)
+                .foregroundStyle(KvanteTheme.Colors.textPrimary)
 
             Text("\(topic.problemCount) opgaver")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 18))
+        .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius))
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
                 .stroke(color.opacity(0.2), lineWidth: 1)
         )
     }
