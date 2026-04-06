@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 
 from app.config import settings
@@ -9,6 +10,18 @@ from app.services.ai_client import get_ai_client
 logger = logging.getLogger(__name__)
 
 MAX_STEPS = 8
+
+
+def should_use_stacked(assignment_type: str, assignment_text: str) -> bool:
+    """Decide if stacked arithmetic visual is appropriate.
+
+    Uses stacked for addition/subtraction when any number is > 30.
+    Below 30, dots/object_collection is more pedagogically appropriate.
+    """
+    if assignment_type not in ("addition", "subtraction"):
+        return False
+    numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
+    return any(n > 30 for n in numbers)
 
 
 class ExampleGeneratorService:
@@ -29,6 +42,12 @@ class ExampleGeneratorService:
         Retries once on parse failure with the validation error included.
         """
         logger.info("Generating example for %s: '%s'", assignment_type, assignment_text)
+        if should_use_stacked(assignment_type, assignment_text):
+            return self.generate_stacked_example(
+                assignment_type=assignment_type,
+                assignment_text=assignment_text,
+                language=language,
+            )
         start = time.time()
         lang_name = {"da": "Danish (dansk)", "en": "English"}.get(language, language)
         user_message = (

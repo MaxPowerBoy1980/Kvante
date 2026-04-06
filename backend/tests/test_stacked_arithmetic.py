@@ -173,3 +173,21 @@ class TestIntegration:
         assert result["steps"][0]["phase"] == "concrete"
         assert result["steps"][0]["text"] == "Vi skriver tallene op i kolonner"
         assert result["steps"][-1]["visual"]["action"] == "answer"
+
+
+class TestRouter:
+    def test_should_use_stacked(self):
+        """Addition/subtraction with numbers > 30 should use stacked."""
+        from app.services.example_generator import should_use_stacked
+        assert should_use_stacked("addition", "45 + 78") is True
+        assert should_use_stacked("subtraction", "83 - 47") is True
+        assert should_use_stacked("addition", "3 + 5") is False
+        assert should_use_stacked("multiplication", "6 * 7") is False
+        assert should_use_stacked("subtraction", "15 - 8") is False
+
+    def test_threshold_boundary(self):
+        """Numbers at the threshold (> 30) should use stacked."""
+        from app.services.example_generator import should_use_stacked
+        assert should_use_stacked("addition", "31 + 5") is True
+        assert should_use_stacked("addition", "30 + 5") is False
+        assert should_use_stacked("subtraction", "31 - 5") is True
