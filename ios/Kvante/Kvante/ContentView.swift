@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var showPractice = false
     @State private var selectedTopic: TopicInfo?
     @State private var practiceSession: PracticeSessionResponse?
+    @State private var sessionHistory: [SessionSummary] = []
 
     private var profile: StudentProfile? { profiles.first }
 
@@ -69,8 +70,12 @@ struct ContentView: View {
                     NewHomeView(
                         profile: p,
                         serverDiscovery: serverDiscovery,
-                        onPractice: { showPractice = true }
+                        onPractice: { showPractice = true },
+                        onWeekly: { startWeeklySession() },
+                        sessionHistory: sessionHistory,
+                        onTapSession: { _ in }  // Dashboard in Task 4
                     )
+                    .task { await loadSessionHistory() }
                 }
             }
             }
@@ -107,6 +112,37 @@ struct ContentView: View {
                 errorMessage = error.localizedDescription
             }
             isLoading = false
+        }
+    }
+
+    private func startWeeklySession() {
+        guard let client = apiClient, let p = profile else { return }
+        isLoading = true
+        loadingMessage = "Kvante laver ugematematik..."
+
+        Task {
+            do {
+                let studentId = p.backendStudentId ?? "default"
+                let weekly = try await client.createWeeklySession(
+                    studentId: studentId,
+                    gradeLevel: p.gradeLevel
+                )
+                practiceSession = PracticeSessionResponse(
+                    sessionId: weekly.sessionId,
+                    assignments: weekly.assignments
+                )
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    private func loadSessionHistory() async {
+        guard let client = apiClient, let p = profile else { return }
+        let studentId = p.backendStudentId ?? "default"
+        if let history = try? await client.getSessionHistory(studentId: studentId) {
+            sessionHistory = history.sessions
         }
     }
 }

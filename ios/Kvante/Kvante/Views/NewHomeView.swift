@@ -5,6 +5,9 @@ struct NewHomeView: View {
     let profile: StudentProfile
     let serverDiscovery: ServerDiscovery
     let onPractice: () -> Void
+    let onWeekly: () -> Void
+    let sessionHistory: [SessionSummary]
+    let onTapSession: (SessionSummary) -> Void
 
     var body: some View {
         ZStack {
@@ -47,8 +50,8 @@ struct NewHomeView: View {
                         subtitle: "Dine opgaver venter",
                         buttonLabel: "Start opgaver",
                         buttonStyle: KvanteTheme.TactileButtonStyle.primary,
-                        action: {},
-                        disabled: true
+                        action: onWeekly,
+                        disabled: serverDiscovery.serverURL == nil
                     )
 
                     // Øvelser card
@@ -73,6 +76,45 @@ struct NewHomeView: View {
                         .font(.caption)
                         .foregroundStyle(KvanteTheme.Colors.textMuted)
                         .padding(.top, 12)
+                }
+
+                // Session history
+                if !sessionHistory.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Seneste")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(KvanteTheme.Colors.ink)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 16)
+
+                        ForEach(sessionHistory.prefix(5)) { session in
+                            Button { onTapSession(session) } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: session.isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .font(.body)
+                                        .foregroundStyle(session.isCompleted ? KvanteTheme.Colors.success : KvanteTheme.Colors.textMuted)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(session.name)
+                                            .font(.subheadline.weight(.medium))
+                                            .foregroundStyle(KvanteTheme.Colors.ink)
+                                        Text("\(session.completedCount)/\(session.assignmentCount) opgaver · \(session.displayDate)")
+                                            .font(.caption)
+                                            .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(KvanteTheme.Colors.textMuted)
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
 
                 Spacer()
