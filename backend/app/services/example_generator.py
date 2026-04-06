@@ -12,14 +12,16 @@ logger = logging.getLogger(__name__)
 MAX_STEPS = 8
 
 
-def _detect_operation(assignment_type: str, assignment_text: str) -> str | None:
+def _detect_operation(assignment_type: str, assignment_text: str,
+                      assignment_topic: str = "") -> str | None:
     """Detect if assignment is addition or subtraction.
 
-    Checks both the type field and the text for + or - operators.
+    Checks type, topic, and text for + or - operators.
     Returns 'addition', 'subtraction', or None.
     """
-    if assignment_type in ("addition", "subtraction"):
-        return assignment_type
+    for field in (assignment_type, assignment_topic):
+        if field in ("addition", "subtraction"):
+            return field
     # Detect from text: look for operators between numbers
     if re.search(r'\d\s*\+\s*\d', assignment_text):
         return "addition"
@@ -28,13 +30,14 @@ def _detect_operation(assignment_type: str, assignment_text: str) -> str | None:
     return None
 
 
-def should_use_stacked(assignment_type: str, assignment_text: str) -> bool:
+def should_use_stacked(assignment_type: str, assignment_text: str,
+                       assignment_topic: str = "") -> bool:
     """Decide if stacked arithmetic visual is appropriate.
 
     Uses stacked for addition/subtraction when any number is > 30.
     Below 30, dots/object_collection is more pedagogically appropriate.
     """
-    op = _detect_operation(assignment_type, assignment_text)
+    op = _detect_operation(assignment_type, assignment_text, assignment_topic)
     if op is None:
         return False
     numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
@@ -59,8 +62,8 @@ class ExampleGeneratorService:
         Retries once on parse failure with the validation error included.
         """
         logger.info("Generating example for %s: '%s'", assignment_type, assignment_text)
-        detected_op = _detect_operation(assignment_type, assignment_text)
-        if detected_op and should_use_stacked(assignment_type, assignment_text):
+        detected_op = _detect_operation(assignment_type, assignment_text, assignment_topic)
+        if detected_op and should_use_stacked(assignment_type, assignment_text, assignment_topic):
             return self.generate_stacked_example(
                 assignment_type=detected_op,
                 assignment_text=assignment_text,

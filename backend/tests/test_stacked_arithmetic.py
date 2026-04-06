@@ -199,3 +199,17 @@ class TestRouter:
         assert should_use_stacked("calculation", "Regn ud: 503 - 247") is True
         assert should_use_stacked("calculation", "Regn ud: 3 + 5") is False
         assert should_use_stacked("calculation", "Regn ud: 6 * 7") is False
+
+    def test_word_problem_detected_from_topic(self):
+        """Word problems without +/- in text should use topic to detect."""
+        from app.services.example_generator import should_use_stacked
+        assert should_use_stacked(
+            "calculation",
+            "Der er 145 elever i indskolingen og 278 i udskolingen. Hvor mange?",
+            assignment_topic="addition"
+        ) is True
+        assert should_use_stacked(
+            "calculation",
+            "Jonas har 500 kr og bruger 237. Hvor mange har han tilbage?",
+            assignment_topic="subtraction"
+        ) is True
