@@ -274,6 +274,27 @@ class ChatViewModel {
                     ocrDebug: "",
                     loadingId: loadingId
                 )
+
+                // Request feedback for wrong answers
+                if !submission.methodologySound {
+                    let feedbackLoadingId = addLoading("Kvante kigger på din metode...")
+                    do {
+                        let feedback = try await apiClient.getFeedback(
+                            submissionId: submission.submissionId
+                        )
+                        let chips = feedback.structuredPrompts.map { ActionChipModel.fromPrompt($0) }
+                        replaceLoading(feedbackLoadingId, with: ChatMessage(
+                            sender: .kvante,
+                            content: .feedback(feedback),
+                            actions: chips
+                        ))
+                    } catch {
+                        replaceLoading(feedbackLoadingId, with: ChatMessage(
+                            sender: .kvante,
+                            content: .text("Prøv igen — tryk + for hjælp hvis du sidder fast.")
+                        ))
+                    }
+                }
             } catch {
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
