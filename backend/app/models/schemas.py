@@ -139,3 +139,27 @@ class SaveMessagesResponse(BaseModel):
 class LoadMessagesResponse(BaseModel):
     session_id: str
     messages: list[ChatMessageOut]
+
+
+# --- Weekly Assignments ---
+
+class WeeklyRequest(BaseModel):
+    student_id: str
+    grade_level: int = 4
+    count: int = 6
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    name: str
+    mode: str
+    topic: str | None
+    status: str
+    assignment_count: int
+    completed_count: int
+    created_at: str
+    completed_at: str | None
+
+
+class SessionHistoryResponse(BaseModel):
+    sessions: list[SessionSummary]
