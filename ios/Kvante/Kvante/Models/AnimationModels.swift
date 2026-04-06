@@ -59,6 +59,13 @@ struct VisualInstruction: Codable {
         }
         return nil
     }
+
+    func intArrayParam(_ key: String) -> [Int]? {
+        if let arr = params[key]?.value as? [AnyCodable] {
+            return arr.compactMap { $0.value as? Int }
+        }
+        return nil
+    }
 }
 
 // MARK: - Animation Step
