@@ -191,3 +191,11 @@ class TestRouter:
         assert should_use_stacked("addition", "31 + 5") is True
         assert should_use_stacked("addition", "30 + 5") is False
         assert should_use_stacked("subtraction", "31 - 5") is True
+
+    def test_calculation_type_detected_from_text(self):
+        """Type 'calculation' should detect operation from text."""
+        from app.services.example_generator import should_use_stacked
+        assert should_use_stacked("calculation", "Regn ud: 486 + 357") is True
+        assert should_use_stacked("calculation", "Regn ud: 503 - 247") is True
+        assert should_use_stacked("calculation", "Regn ud: 3 + 5") is False
+        assert should_use_stacked("calculation", "Regn ud: 6 * 7") is False
