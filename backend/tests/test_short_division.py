@@ -141,10 +141,11 @@ class TestGenerateText:
         steps = ShortDivisionService.compute_steps(588, 4)
         texts = ShortDivisionService.generate_text(steps)
 
-        assert texts[0]["text"] == "Vi skal finde ud af hvad 588 divideret med 4 giver"
-        assert "5 divideret med 4 giver 1, rest 1" in texts[1]["text"]
-        assert "Resten 1 sættes foran" in texts[2]["text"]
-        assert "18 divideret med 4 giver 4" in texts[2]["text"]
+        assert "slikkepinden" in texts[0]["text"]
+        assert "Vi starter med 5" in texts[1]["text"]
+        assert "4 går 1 gange op i 5" in texts[1]["text"]
+        assert "husker resten 1" in texts[2]["text"]
+        assert "18" in texts[2]["text"]
         assert texts[-1]["text"] == "Svaret er 147"
 
     def test_remainder_text(self):
@@ -153,7 +154,7 @@ class TestGenerateText:
         texts = ShortDivisionService.generate_text(steps)
 
         remainder_texts = [t["text"] for t in texts]
-        assert any("rest 1" in t for t in remainder_texts)
+        assert any("til rest" in t for t in remainder_texts)
         assert any("brøken 1/4" in t for t in remainder_texts)
         assert any("147,25" in t for t in remainder_texts)
 

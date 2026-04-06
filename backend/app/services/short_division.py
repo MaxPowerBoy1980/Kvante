@@ -104,13 +104,17 @@ class ShortDivisionService:
     @staticmethod
     def generate_text(steps: list[dict]) -> list[dict]:
         texts = []
+        digit_count = 0  # track which digit we're on (1st, 2nd, 3rd...)
 
         for i, s in enumerate(steps):
             action = s["step"]
 
             if action == "setup":
                 texts.append({
-                    "text": f"Vi skal finde ud af hvad {s['dividend']} divideret med {s['divisor']} giver",
+                    "text": (
+                        f"Vi skal finde ud af hvad {s['dividend']} divideret med {s['divisor']} giver. "
+                        f"Vi tegner slikkepinden: {s['divisor']} i cirklen, og {s['dividend']} til venstre"
+                    ),
                     "audio_cue": f"{s['dividend']} divideret med {s['divisor']}",
                 })
 
@@ -118,33 +122,92 @@ class ShortDivisionService:
                 gv = s["group_value"]
                 qd = s["quotient_digit"]
                 rem = s["remainder"]
+                leading = s["leading"]
                 divisor = steps[0]["divisor"]
+                digit_count += 1
 
                 prev_step = steps[i - 1] if i > 1 else None
                 prev_rem = prev_step.get("remainder", 0) if prev_step else 0
 
-                if i == 1 or prev_rem == 0:
-                    # First digit or no carry — simple form
-                    text = f"{gv} divideret med {divisor} giver {qd}, rest {rem}"
-                else:
+                if digit_count == 1:
+                    # First digit — introduce the method
+                    if leading:
+                        text = (
+                            f"Vi starter med {gv}. "
+                            f"Hvor mange gange går {divisor} op i {gv}? Det gør den 0 gange — "
+                            f"så vi husker {gv} og tager det med til næste ciffer"
+                        )
+                    elif rem == 0:
+                        text = (
+                            f"Vi starter med {gv}. "
+                            f"Hvor mange gange går {divisor} op i {gv}? "
+                            f"{divisor} går {qd} gange op i {gv} — vi skriver {qd}"
+                        )
+                    else:
+                        text = (
+                            f"Vi starter med {gv}. "
+                            f"Hvor mange gange går {divisor} op i {gv}? "
+                            f"{divisor} går {qd} gange op i {gv}, og der er {rem} til rest — vi husker den"
+                        )
+                elif prev_rem > 0:
+                    # Carrying remainder from previous
                     digit = gv % 10
-                    text = (
-                        f"Resten {prev_rem} sættes foran {digit}, det giver {gv}. "
-                        f"{gv} divideret med {divisor} giver {qd}, rest {rem}"
-                    )
+                    if leading:
+                        text = (
+                            f"Vi husker resten {prev_rem} og sætter den foran {digit}, det giver {gv}. "
+                            f"{divisor} går stadig ikke op i {gv} — vi husker {gv}"
+                        )
+                    elif rem == 0:
+                        text = (
+                            f"Vi husker resten {prev_rem} og sætter den foran {digit}, det giver {gv}. "
+                            f"Hvor mange gange går {divisor} op i {gv}? "
+                            f"{qd} gange — vi skriver {qd}"
+                        )
+                    else:
+                        text = (
+                            f"Vi husker resten {prev_rem} og sætter den foran {digit}, det giver {gv}. "
+                            f"Hvor mange gange går {divisor} op i {gv}? "
+                            f"{qd} gange med {rem} til rest — vi husker resten"
+                        )
+                else:
+                    # No carry — plain next digit
+                    if leading:
+                        text = (
+                            f"Næste ciffer er {gv}. "
+                            f"{divisor} går ikke op i {gv} — vi husker {gv}"
+                        )
+                    elif rem == 0:
+                        text = (
+                            f"Næste ciffer er {gv}. "
+                            f"Hvor mange gange går {divisor} op i {gv}? "
+                            f"{qd} gange — vi skriver {qd}"
+                        )
+                    else:
+                        text = (
+                            f"Næste ciffer er {gv}. "
+                            f"Hvor mange gange går {divisor} op i {gv}? "
+                            f"{qd} gange med {rem} til rest — vi husker resten"
+                        )
+
                 texts.append({"text": text, "audio_cue": s["expression"]})
 
             elif action == "show_remainder":
-                texts.append({"text": f"Vi har rest {s['remainder']}", "audio_cue": f"Rest {s['remainder']}"})
+                texts.append({
+                    "text": f"Vi er færdige med cifrene, men har stadig {s['remainder']} til rest",
+                    "audio_cue": f"Rest {s['remainder']}",
+                })
 
             elif action == "show_fraction":
                 texts.append({
-                    "text": f"Det skriver vi som brøken {s['numerator']}/{s['denominator']}",
+                    "text": f"Resten {s['numerator']} ud af {s['denominator']} skriver vi som brøken {s['numerator']}/{s['denominator']}",
                     "audio_cue": f"{s['numerator']} over {s['denominator']}",
                 })
 
             elif action == "show_decimal":
-                texts.append({"text": f"Det er det samme som {s['decimal_result']}", "audio_cue": s["decimal_result"]})
+                texts.append({
+                    "text": f"{s['decimal_result']} — det er det samme som brøken, bare skrevet med komma",
+                    "audio_cue": s["decimal_result"],
+                })
 
             elif action == "reveal":
                 texts.append({"text": f"Svaret er {s['result']}", "audio_cue": f"Svaret er {s['result']}"})
