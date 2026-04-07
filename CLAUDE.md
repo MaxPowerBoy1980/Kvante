@@ -111,3 +111,46 @@ Dette projekt har to komplementære kilder til status og næste features:
 TODO.md giver *hvad* og *prioritet*. Memory-filen giver *hvorfor* og *hvordan*. Begge er nødvendige for fuldt billede.
 
 **Når en feature er færdiggjort:** Opdater BEGGE filer. Flyt i TODO.md fra "Næste" til "Gennemført", og opdater memory-filen med ny status og evt. nye observationer.
+
+## Git workflow
+
+**Mål:** Branches lever dage, ikke måneder. main er altid kørende. Commit ofte, push ofte.
+
+### Hvornår branche?
+
+- **Direkte på main:** typo, dokumentation, lille sikker feature (1-3 commits)
+- **Feature-branch:** flertrins-feature, eksperiment, risikabelt refactor, parallelle tilgange
+
+### Branch-navngivning
+
+- `feature/<kort-beskrivelse>` — ny funktionalitet
+- `fix/<kort-beskrivelse>` — bugfix
+- `refactor/<kort-beskrivelse>` — omstrukturering
+- `experiment/<kort-beskrivelse>` — usikker retning
+- `docs/<kort-beskrivelse>` — kun dokumentation
+
+### Rytmen for en feature-branch
+
+1. Start fra opdateret main: `git checkout main && git pull`
+2. Opret branch: `git checkout -b feature/<navn>`
+3. Commit ofte i små logiske enheder
+4. Push til origin tidligt som backup: `git push -u origin feature/<navn>`
+5. **Max 2-5 dage før merge tilbage** — én feature, ikke fem
+6. Merge: `git checkout main && git pull && git merge feature/<navn>`
+7. Slet branch lokalt + remote
+
+### Commit-konventioner
+
+- **Conventional commits** med præfiks: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`
+- Imperativform ("add feedback", ikke "added feedback")
+- Første linje under 70 tegn
+- Body forklarer **hvorfor**, ikke **hvad**
+- Én logisk ændring per commit
+
+### Når Claude assisterer
+
+- **Foreslå altid en branch** når brugeren beder om en flertrins-feature, refactor eller noget eksperimentelt
+- **Påmind** hvis en branch begynder at vokse forbi 5-10 commits eller flere uafhængige features
+- **Tjek altid `git status`** før destruktive operationer (reset, force-push, branch -D) og bekræft med brugeren først
+- **Aldrig push uden eksplicit ja**, slet aldrig branches uden eksplicit ja
+- **`.gitignore` skal vedligeholdes** — tilføj nye mønstre når der opstår støj fra værktøjer (xcuserstate, .DS_Store, build artifacts)
