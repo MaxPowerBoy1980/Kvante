@@ -1,0 +1,13 @@
+.superpowers/
+
+# macOS
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+
+# Design reference assets (large, not needed in repo)
+/Design/
+/docs/design/v0-reference/
+/docs/design/v0-reference2/
