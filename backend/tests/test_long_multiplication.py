@@ -285,3 +285,48 @@ class TestGenerateText:
         steps, mental = LongMultiplicationService.compute_steps(24, 7)
         texts = LongMultiplicationService.generate_text(steps, mental)
         assert len(texts) == len(steps)
+
+
+class TestRouting:
+    def test_parse_simple(self):
+        from app.services.example_generator import _parse_multiplication_operands
+        assert _parse_multiplication_operands("14 × 206") == (14, 206)
+
+    def test_parse_skips_leading_numbers(self):
+        from app.services.example_generator import _parse_multiplication_operands
+        assert _parse_multiplication_operands("Opgave 3: Regn 14 × 206") == (14, 206)
+        assert _parse_multiplication_operands("Regn 25 opgaver: 14 × 206") == (14, 206)
+
+    def test_parse_no_match(self):
+        from app.services.example_generator import _parse_multiplication_operands
+        assert _parse_multiplication_operands("Hej") is None
+        assert _parse_multiplication_operands("Tre gange syv") is None
+
+    def test_parse_alternative_operators(self):
+        from app.services.example_generator import _parse_multiplication_operands
+        assert _parse_multiplication_operands("14 * 206") == (14, 206)
+        assert _parse_multiplication_operands("14 · 206") == (14, 206)
+
+    def test_should_use_in_cap(self):
+        from app.services.example_generator import should_use_long_multiplication
+        assert should_use_long_multiplication("multiplication", "14 × 206") is True
+        assert should_use_long_multiplication("multiplication", "24 × 7") is True
+
+    def test_should_use_rejects_single_digit_pair(self):
+        from app.services.example_generator import should_use_long_multiplication
+        assert should_use_long_multiplication("multiplication", "9 × 7") is False
+
+    def test_should_use_rejects_over_cap(self):
+        from app.services.example_generator import should_use_long_multiplication
+        assert should_use_long_multiplication("multiplication", "245 × 134") is False
+        assert should_use_long_multiplication("multiplication", "1234 × 5") is False
+
+    def test_should_use_rejects_decimals(self):
+        from app.services.example_generator import should_use_long_multiplication
+        assert should_use_long_multiplication("multiplication", "3,4 × 2,5") is False
+
+    def test_should_use_rejects_no_operands(self):
+        from app.services.example_generator import should_use_long_multiplication
+        assert should_use_long_multiplication("multiplication", "Hvad er klokken?") is False
+        # Tagged but no parseable expression — text is authoritative
+        assert should_use_long_multiplication("multiplication", "Tre gange syv") is False

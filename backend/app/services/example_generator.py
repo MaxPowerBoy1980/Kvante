@@ -66,6 +66,44 @@ def should_use_short_division(topic: str) -> bool:
     return topic == "division"
 
 
+MULTIPLICATION_PATTERN = re.compile(r'(\d+)\s*[×*·]\s*(\d+)')
+DECIMAL_PATTERN = re.compile(r'\d+[,.]\d+')
+
+
+def _parse_multiplication_operands(assignment_text: str) -> tuple[int, int] | None:
+    """Extract the two operands of a multiplication expression from text.
+
+    Returns None if no multiplication expression is found. This is also the
+    existence-check for "is this a multiplication expression we can render?"
+    — if it returns None we cannot generate long multiplication regardless
+    of how the assignment is tagged.
+    """
+    match = MULTIPLICATION_PATTERN.search(assignment_text)
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def should_use_long_multiplication(assignment_type: str, assignment_text: str,
+                                   assignment_topic: str = "") -> bool:
+    """Route multiplication where larger ≤ 999, smaller ≤ 99, at least one
+    multi-digit operand, no decimals.
+
+    Text is authoritative — if no explicit `N × M` expression can be parsed
+    we return False even when assignment_type/topic claims multiplication.
+    """
+    if DECIMAL_PATTERN.search(assignment_text):
+        return False
+    operands = _parse_multiplication_operands(assignment_text)
+    if operands is None:
+        return False
+    a, b = operands
+    larger, smaller = max(a, b), min(a, b)
+    if larger >= 1000 or smaller >= 100:
+        return False
+    return larger >= 10
+
+
 class ExampleGeneratorService:
     def __init__(self):
         self.client = get_ai_client()
