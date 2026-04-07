@@ -14,6 +14,7 @@ class AnimationPlayer {
     private(set) var cumulativeGrouped: Int = 0
     private(set) var cumulativeGridState: GridState?
     private(set) var cumulativeShortDivisionState: ShortDivisionState?
+    private(set) var cumulativeLongMultiplicationState: LongMultiplicationState?
 
     var currentStep: AnimationStep? {
         guard currentStepIndex < steps.count else { return nil }
@@ -59,6 +60,7 @@ class AnimationPlayer {
         cumulativeGrouped = 0
         cumulativeGridState = nil
         cumulativeShortDivisionState = nil
+        cumulativeLongMultiplicationState = nil
         isPlaying = false
         autoAdvanceTask?.cancel()
     }
@@ -121,6 +123,11 @@ class AnimationPlayer {
                 cumulativeShortDivisionState = ShortDivisionState.from(visual: v)
             }
             cumulativeShortDivisionState?.apply(visual: v)
+        case ("long_multiplication", _):
+            if v.action == "setup" {
+                cumulativeLongMultiplicationState = LongMultiplicationState.from(visual: v)
+            }
+            cumulativeLongMultiplicationState?.apply(visual: v)
         default: break
         }
     }
@@ -131,6 +138,7 @@ class AnimationPlayer {
         cumulativeRows = 2
         cumulativeGrouped = 0
         cumulativeShortDivisionState = nil
+        cumulativeLongMultiplicationState = nil
         for i in 0..<currentStepIndex {
             updateCumulativeState(for: steps[i])
         }
