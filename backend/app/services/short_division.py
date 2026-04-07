@@ -87,17 +87,23 @@ class ShortDivisionService:
         lo = 10 ** (num_digits - 1)
         hi = 10 ** num_digits - 1
         has_remainder = dividend % divisor != 0
+        quotient_digits = len(str(dividend // divisor))
         possible_divisors = [d for d in range(2, 10) if d != divisor]
 
-        for _ in range(100):
+        for _ in range(200):
             ex_divisor = random.choice(possible_divisors)
             ex_dividend = random.randint(lo, hi)
             if ex_dividend == dividend:
                 continue
-            # Match difficulty: example should have remainder iff student's does
+            # Match difficulty: same remainder status AND same quotient digit count
+            # so the lollipop diagram has the same visual shape.
             ex_has_remainder = ex_dividend % ex_divisor != 0
-            if ex_has_remainder == has_remainder:
-                return ex_dividend, ex_divisor
+            if ex_has_remainder != has_remainder:
+                continue
+            ex_quotient_digits = len(str(ex_dividend // ex_divisor))
+            if ex_quotient_digits != quotient_digits:
+                continue
+            return ex_dividend, ex_divisor
 
         return lo + 1, possible_divisors[0]
 

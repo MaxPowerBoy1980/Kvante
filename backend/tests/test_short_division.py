@@ -197,6 +197,25 @@ class TestPickExampleNumbers:
             _, ex_divisor = ShortDivisionService.pick_example_numbers(588, 4)
             assert 2 <= ex_divisor <= 9
 
+    def test_same_quotient_digit_count(self):
+        """Example quotient must have same digit count as student's quotient.
+
+        588 ÷ 4 = 147 (3-digit quotient) → example must also produce 3-digit quotient.
+        This ensures the lollipop diagram has the same number of rows.
+        """
+        student_dividend, student_divisor = 588, 4
+        student_quotient_digits = len(str(student_dividend // student_divisor))
+
+        for _ in range(50):
+            ex_div, ex_divisor = ShortDivisionService.pick_example_numbers(
+                student_dividend, student_divisor
+            )
+            ex_quotient_digits = len(str(ex_div // ex_divisor))
+            assert ex_quotient_digits == student_quotient_digits, (
+                f"{ex_div} ÷ {ex_divisor} = {ex_div // ex_divisor} "
+                f"({ex_quotient_digits} digits), expected {student_quotient_digits} digits"
+            )
+
 
 from app.services.example_generator import ExampleGeneratorService, should_use_short_division
 
