@@ -87,6 +87,18 @@ struct VisualInstruction: Codable {
         }
         return nil
     }
+
+    /// Decode an array that may contain nulls (e.g. carry slots).
+    /// Returns nil if the parameter is missing entirely.
+    /// Each element is `Int?` — `nil` for explicit JSON `null`, an Int otherwise.
+    func optionalIntArrayParam(_ key: String) -> [Int?]? {
+        guard let arr = params[key]?.value as? [AnyCodable] else { return nil }
+        return arr.map {
+            if let i = $0.value as? Int { return Int?(i) }
+            if let d = $0.value as? Double { return Int?(Int(d)) }
+            return nil
+        }
+    }
 }
 
 // MARK: - Animation Step
