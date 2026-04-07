@@ -155,6 +155,86 @@ class LongMultiplicationService:
         return fallback_a, fallback_b
 
     @staticmethod
+    def generate_text(steps: list[dict],
+                      mental_steps_by_partial: list[list[dict]]) -> list[dict]:
+        """Generate Danish narration per step. Returns [{text, audio_cue}, ...].
+
+        Indexing: mental_steps_by_partial[i] corresponds to the i'th
+        partial_product step (NOT the i'th step overall).
+        """
+        texts: list[dict] = []
+        partial_index = 0
+
+        # Find the multiplicand from the setup step (first step)
+        setup = steps[0]
+        multiplicand = setup["multiplicand"]
+        multiplier = setup["multiplier"]
+
+        for s in steps:
+            kind = s["step"]
+
+            if kind == "setup":
+                # Could be initial setup or try_yours; both use same template
+                texts.append({
+                    "text": (
+                        f"Vi skal regne {s['multiplicand']} gange {s['multiplier']}. "
+                        f"Vi stiller tallene op under hinanden med {s['multiplicand']} øverst"
+                    ),
+                    "audio_cue": f"{s['multiplicand']} gange {s['multiplier']}",
+                })
+
+            elif kind == "partial_product":
+                mp_digit = s["multiplier_digit"]
+                position = s["multiplier_position"]
+                value = s["value"]
+                shift = s["shift"]
+                shifted_value = value * (10 ** shift)
+
+                if position == 0:
+                    # First partial — straightforward
+                    text = f"Vi ganger {multiplicand} med {mp_digit}. Det giver {value}"
+                else:
+                    # Higher positions — explain the shift
+                    place_name = LongMultiplicationService._place_name(position)
+                    text = (
+                        f"Nu ganger vi med {place_name}, {mp_digit}. "
+                        f"Vi starter én plads til venstre fordi det er {place_name} — "
+                        f"så {multiplicand}×{mp_digit}={value} bliver til {shifted_value}"
+                    )
+
+                texts.append({
+                    "text": text,
+                    "audio_cue": f"{multiplicand} gange {mp_digit} er {value}",
+                })
+                partial_index += 1
+
+            elif kind == "sum_partials":
+                partials = s["partials"]
+                total = s["total"]
+                expr = " + ".join(str(p) for p in partials)
+                texts.append({
+                    "text": f"Vi lægger delprodukterne sammen: {expr} = {total}",
+                    "audio_cue": f"Sum {total}",
+                })
+
+            elif kind == "reveal":
+                texts.append({
+                    "text": f"Svaret er {s['result']}",
+                    "audio_cue": f"Svaret er {s['result']}",
+                })
+
+        return texts
+
+    @staticmethod
+    def _place_name(position: int) -> str:
+        """Return the Danish place-value name for a multiplier position."""
+        return {
+            0: "enerne",
+            1: "tierne",
+            2: "hundrederne",
+        }.get(position, f"position {position}")
+
+    @staticmethod
     def _derive_carries(multiplicand_digits: list[int], mental_steps: list[dict]) -> list:
         """Map mental_steps carry_in values to written-order carry array.
 

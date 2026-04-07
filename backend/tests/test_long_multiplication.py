@@ -221,3 +221,67 @@ class TestPickExampleNumbers:
             assert len(str(ex_a)) == 2
             assert len(str(ex_b)) == 1
             assert ex_a >= ex_b
+
+
+class TestGenerateText:
+    def test_setup_text(self):
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        assert len(texts) == len(steps)
+        assert "206" in texts[0]["text"]
+        assert "14" in texts[0]["text"]
+        assert texts[0]["audio_cue"]  # non-empty
+
+    def test_partial_product_text_first_partial(self):
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        # The setup is texts[0], partial 1 is texts[1]
+        partial1_text = texts[1]["text"]
+        assert "4" in partial1_text  # multiplier digit
+        assert "824" in partial1_text  # the partial value
+        assert partial1_text  # non-empty
+
+    def test_partial_product_text_explains_shift(self):
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        # Partial 2 (texts[2]) explains the tens-shift
+        partial2_text = texts[2]["text"]
+        assert "tier" in partial2_text.lower() or "plads" in partial2_text.lower()
+        assert "2060" in partial2_text  # post-shift value mentioned
+
+    def test_sum_partials_text(self):
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        # sum_partials is texts[3]
+        sum_text = texts[3]["text"]
+        assert "824" in sum_text
+        assert "2060" in sum_text
+        assert "2884" in sum_text
+
+    def test_reveal_text(self):
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        reveal_text = texts[-1]["text"]
+        assert "2884" in reveal_text
+        assert "svar" in reveal_text.lower()
+
+    def test_no_english_words(self):
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        forbidden = [" the ", " and ", " times ", " plus ", " minus "]
+        for t in texts:
+            lowered = " " + t["text"].lower() + " "
+            for word in forbidden:
+                assert word not in lowered, f"English '{word}' in: {t['text']}"
+
+    def test_no_unfilled_placeholders(self):
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        for t in texts:
+            assert "{" not in t["text"], f"Unfilled placeholder in: {t['text']}"
+
+    def test_single_partial_no_sum_text(self):
+        """24 × 7 has only one partial, no sum_partials → text count matches steps."""
+        steps, mental = LongMultiplicationService.compute_steps(24, 7)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        assert len(texts) == len(steps)
