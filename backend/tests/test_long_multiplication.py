@@ -23,7 +23,12 @@ class TestComputeStepsBasic:
         assert p["value"] == 168
         assert p["digits"] == [1, 6, 8]
         assert p["shift"] == 0
-        assert p["carries"] == [None, 2]  # 4×7=28: carry 2 over the '4' → written_idx=1
+        # 4×7=28 generates a carry of 2 that is CONSUMED by 2×7+2=16. The mente
+        # is displayed above the tens column (the '2'), where it gets used —
+        # not above the ones column where it was generated. multiplicand_digits
+        # is [2, 4] in WRITTEN order (high-to-low), so the tens position is
+        # written_idx 0.
+        assert p["carries"] == [2, None]
         assert p["expression_chain"] == "4×7=28 → 2×7+2=16"
 
         # No sum_partials when only one partial

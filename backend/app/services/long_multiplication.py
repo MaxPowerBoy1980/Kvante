@@ -118,19 +118,24 @@ class LongMultiplicationService:
 
     @staticmethod
     def _derive_carries(multiplicand_digits: list[int], mental_steps: list[dict]) -> list:
-        """Map mental_steps carry_out values to written-order carry array.
+        """Map mental_steps carry_in values to written-order carry array.
 
-        Returns a list parallel to multiplicand_digits (written, high-to-low).
-        Each element is None or an int 1-9. The final carry (overflowing past
-        the highest column) is excluded — it becomes a leading digit in the
-        partial value, not a carry above an existing column.
+        On paper, a carry is written above the column WHERE IT IS USED (the next
+        column to compute), not above the column where it was generated. So we
+        index by the consuming column's carry_in.
+
+        Returns a list parallel to multiplicand_digits (written order, high-to-low).
+        Each element is None or an int 1-9. The carry that overflows past the
+        highest column never appears here — it becomes a leading digit of the
+        partial value instead, and no column above it exists to display it on.
         """
         n = len(multiplicand_digits)
         carries: list = [None] * n
         for ms in mental_steps:
-            # Skip the carry_out from the last column — it overflows into a leading
-            # digit of the partial value, not a carry above an existing column.
-            if ms["carry_out"] > 0 and ms["column"] < n - 1:
+            if ms["carry_in"] > 0:
+                # mental_steps is in computation order (column 0 = ones), but
+                # multiplicand_digits is in written order (high-to-low). Map by
+                # reversing the index.
                 written_idx = n - 1 - ms["column"]
-                carries[written_idx] = ms["carry_out"]
+                carries[written_idx] = ms["carry_in"]
         return carries
