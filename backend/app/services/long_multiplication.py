@@ -189,21 +189,60 @@ class LongMultiplicationService:
                 value = s["value"]
                 shift = s["shift"]
                 shifted_value = value * (10 ** shift)
+                mc_digits = setup["multiplicand_digits"]
+                ms_list = mental_steps_by_partial[partial_index]
+                n = len(mc_digits)
 
+                parts: list[str] = []
                 if position == 0:
-                    # First partial — straightforward
-                    text = f"Vi ganger {multiplicand} med {mp_digit}. Det giver {value}"
+                    parts.append(f"Vi ganger {multiplicand} med {mp_digit}.")
                 else:
-                    # Higher positions — explain the shift
                     place_name = LongMultiplicationService._place_name(position)
-                    text = (
-                        f"Nu ganger vi med {place_name}, {mp_digit}. "
-                        f"Vi starter én plads til venstre fordi det er {place_name} — "
-                        f"så {multiplicand}×{mp_digit}={value} bliver til {shifted_value}"
+                    parts.append(f"Nu ganger vi med {place_name}, {mp_digit}.")
+                    parts.append(f"Vi starter én plads til venstre fordi det er {place_name}.")
+
+                # Walk each mental step (computation order: ones first)
+                for i, ms in enumerate(ms_list):
+                    col = ms["column"]
+                    mc_digit = mc_digits[n - 1 - col]
+                    col_name = LongMultiplicationService._place_name(col)
+                    carry_in = ms["carry_in"]
+                    carry_out = ms["carry_out"]
+                    digit_written = ms["digit_written"]
+                    product = mc_digit * mp_digit
+                    sum_with_carry = product + carry_in
+
+                    prefix = "Først" if i == 0 else "Så"
+                    if carry_in > 0:
+                        equation = f"{mc_digit}×{mp_digit}+{carry_in}={sum_with_carry}"
+                    else:
+                        equation = f"{mc_digit}×{mp_digit}={product}"
+
+                    is_last = i == len(ms_list) - 1
+                    if carry_out > 0 and not is_last:
+                        # Standard mente: carry to the next column we'll process
+                        tail = f", vi skriver {digit_written} og husker {carry_out}"
+                    elif carry_out > 0 and is_last:
+                        # Leftover carry becomes a new leading column
+                        next_col = LongMultiplicationService._place_name(col + 1)
+                        tail = (
+                            f", vi skriver {digit_written} i {col_name} "
+                            f"og {carry_out} i {next_col}"
+                        )
+                    else:
+                        tail = ""
+
+                    parts.append(f"{prefix} {col_name}: {equation}{tail}.")
+
+                if shift == 0:
+                    parts.append(f"Det giver {value}.")
+                else:
+                    parts.append(
+                        f"Det giver {value}, og med forskydningen bliver det {shifted_value}."
                     )
 
                 texts.append({
-                    "text": text,
+                    "text": " ".join(parts),
                     "audio_cue": f"{multiplicand} gange {mp_digit} er {value}",
                 })
                 partial_index += 1

@@ -241,6 +241,27 @@ class TestGenerateText:
         assert "824" in partial1_text  # the partial value
         assert partial1_text  # non-empty
 
+    def test_partial_product_walks_columns_by_name(self):
+        """Each multiplicand column is named in the narration."""
+        steps, mental = LongMultiplicationService.compute_steps(206, 14)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        partial1_text = texts[1]["text"]
+        # 3-digit multiplicand → ener / tier / hundreder all mentioned
+        assert "enerne" in partial1_text
+        assert "tierne" in partial1_text
+        assert "hundrederne" in partial1_text
+        # Carry pickup is verbalised
+        assert "husker" in partial1_text
+
+    def test_leftover_carry_reaches_new_column(self):
+        """When the last column produces a carry, narration says where it lands."""
+        # 24 × 7 = 168: tens column gives 2×7+2=16; the leading 1 becomes hundreds
+        steps, mental = LongMultiplicationService.compute_steps(24, 7)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        partial_text = texts[1]["text"]
+        # The narration should explicitly route the leftover carry into hundreder
+        assert "hundrederne" in partial_text
+
     def test_partial_product_text_explains_shift(self):
         steps, mental = LongMultiplicationService.compute_steps(206, 14)
         texts = LongMultiplicationService.generate_text(steps, mental)
