@@ -98,7 +98,14 @@ class LongMultiplicationService:
     @staticmethod
     def compute_steps(multiplicand: int, multiplier: int) -> tuple[list[dict], list[list[dict]]]:
         """Produce ordered step dicts (setup, partial_product × N, sum_partials, reveal)
-        plus a parallel list of mental_steps-per-partial_product for narration."""
+        plus a parallel list of mental_steps-per-partial_product for narration.
+
+        Returns: (steps, mental_steps_by_partial). The tuple form is authoritative —
+        mental_steps_by_partial[i] corresponds to the i'th partial_product step in
+        steps (other step types have no parallel entry; iterate by step index, skip
+        non-partial steps). This shape keeps the Python signature idiomatic and is
+        the easiest form to test.
+        """
 
     @staticmethod
     def pick_example_numbers(multiplicand: int, multiplier: int) -> tuple[int, int]:
@@ -186,7 +193,9 @@ Andet delprodukt for 206 × 14 (tens-ciffer) — bemærk `value=206` (pre-shift)
 ```python
 {
     "step": "sum_partials",
-    "partials": [824, 2060],          # after shift applied (2060 not 206)
+    "partials": [824, 2060],          # post-shift values (already scaled by 10^shift).
+                                       # Note this is intentionally different from
+                                       # partial_product.value which is pre-shift.
     "total": 2884,
 }
 ```
@@ -215,8 +224,10 @@ Teksten for dette trin er *"Prøv nu selv med din opgave — stil den op på sam
 
 ### `pick_example_numbers` logik
 
+> **Kardinalreglen** (autoritativ formulering): Kvante må aldrig vise eleven et gennemregnet eksempel der bruger samme tal som elevens faktiske opgave. Eksempler skal lære *metoden*, ikke afsløre *svaret*. Denne regel er CLAUDE.md-niveau invariant for hele projektet og er den primære grund til at multiplikations-eksempler bygges deterministisk i stedet for via LLM. Alle øvrige nævn af "kardinalreglen" i denne spec refererer hertil.
+
 - Match på ciffer-antal af begge operander (hvis eleven har 206 × 14 → eksempel også 3-cif × 2-cif)
-- Afvis samme værdier som eleven
+- Afvis samme værdier som eleven (kardinalreglen)
 - Afvis trivielle tilfælde: `% 10 == 0` (multiplum af 10), enkelte små tal under 2
 - Fallback: deterministiske værdier inden for samme range
 
@@ -250,7 +261,7 @@ def generate_text(steps: list[dict], mental_steps_by_partial: list[list[dict]]) 
     ...
 ```
 
-hvor `mental_steps_by_partial[i]` svarer til det `i`'te partial_product-step i `steps`. `compute_steps` returnerer et tuple `(steps, mental_steps_by_partial)`, eller en dict-wrapper med begge felter — vælg under implementering hvilken form der er renest.
+`compute_steps` returnerer et **tuple** `(steps, mental_steps_by_partial)`. `mental_steps_by_partial[i]` svarer til det `i`'te partial_product-step i `steps` (ikke den globale step-position — så test-koden skal iterere gennem `steps` og kun bumpe partial-counter når step-typen er `partial_product`).
 
 ## Routing
 
@@ -260,6 +271,7 @@ hvor `mental_steps_by_partial[i]` svarer til det `i`'te partial_product-step i `
 # Matches the two operands of a multiplication expression specifically.
 # Accepts × (U+00D7), * (ASCII asterisk), and · (middle dot) as operators.
 MULTIPLICATION_PATTERN = re.compile(r'(\d+)\s*[×*·]\s*(\d+)')
+DECIMAL_PATTERN = re.compile(r'\d+[,.]\d+')
 
 def _parse_multiplication_operands(assignment_text: str) -> tuple[int, int] | None:
     """Extract the two operands of a multiplication expression from assignment text.
@@ -267,6 +279,10 @@ def _parse_multiplication_operands(assignment_text: str) -> tuple[int, int] | No
     Returns None if no multiplication expression is found. Uses a regex that
     specifically matches 'N op M' patterns, avoiding false matches on stray
     numbers in the surrounding text ('Opgave 3:', '25 opgaver:', etc.).
+
+    This function is also the existence-check for "is this a multiplication
+    expression we can render?" — if it returns None, we cannot generate long
+    multiplication regardless of how the assignment is tagged.
     """
     match = MULTIPLICATION_PATTERN.search(assignment_text)
     if match is None:
@@ -276,10 +292,13 @@ def _parse_multiplication_operands(assignment_text: str) -> tuple[int, int] | No
 def should_use_long_multiplication(assignment_type: str, assignment_text: str,
                                    assignment_topic: str = "") -> bool:
     """Route multiplication where the larger operand is ≤ 3 cifre, the smaller is
-    ≤ 2 cifre, at least one operand is multi-digit, and there are no decimals."""
-    if not _is_multiplication(assignment_type, assignment_text, assignment_topic):
-        return False
-    if re.search(r'\d+[,.]\d+', assignment_text):
+    ≤ 2 cifre, at least one operand is multi-digit, and there are no decimals.
+
+    Text is authoritative — if no explicit `N × M` expression can be parsed, the
+    function returns False even if assignment_type/topic claims multiplication.
+    Without parseable operands we have nothing to render.
+    """
+    if DECIMAL_PATTERN.search(assignment_text):
         return False  # decimals out of scope in v1
     operands = _parse_multiplication_operands(assignment_text)
     if operands is None:
@@ -291,15 +310,11 @@ def should_use_long_multiplication(assignment_type: str, assignment_text: str,
         return False
     # At least one operand must be multi-digit (single × single hører til array-modellen)
     return larger >= 10
-
-def _is_multiplication(assignment_type: str, assignment_text: str,
-                       assignment_topic: str = "") -> bool:
-    if assignment_type == "multiplication" or assignment_topic == "multiplication":
-        return True
-    return bool(MULTIPLICATION_PATTERN.search(assignment_text)) or "gange" in assignment_text.lower()
 ```
 
 **Hvorfor specifik multiplications-regex**: En naiv `re.findall(r'\d+', text)[:2]`-tilgang fejler på almindelige formuleringer som `"Opgave 3: Regn 14 × 206"` (parser ville tage `[3, 14]` i stedet for `[14, 206]`) eller `"Regn 25 opgaver: 14 × 206"`. `_parse_multiplication_operands` garanterer at de to tal der returneres er dem der faktisk står på hver side af multiplikations-tegnet.
+
+**Hvorfor `_parse_multiplication_operands` også fungerer som eksistens-check**: Tidligere udkast af specen havde en separat `_is_multiplication`-helper der kørte den samme regex igen. Det var to regex-pass på samme tekst uden noget gevinst. Den simplere model — "kør parseren én gang og lad `None` betyde nej" — kører én regex og giver samme resultat for alle praktiske tilfælde. Den eneste opførsels-forskel er at en opgave tagget `assignment_type="multiplication"` med tekst som `"Tre gange syv"` (uden symbol) ikke længere passerer eksistens-checket — og det er ønskeligt fordi vi ikke kan generere lang multiplikation uden eksplicitte operander uanset hvad.
 
 `generate_long_multiplication_example` bruger samme helper til at udtrække elevens tal til normalisering og try_yours-trinnet.
 
@@ -379,10 +394,28 @@ struct LongMultiplicationState {
 
 ### `apply(visual:)` switch-cases
 
-- `"setup"` — initialiser multiplicand/multiplier, nulstil alt andet (også try_yours bruger denne)
+- `"setup"` — no-op (`break`). State er allerede korrekt: AnimationPlayer reassigner `cumulativeLongMultiplicationState` til en frisk `LongMultiplicationState.from(visual:)` på hver setup-action (se "AnimationPlayer integration" nedenfor). **Denne reset-mekanisme er hvad der får try_yours til at fungere** — try_yours genbruger `setup`-actionen med elevens egne tal, AnimationPlayer reassigner state'en til en frisk view af elevens tal, og iOS-view'en rendrer den tomme opstilling.
 - `"partial_product"` — append til `partials`, sæt `activePartialIndex`, sæt `currentExpressionChain`, sæt `currentCarries` direkte fra visual'ens `carries`-felt
-- `"sum_partials"` — sæt `showSum = true`, `sumTotal = total`, clear `currentCarries`, clear `activePartialIndex`, clear `currentExpressionChain`
-- `"reveal"` — sæt `showResult = true`, `resultText = String(result)`
+- `"sum_partials"` — sæt `showSum = true`, `sumTotal = total`, **clear `currentCarries`** (menterne er "brugt" når vi summerer), clear `activePartialIndex`, clear `currentExpressionChain`
+- `"reveal"` — sæt `showResult = true`, `resultText = String(result)`. `currentCarries` forbliver clear (den blev cleared af `sum_partials`); `reveal` rører den ikke
+
+**Single-partial specialtilfælde i iOS:** Når multiplier er enkelt-ciffer (fx 24 × 7), springer backend `sum_partials` over (se "Single-partial specialtilfælde" i backend-afsnittet). På iOS-siden betyder det at `showSum` forbliver `false` og `currentCarries` cleares aldrig fra `sum_partials` — i stedet skal `reveal` (når der ikke har været noget sum_partials) eksplicit clear `currentCarries`, `activePartialIndex` og `currentExpressionChain`. Dette er den eneste case hvor `reveal` rører carries-state'en.
+
+### AnimationPlayer integration
+
+`AnimationPlayer.updateCumulativeState` skal indeholde et nyt switch-case parallelt med eksisterende `short_division`-case:
+
+```swift
+case ("long_multiplication", _):
+    if v.action == "setup" {
+        cumulativeLongMultiplicationState = LongMultiplicationState.from(visual: v)
+    }
+    cumulativeLongMultiplicationState?.apply(visual: v)
+```
+
+Reset-semantikken sidder her, ikke i `apply()`. Denne arkitektur er allerede etableret af `ShortDivisionState` og GridState. Hver `setup`-action skaber en ny tilstand fra bunden, så try_yours-trinnet bare er en setup med elevens tal.
+
+`recalculateCumulativeState` skal også nulstille `cumulativeLongMultiplicationState = nil` så previous-step navigation virker korrekt.
 
 **Carry-visning semantik:** På papir skrives en mente altid over *den kolonne hvor den skal bruges i næste beregning*. Backend'en har allerede beregnet denne afledte liste og sender den som `carries`-feltet på partial_product-visual'en — et array med længde = antal multiplicand-cifre, parallelt til `multiplicand_digits` (i skrevet rækkefølge, high-to-low). Hvert element er enten `null` (ingen mente) eller et ciffer (mente-værdien der skal vises over den kolonne).
 
@@ -394,6 +427,8 @@ carries[2] = null   → ingen mente over 6 (ones)
 ```
 
 **Deserialisering:** Backend sender `None` i Python, der serialiserer til `null` i JSON. På iOS-siden læses `carries` bedst via en ny `optionalIntArrayParam(_:)`-helper på `VisualInstruction` der returnerer `[Int?]?` — bevarer nil-semantikken uden en sentinel-værdi. Helper-metoden er ~10 linjer og tilføjes som en del af denne feature.
+
+**Default-adfærd hvis feltet mangler:** Backend forpligter sig til altid at inkludere `carries`-feltet på `partial_product`-steps (selv når alle elementer er `None`). Hvis feltet alligevel skulle mangle helt fra JSON (fx ved en regression eller en gammel cached response), returnerer `optionalIntArrayParam("carries")` `nil`, og `apply()` skal behandle det som "ingen mente-data" — sæt `currentCarries` til et array af `nil`-værdier med samme længde som `multiplicandDigits`. Dette giver graceful fallback uden crash. Inkluder en backend-test der verificerer at feltet altid er til stede.
 
 ### Layout
 
@@ -420,15 +455,17 @@ carries[2] = null   → ingen mente over 6 (ones)
 - Cifre inden i et delprodukt falder ind fra højre mod venstre med ~80ms forsinkelse per ciffer (via indekseret `.delay()`)
 - Mente-cifre: fader ind/ud med `.opacity`. Hver mente synkroniseres med det del-udtryk i kæden der genererer den (se nedenfor)
 - Udtryks-bobbel: `.transition(.scale.combined(with: .opacity))`
-- **Udtryks-kæde inden i boblen**: `expression_chain` indeholder N del-udtryk separeret af `→` (fx `"6×4=24 → 0×4+2=2 → 2×4=8"`). Disse animeres ind sekventielt med ~300ms mellemrum, så eleven ser kæden ske ciffer-for-ciffer uden at sprænge step-budgettet. Implementeres via en `@State`-revealedSegments-counter der inkrementeres på en `Timer`-publisher når visual'en aktiveres. Mente-cifrene fader ind synkront med det del-udtryk hvor de "fødes"
+- **Udtryks-kæde inden i boblen**: `expression_chain` indeholder N del-udtryk separeret af `→` (fx `"6×4=24 → 0×4+2=2 → 2×4=8"`). Disse animeres ind sekventielt med ~300ms mellemrum, så eleven ser kæden ske ciffer-for-ciffer uden at sprænge step-budgettet. Implementeres med to `@State`-properties: `revealedSegments: Int = 0` og `chainAnimationTask: Task<Void, Never>?`. En `.onChange(of: state.currentExpressionChain)`-modifier starter et nyt `Task` der inkrementerer `revealedSegments` med 300ms intervaller. Mente-cifrene fader ind synkront med det del-udtryk hvor de "fødes" (fx mente `₂` vises samtidig med segment 1: `"6×4=24"`)
+- **Interaktion-escape for chain-animationen**: Hvis eleven trykker Næste midt i sekventiel reveal, afbrydes den kørende `chainAnimationTask` automatisk via `.onChange(of: state.currentExpressionChain)` (det nye visual erstatter det gamle, en ny `currentExpressionChain` udløser cancellation + ny task). Der er ingen "skip-til-fuld-kæde i samme visual"-mulighed; tap = næste step, intet andet. Det matcher hvordan AnimationPlayer.nextStep() allerede fungerer for alle øvrige visuals — in-step animation har ingen særstatus
 - Result-tal: spring-animation med scale + teal shadow (kopier fra ShortDivisionView)
 
 ### Preview
 
-Tilføj `#Preview` der rendrer tre states:
+Tilføj `#Preview` der rendrer fire states:
 1. Efter setup (tomt grid med 206 × 14)
 2. Efter partial 1 (824 skrevet med mente ₂ synlig)
 3. Efter reveal (fuld opstilling med sum og dobbeltstreg)
+4. Efter try_yours (fresh state fra setup med elevens egne tal — fx 178 × 23 — i tom opstilling, ingen partials, ingen sum, ingen result). Validerer at AnimationPlayer's state-reassignment giver et rent canvas i view'en
 
 ## Test-strategi
 
@@ -483,7 +520,7 @@ Skal skrives TDD-style (rød → grøn → refactor) parallelt med service-koden
    - `"Hej"` → `None`
    - Accepterer `×`, `*`, og `·` som operator
 
-7b. **`should_use_long_multiplication` cap-håndhævelse:**
+8. **`should_use_long_multiplication` cap-håndhævelse:**
    - `"14 × 206"` → `True` (3×2, indenfor cap)
    - `"24 × 7"` → `True` (2×1, mindst én multi-digit)
    - `"9 × 7"` → `False` (single × single, hører til array-modellen)
@@ -491,8 +528,9 @@ Skal skrives TDD-style (rød → grøn → refactor) parallelt med service-koden
    - `"1234 × 5"` → `False` (større operand > 3 cifre)
    - `"3,4 × 2,5"` → `False` (decimaler ikke i scope)
    - `"Hvad er klokken?"` → `False` (ingen multiplikation)
+   - `"Tre gange syv"` med `assignment_type="multiplication"` → `False` (ingen parseable operander, type-feltet ignoreres)
 
-8. **`generate_text` smoke test:**
+9. **`generate_text` smoke test:**
    - Hver step-type producerer ikke-tom dansk tekst
    - Ingen KeyError på manglende felter
    - Ingen engelske ord (regex check på "the", "and", "times", "plus")
@@ -518,7 +556,7 @@ Kør `ExampleGeneratorService.generate_example` med en reel multiplikations-opga
 
 - **Mentale mellemregninger** (mente-cifre + udtryks-kæde + narration) er centralt — eleven skal forstå *hvordan* delproduktet beregnes, ikke bare *at* det er 824
 - **Forskydning forklares eksplicit** når multiplier-position > 0 ("vi starter én plads til venstre fordi det er tiere")
-- **Kardinalreglen respekteres** fordi al aritmetik er deterministisk og `pick_example_numbers` aldrig returnerer elevens tal
+- **Kardinalreglen** (formelt defineret under `pick_example_numbers`) håndhæves rent mekanisk: al aritmetik er deterministisk og eksempel-tal kan aldrig kollidere med elevens
 - **"Prøv selv"-trinnet** viser elevens egen opgave i tom opstilling — inviterer til at stille op på papir, ikke at løse på skærm (paper-first-princippet)
 
 ## Afhængigheder og rækkefølge
