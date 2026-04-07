@@ -11,3 +11,6 @@ xcuserdata/
 /Design/
 /docs/design/v0-reference/
 /docs/design/v0-reference2/
+
+# SQLite backups
+*.db.backup
