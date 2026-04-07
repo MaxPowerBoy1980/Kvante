@@ -63,12 +63,23 @@ class ShortDivisionService:
                 decimal_str = f"{decimal_value:.10f}".rstrip("0").rstrip(".")
                 decimal_str = decimal_str.replace(".", ",")
                 steps.append({"step": "show_decimal", "decimal_result": decimal_str})
-                steps.append({"step": "reveal", "result": decimal_str})
+                steps.append({
+                    "step": "reveal",
+                    "result": decimal_str,
+                    "kind": "terminating_decimal",
+                })
             else:
                 result_str = f"{quotient_int} {final_remainder}/{divisor}"
-                steps.append({"step": "reveal", "result": result_str})
+                steps.append({
+                    "step": "reveal",
+                    "result": result_str,
+                    "kind": "fraction",
+                    "whole": quotient_int,
+                    "numerator": final_remainder,
+                    "denominator": divisor,
+                })
         else:
-            steps.append({"step": "reveal", "result": quotient_str})
+            steps.append({"step": "reveal", "result": quotient_str, "kind": "integer"})
 
         return steps
 
@@ -216,6 +227,14 @@ class ShortDivisionService:
                 })
 
             elif action == "reveal":
-                texts.append({"text": f"Svaret er {s['result']}", "audio_cue": f"Svaret er {s['result']}"})
+                kind = s.get("kind", "integer")
+                if kind == "terminating_decimal":
+                    # show_decimal already explained the conversion; reveal confirms
+                    text = f"Så svaret er {s['result']}"
+                elif kind == "fraction":
+                    text = f"Svaret er {s['whole']} og {s['numerator']}/{s['denominator']}"
+                else:
+                    text = f"Svaret er {s['result']}"
+                texts.append({"text": text, "audio_cue": f"Svaret er {s['result']}"})
 
         return texts

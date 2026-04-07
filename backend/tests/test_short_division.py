@@ -174,6 +174,18 @@ class TestGenerateText:
         # No "det er det samme som" text for non-terminating
         assert not any("det samme som" in t.lower() for t in text_strings)
 
+    def test_reveal_text_terminating_decimal(self):
+        """Reveal for terminating decimal: 'Så svaret er' (show_decimal already showed conversion)."""
+        steps = ShortDivisionService.compute_steps(589, 4)
+        texts = ShortDivisionService.generate_text(steps)
+        assert texts[-1]["text"] == "Så svaret er 147,25"
+
+    def test_reveal_text_fraction(self):
+        """Reveal for non-terminating fraction: 'Svaret er {whole} og {num}/{den}'."""
+        steps = ShortDivisionService.compute_steps(10, 3)
+        texts = ShortDivisionService.generate_text(steps)
+        assert texts[-1]["text"] == "Svaret er 3 og 1/3"
+
 
 class TestPickExampleNumbers:
     def test_different_from_student(self):
