@@ -36,7 +36,8 @@ struct AnimatedExplanationView: View {
                                 cumulativeRows: player.cumulativeRows,
                                 cumulativeGrouped: player.cumulativeGrouped,
                                 cumulativeGridState: player.cumulativeGridState,
-                                cumulativeShortDivisionState: player.cumulativeShortDivisionState
+                                cumulativeShortDivisionState: player.cumulativeShortDivisionState,
+                                cumulativeLongMultiplicationState: player.cumulativeLongMultiplicationState
                             )
                             .id(step.step)
                             .opacity(index <= player.currentStepIndex ? 1 : 0.3)
@@ -105,6 +106,7 @@ struct StepCardView: View {
     let cumulativeGrouped: Int
     let cumulativeGridState: GridState?
     let cumulativeShortDivisionState: ShortDivisionState?
+    let cumulativeLongMultiplicationState: LongMultiplicationState?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -139,7 +141,8 @@ struct StepCardView: View {
                 cumulativeRows: cumulativeRows,
                 cumulativeGrouped: cumulativeGrouped,
                 cumulativeGridState: cumulativeGridState,
-                cumulativeShortDivisionState: cumulativeShortDivisionState
+                cumulativeShortDivisionState: cumulativeShortDivisionState,
+                cumulativeLongMultiplicationState: cumulativeLongMultiplicationState
             )
             .frame(maxWidth: .infinity)
         }
