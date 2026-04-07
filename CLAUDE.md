@@ -79,6 +79,31 @@ docs/superpowers/       # Originale specs og planer
 - Bonjour service: `_kvante._tcp` port 8000
 - Begge maskiner har Tailscale — mDNS kræver at Zeroconf bindes til LAN-IP, ikke alle interfaces
 
+## Deploy-workflow
+
+Backend kører på Mac Mini med uvicorn `--reload` (auto-restart ved fil-ændringer). Standard dev-loop fra MacBook:
+
+```bash
+# 1. Edit + commit lokalt
+git commit -am "feat: ..."
+
+# 2. Deploy til Mac Mini (push + ssh-pull + health check)
+./scripts/deploy.sh
+```
+
+Scriptet refuserer at deploye hvis der er uncommitted changes — commit ordentligt først.
+
+**Engangs-opsætning når plist'en ændres:** Hvis `backend/com.kvante.backend.plist` opdateres, skal launchd reloades på Mac Mini:
+
+```bash
+ssh oleserver@macmini4
+cp ~/Kvante/backend/com.kvante.backend.plist ~/Library/LaunchAgents/
+launchctl unload ~/Library/LaunchAgents/com.kvante.backend.plist
+launchctl load ~/Library/LaunchAgents/com.kvante.backend.plist
+```
+
+(Dette er kun nødvendigt når plist'en selv ændres — normal Python-kodeændringer plukkes op automatisk af `--reload`.)
+
 ## Maskinkontekst
 
 Projektet eksisterer på to maskiner. **Tjek `hostname` ved sessionstart hvis du skal udføre maskine-specifikke operationer.**
