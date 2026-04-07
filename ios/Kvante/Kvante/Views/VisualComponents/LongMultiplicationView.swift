@@ -98,3 +98,73 @@ struct LongMultiplicationState {
         }
     }
 }
+
+struct LongMultiplicationView: View {
+    let visual: VisualInstruction
+    let animate: Bool
+    let state: LongMultiplicationState
+
+    @State private var revealedSegments: Int = 0
+    @State private var chainAnimationTask: Task<Void, Never>?
+
+    private let cellSize: CGFloat = 36
+    private let largeFont: Font = .custom("Marker Felt", size: 28)
+    private let smallFont: Font = .custom("Marker Felt", size: 18)
+
+    /// Total grid width: enough cells to show the widest row.
+    /// Worst case: a partial value can be wider than the multiplicand
+    /// (e.g. 999 × 9 = 8991 is 4 digits when multiplicand is 3 digits).
+    private var gridWidth: Int {
+        var width = max(state.multiplicandDigits.count, state.multiplierDigits.count)
+        for p in state.partials {
+            width = max(width, p.digits.count + p.shift)
+        }
+        if state.showSum, let t = state.sumTotal {
+            width = max(width, String(t).count)
+        }
+        return width
+    }
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 4) {
+            // Mente row (placeholder; filled in next task)
+            // Multiplicand row
+            digitRow(state.multiplicandDigits, alignRight: true,
+                     prefix: "", color: KvanteTheme.Colors.ink)
+            // Multiplier row with × prefix
+            digitRow(state.multiplierDigits, alignRight: true,
+                     prefix: "×", color: KvanteTheme.Colors.ink)
+            // Line under multiplier
+            Rectangle()
+                .fill(KvanteTheme.Colors.ink.opacity(0.5))
+                .frame(height: 3)
+                .frame(width: CGFloat(gridWidth + 1) * cellSize)
+            // Partial product rows + sum row + result come in later tasks
+        }
+        .padding(16)
+    }
+
+    @ViewBuilder
+    private func digitRow(_ digits: [Int], alignRight: Bool, prefix: String,
+                          color: Color) -> some View {
+        let leadingEmptyCells = gridWidth - digits.count
+        HStack(spacing: 0) {
+            // Operator cell on the very left
+            Text(prefix)
+                .font(largeFont)
+                .foregroundStyle(KvanteTheme.Colors.primary)
+                .frame(width: cellSize, height: cellSize)
+            // Empty leading cells to right-align
+            ForEach(0..<leadingEmptyCells, id: \.self) { _ in
+                Color.clear.frame(width: cellSize, height: cellSize)
+            }
+            // Digit cells
+            ForEach(Array(digits.enumerated()), id: \.offset) { _, d in
+                Text("\(d)")
+                    .font(largeFont)
+                    .foregroundStyle(color)
+                    .frame(width: cellSize, height: cellSize)
+            }
+        }
+    }
+}
