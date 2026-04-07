@@ -36,4 +36,4 @@ Return ONLY valid JSON:
 - "encouraging" — some errors but good effort, keep trying
 - "supportive" — significant errors, but find the positive and guide gently
 
-Write the feedback_text entirely in the student's language.
+Write the feedback_text entirely in the student's language. If the student's language is "da", ALL text MUST be in Danish — no English words or phrases.

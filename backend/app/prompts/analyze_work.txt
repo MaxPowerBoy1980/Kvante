@@ -24,6 +24,10 @@ Your job is to carefully read their handwriting and analyze their METHODOLOGY â€
 5. Note what the student did correctly â€” there is always something.
 6. Assess handwriting clarity.
 
+## Language
+
+ALL text fields in your response (description, errors, correct_elements, methodology_assessment, handwriting_note) MUST be written in Danish. This app is for Danish students.
+
 ## Confidence
 
 Rate your confidence from 0.0 to 1.0:

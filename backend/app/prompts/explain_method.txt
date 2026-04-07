@@ -43,6 +43,6 @@ You will receive:
 Return ONLY valid JSON:
 
 {
-  "feedback_text": "string (in the student's language)",
+  "feedback_text": "string (in the student's language — if 'da', ALL text MUST be in Danish)",
   "tone": "encouraging" | "supportive" | "celebratory"
 }
