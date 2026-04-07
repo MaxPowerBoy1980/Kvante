@@ -11,12 +11,14 @@ struct VisualComponentView: View {
     let cumulativeGrouped: Int
     let cumulativeGridState: GridState?
     let cumulativeShortDivisionState: ShortDivisionState?
+    let cumulativeLongMultiplicationState: LongMultiplicationState?
 
     init(visual: VisualInstruction, animate: Bool,
          cumulativeObjects: Int = 0, cumulativeCrossedOut: Int = 0,
          cumulativeRows: Int = 2, cumulativeGrouped: Int = 0,
          cumulativeGridState: GridState? = nil,
-         cumulativeShortDivisionState: ShortDivisionState? = nil) {
+         cumulativeShortDivisionState: ShortDivisionState? = nil,
+         cumulativeLongMultiplicationState: LongMultiplicationState? = nil) {
         self.visual = visual
         self.animate = animate
         self.cumulativeObjects = cumulativeObjects
@@ -25,6 +27,7 @@ struct VisualComponentView: View {
         self.cumulativeGrouped = cumulativeGrouped
         self.cumulativeGridState = cumulativeGridState
         self.cumulativeShortDivisionState = cumulativeShortDivisionState
+        self.cumulativeLongMultiplicationState = cumulativeLongMultiplicationState
     }
 
     var body: some View {
@@ -62,6 +65,13 @@ struct VisualComponentView: View {
             } else {
                 ShortDivisionView(visual: visual, animate: animate,
                                   state: ShortDivisionState.from(visual: visual))
+            }
+        case "long_multiplication":
+            if let state = cumulativeLongMultiplicationState {
+                LongMultiplicationView(visual: visual, animate: animate, state: state)
+            } else {
+                LongMultiplicationView(visual: visual, animate: animate,
+                                       state: LongMultiplicationState.from(visual: visual))
             }
         default:
             // Fallback: unknown visual type — show nothing (text is shown by parent)
