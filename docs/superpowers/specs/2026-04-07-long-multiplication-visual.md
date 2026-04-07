@@ -65,7 +65,7 @@ Byg lang multiplikation (standard opstilling med forskudte delprodukter) som en 
 
 ```
 backend/app/services/long_multiplication.py
-backend/tests/services/test_long_multiplication.py
+backend/tests/test_long_multiplication.py
 ios/Kvante/Kvante/Views/VisualComponents/LongMultiplicationView.swift
 ```
 
