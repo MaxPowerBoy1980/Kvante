@@ -200,16 +200,35 @@ Hvert backend-step bliver til en `ChatMessage` med en `VisualInstruction`. Forma
 **Vigtig detalje — try-yours uden visual:**
 For long_multiplication har try-yours en `setup` visual med elevens egne tal i et tomt grid. Vi besluttede at single-digit IKKE skal vise elevens tal som grid (kardinal-reglen + tællelig outline). Derfor: `visual: null` på try-yours-step.
 
-Dette kræver en **schema-ændring**: `AnimationStep.visual` er i dag `VisualInstruction` i `backend/app/models/schemas.py:39`. Skal blive `Optional[VisualInstruction] = None`. På iOS-siden skal følgende call-sites opdateres til at håndtere optional:
+Dette kræver en **schema-ændring** på begge sider:
 
-- `AnimationPlayer.swift:87` (`step.visual.type` i `pauseDuration`)
-- `AnimationPlayer.swift:90,94` (intParam-kald i `pauseDuration`)
-- `AnimationPlayer.swift:105` (`let v = step.visual` i `updateCumulativeState`)
-- `AnimatedExplanationView.swift:137`
-- `ChatBubble.swift:283`
-- `InlineExampleView.swift:121`
+**Backend** (`backend/app/models/schemas.py:39`):
+```python
+visual: VisualInstruction        # FØR
+visual: Optional[VisualInstruction] = None    # EFTER
+```
 
-Hvert sted bliver enten `if let visual = step.visual { ... }` eller en standalone tekst-rendering hvis visual er nil. Implementations-planen detaljerer dette per call-site.
+**iOS Codable model** (`ios/Kvante/Kvante/Models/AnimationModels.swift`):
+- Linje 111: `let visual: VisualInstruction` → `let visual: VisualInstruction?`
+- Linje 114-119: opdater init-signatur
+- Linje 132: `try container.decode(VisualInstruction.self, forKey: .visual)` → `try container.decodeIfPresent(VisualInstruction.self, forKey: .visual)`
+
+**iOS call-sites der læser `step.visual` (komplet grep-audit, alle skal håndtere optional):**
+
+| Fil | Linje | Brug | Strategi |
+|---|---|---|---|
+| `Models/AnimationModels.swift` | 111, 114-119, 132 | Type-deklaration + decoder | Type til optional, decodeIfPresent |
+| `ViewModels/ChatViewModel.swift` | 265-279 | Bygger cumulative state i loop | Wrap if/else if-kæden i `if let v = s.visual { ... }` |
+| `Views/AnimationPlayer.swift` | 87 | `switch step.visual.type` i pauseDuration | Returner default (2.5s) hvis nil — se "pauseDuration når visual er nil" nedenfor |
+| `Views/AnimationPlayer.swift` | 90, 94 | `step.visual.intParam(...)` i pauseDuration | N/A når 87 håndteres med early return |
+| `Views/AnimationPlayer.swift` | 105 | `let v = step.visual` i updateCumulativeState | `guard let v = step.visual else { return }` i toppen |
+| `Views/AnimatedExplanationView.swift` | 137 | `visual: step.visual` til VisualComponentView | `if let visual = step.visual { VisualComponentView(visual: visual, ...) }` — wrap rendering i if-let |
+| `Views/Chat/ChatBubble.swift` | 283 | Samme | Samme if-let pattern |
+| `Views/Chat/InlineExampleView.swift` | 121 | Samme | Samme if-let pattern |
+
+`VisualComponentView` selv beholder sin non-optional `let visual: VisualInstruction` — den siger "render dette visual"; ansvaret for at håndtere fraværet ligger hos call-sites (try-yours vises som ren tekst-bobble uden visual-pad).
+
+**pauseDuration når visual er nil: 2.5 sekunder.** Samme som default-branch i den eksisterende switch (linje 98). Try-yours er altid sidste step, så `isAtEnd`-vagt i `scheduleAutoAdvance` (linje 72-75) sætter alligevel `isPlaying = false` før denne værdi får praktisk betydning — men 2.5 er et fornuftigt fallback hvis et tekst-only step en dag dukker op midt i en sekvens.
 
 ## iOS visual component
 
@@ -332,13 +351,11 @@ case "single_digit_array":
 
 1. **Property** (linje 17): tilføj `private(set) var cumulativeArrayGridState: ArrayGridState?`
 2. **`reset()`** (linje 55-66): tilføj `cumulativeArrayGridState = nil`
-3. **`pauseDuration(for:)`** (linje 86-100): tilføj `case "single_digit_array": return 2.0` (rolig tempo til skip-counting)
-4. **`updateCumulativeState(for:)`** (linje 104-133): tilføj case for `("single_digit_array", _)` parallelt med long_multiplication-casen — initialiser fra setup, apply ellers
+3. **`pauseDuration(for:)`** (linje 86-100): refaktorer signatur til at håndtere optional visual først (`guard let visual = step.visual else { return 2.5 }`), derefter tilføj `case "single_digit_array": return 2.0` (rolig tempo til skip-counting)
+4. **`updateCumulativeState(for:)`** (linje 104-133): tilføj `guard let v = step.visual else { return }` i toppen, derefter tilføj case for `("single_digit_array", _)` parallelt med long_multiplication-casen — initialiser fra setup, apply ellers
 5. **`recalculateCumulativeState()`** (linje 135-145): tilføj `cumulativeArrayGridState = nil` til reset-sektionen
 
 **Note om eksisterende preexisting bug:** `recalculateCumulativeState()` resetter ikke `cumulativeGridState` ved linje 135, hvilket ser ud til at være en bug i eksisterende kode. Det er IKKE i scope for denne spec — vi noterer det og lader det være.
-
-`pauseDuration` skal også opdateres til at håndtere optional `step.visual` (returnér en standardværdi hvis nil — fx 2.0 sekunder for ren tekst).
 
 ## Routing
 
@@ -466,7 +483,7 @@ Hvis (1) ikke allerede er sandt, lille schema-justering er en del af implementat
   - Initial state (rows=6, cols=8, ingen revealed)
   - Mid-state (revealedRows=3, cumulative=24)
   - Final state (showResult=true, resultText="48")
-  - Worst case (9×9 fully revealed)
+  - Worst case (9×9 fully revealed) — **både iPad-default OG iPhone SE preview** for at fange layout-fejl ved 320pt skærmbredde. iPhone SE er den smalleste konfiguration vi vil tjekke; hvis 9×9 ikke passer dér uden horisontal scroll, skal `cellSize` justeres ned fra 24pt.
 
 **Manuel verifikation:**
 - Genstart backend, scan en testopgave med `"7 × 9"`, request example, verificer at examplet bruger andre tal og at chat-bobler kommer i rækkefølge
@@ -486,4 +503,5 @@ Featuren er færdig når:
   - Try-yours-bobble er tekst-only og refererer til elevens egne tal
 - [ ] Manuel test: scan elevens svar (fx `"63"` på papir) for opgaven 7 × 9. OCR læser tallet, feedback genereres normalt
 - [ ] 9 × 9 worst case passer i en chat-bobble på iPad uden horisontal scroll
+- [ ] 9 × 9 worst case passer i `#Preview` på iPhone SE (320pt bred) uden horisontal scroll — verificerer mindste-skærms layout selvom appen i dag deployer til iPad
 - [ ] Routing-prioritet verificeret: `"7 × 9"` → single-digit, `"7 × 19"` → long_mult
