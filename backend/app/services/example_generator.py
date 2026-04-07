@@ -477,6 +477,85 @@ class ExampleGeneratorService:
             "note": "",
         }
 
+    def generate_long_multiplication_example(self, assignment_text: str,
+                                              language: str = "da") -> dict:
+        """Generate a long multiplication example — fully deterministic, no LLM."""
+        from app.services.long_multiplication import LongMultiplicationService
+
+        logger.info("Generating long multiplication example for: '%s'", assignment_text)
+        start = time.time()
+
+        operands = _parse_multiplication_operands(assignment_text)
+        if operands is None:
+            raise ValueError(f"Could not parse multiplication operands from: {assignment_text!r}")
+
+        # Normalise: larger first
+        student_a, student_b = sorted(operands, reverse=True)
+        ex_mc, ex_mp = LongMultiplicationService.pick_example_numbers(student_a, student_b)
+        steps, mental = LongMultiplicationService.compute_steps(ex_mc, ex_mp)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+
+        anim_steps = []
+        for i, (s, text_obj) in enumerate(zip(steps, texts)):
+            action = s["step"]
+            visual = {"type": "long_multiplication", "action": action}
+
+            if action == "setup":
+                visual["multiplicand"] = s["multiplicand"]
+                visual["multiplier"] = s["multiplier"]
+                visual["multiplicand_digits"] = s["multiplicand_digits"]
+                visual["multiplier_digits"] = s["multiplier_digits"]
+            elif action == "partial_product":
+                visual["multiplier_digit"] = s["multiplier_digit"]
+                visual["multiplier_position"] = s["multiplier_position"]
+                visual["value"] = s["value"]
+                visual["digits"] = s["digits"]
+                visual["shift"] = s["shift"]
+                visual["carries"] = s["carries"]
+                visual["expression_chain"] = s["expression_chain"]
+            elif action == "sum_partials":
+                visual["partials"] = s["partials"]
+                visual["total"] = s["total"]
+            elif action == "reveal":
+                visual["result"] = s["result"]
+
+            anim_steps.append({
+                "step": i + 1,
+                "phase": "concrete",
+                "text": text_obj["text"],
+                "visual": visual,
+                "audio_cue": text_obj.get("audio_cue", ""),
+            })
+
+        # try_yours: student's own normalised problem in empty grid
+        student_mc_digits = [int(d) for d in str(student_a)]
+        student_mp_digits = [int(d) for d in str(student_b)]
+        anim_steps.append({
+            "step": len(anim_steps) + 1,
+            "phase": "concrete",
+            "text": "Prøv nu selv med din opgave — stil den op på samme måde!",
+            "visual": {
+                "type": "long_multiplication",
+                "action": "setup",
+                "multiplicand": student_a,
+                "multiplier": student_b,
+                "multiplicand_digits": student_mc_digits,
+                "multiplier_digits": student_mp_digits,
+            },
+            "audio_cue": "Prøv nu selv med din opgave",
+        })
+
+        elapsed = time.time() - start
+        logger.info("Generated long multiplication example in %.3fs: %s × %s",
+                    elapsed, ex_mc, ex_mp)
+
+        return {
+            "example_problem": f"Regn ud: {ex_mc} × {ex_mp}",
+            "pedagogy": "concrete-first",
+            "steps": anim_steps,
+            "note": "",
+        }
+
     def _parse_json(self, raw: str) -> dict:
         cleaned = raw.strip()
         if cleaned.startswith("```"):

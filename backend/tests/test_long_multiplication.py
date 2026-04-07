@@ -330,3 +330,65 @@ class TestRouting:
         assert should_use_long_multiplication("multiplication", "Hvad er klokken?") is False
         # Tagged but no parseable expression — text is authoritative
         assert should_use_long_multiplication("multiplication", "Tre gange syv") is False
+
+
+class TestGenerateExampleEndToEnd:
+    def _make_service(self):
+        # Skip __init__ — it instantiates an AI client which needs API keys.
+        # generate_long_multiplication_example doesn't use the AI client at all.
+        from app.services.example_generator import ExampleGeneratorService
+        return ExampleGeneratorService.__new__(ExampleGeneratorService)
+
+    def test_generates_full_response(self):
+        svc = self._make_service()
+        result = svc.generate_long_multiplication_example("Regn 14 × 206", language="da")
+
+        # Schema-ish checks
+        assert "example_problem" in result
+        assert "steps" in result
+        assert "pedagogy" in result
+        assert "note" in result
+        assert result["pedagogy"] == "concrete-first"
+        assert "Regn ud:" in result["example_problem"]
+        assert "×" in result["example_problem"]
+
+        # Each step has the right shape
+        for step in result["steps"]:
+            assert "step" in step
+            assert "phase" in step
+            assert "text" in step
+            assert "visual" in step
+            assert step["visual"]["type"] == "long_multiplication"
+
+        # Last step is try_yours setup with student's normalised numbers
+        last = result["steps"][-1]
+        assert last["visual"]["action"] == "setup"
+        # Student input was 14 × 206 → normalised multiplicand=206, multiplier=14
+        assert last["visual"]["multiplicand"] == 206
+        assert last["visual"]["multiplier"] == 14
+
+    def test_example_numbers_never_match_student(self):
+        """Run 30 generations and verify cardinal rule holds."""
+        svc = self._make_service()
+        for _ in range(30):
+            result = svc.generate_long_multiplication_example("Regn 14 × 206", language="da")
+            problem = result["example_problem"]
+            # Crude check: the student's numbers should not appear
+            # in the example_problem string at all
+            assert "14 × 206" not in problem
+            assert "206 × 14" not in problem
+
+    def test_step_count_under_max(self):
+        """Total steps including try_yours must be ≤ 8 (MAX_STEPS)."""
+        from app.services.example_generator import MAX_STEPS
+        svc = self._make_service()
+        result = svc.generate_long_multiplication_example("Regn 14 × 206", language="da")
+        assert len(result["steps"]) <= MAX_STEPS
+
+    def test_handles_2x1_input(self):
+        svc = self._make_service()
+        result = svc.generate_long_multiplication_example("Regn 24 × 7", language="da")
+        last = result["steps"][-1]
+        # Normalised: multiplicand=24, multiplier=7
+        assert last["visual"]["multiplicand"] == 24
+        assert last["visual"]["multiplier"] == 7
