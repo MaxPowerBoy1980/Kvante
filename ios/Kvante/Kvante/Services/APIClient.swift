@@ -288,6 +288,37 @@ actor APIClient {
         try checkResponse(response, data: data)
     }
 
+    // MARK: - Dev Screenshot
+
+    #if DEBUG
+    /// Upload a screenshot with an optional note to the dev endpoint.
+    /// Used by the in-app shake-to-submit feature for sending visual feedback to Claude.
+    func submitDevScreenshot(imageData: Data, note: String) async throws {
+        let url = baseURL.appendingPathComponent("dev/screenshots")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"shot.png\"\r\n")
+        body.append("Content-Type: image/png\r\n\r\n")
+        body.append(imageData)
+        body.append("\r\n")
+
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"note\"\r\n\r\n")
+        body.append(note)
+        body.append("\r\n--\(boundary)--\r\n")
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+    }
+    #endif
+
     // MARK: - Error Handling
 
     private func checkResponse(_ response: URLResponse, data: Data) throws {
