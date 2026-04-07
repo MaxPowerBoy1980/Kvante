@@ -25,7 +25,7 @@ Byg lang multiplikation (standard opstilling med forskudte delprodukter) som en 
   ×     1  4
   ──────────
      8  2  4            (partial 1: 206 × 4)
-  2  0  6  ·            (partial 2: 206 × 1, forskudt én plads)
+  2  0  6  0            (partial 2: 206 × 1, forskudt én plads → ekstra nul)
   ──────────
   2  8  8  4            (sum af delprodukter)
   ══════════
@@ -35,8 +35,8 @@ Byg lang multiplikation (standard opstilling med forskudte delprodukter) som en 
 
 ### In scope (v1)
 
-- Multiplikation hvor mindst én operand har ≥ 2 cifre (7 × 24, 14 × 206, 134 × 245)
-- Max 3 cifre × 3 cifre (passer i 8-trin budget)
+- Multiplikation hvor begge operander har ≥ 2 cifre, eller hvor en 2-3-cifret operand ganges med en 1-2-cifret operand (24 × 7, 14 × 206, 245 × 14, 99 × 99)
+- Max 3 cifre × 2 cifre efter normalisering (større operand ≤ 999, mindre operand ≤ 99)
 - Kun heltal
 - Routing fra `ExampleGeneratorService.generate_example` når opgaven matcher
 - Deterministisk eksempel-nummer-valg der matcher elevens ciffer-sværhedsgrad og aldrig bruger samme tal
@@ -46,8 +46,8 @@ Byg lang multiplikation (standard opstilling med forskudte delprodukter) som en 
 ### Out of scope (senere)
 
 - Decimal-multiplikation (3,4 × 2,5) — kommer i senere iteration
-- Single × single (9 × 7) — falder stadig til LLM/array_grid-path (disse tal læres gennem gangetabeller, ikke opstilling)
-- Multi-cifer × over 3 cifre — bevidst begrænsning, bliver ulæseligt på iPad
+- Single × single (9 × 7) — kommer som separat feature med array/areal-model i en sibling-spec, ikke via denne `long_multiplication`-service
+- Større operand > 3 cifre, eller mindre operand > 2 cifre — bevidst begrænsning, bliver visuelt overfyldt på iPad og rammer trin-budgettet. Falder til LLM-fallback.
 - Kryds-multiplikation (metode 1a fra `docs/design/2026-04-06-math-methods-reference.md`) — mindre almindelig i pensum, gemmes til evt. senere
 - Automatiserede iOS-tests (Kvante har ingen Swift-test setup endnu)
 
@@ -115,7 +115,7 @@ class LongMultiplicationService:
 
 - `multiplicand > 0` og `multiplier > 0`
 - Mindst ét tal har ≥ 2 cifre (single × single afvises med assertion; scope-valget routes dem ikke hertil)
-- Max 3 cifre × 3 cifre (`multiplicand < 1000 and multiplier < 1000`)
+- Efter normalisering (større tal øverst): `multiplicand < 1000 and multiplier < 100` — dvs. max 3 cifre × 2 cifre. `compute_steps` antager kalderen har normaliseret.
 
 ### Operand-rækkefølge (større tal øverst)
 
@@ -159,7 +159,7 @@ Første delprodukt for 206 × 14 (ones-ciffer):
     "multiplier_position": 0,          # 0 = ones, 1 = tens, 2 = hundreds
     "value": 824,                       # pre-shift raw product (206 × 4)
     "digits": [8, 2, 4],                # pre-shift digits, written order
-    "shift": 0,                         # no placeholder cells
+    "shift": 0,                         # ingen ekstra '0'-celler til højre
     "carries": [None, 2, None],         # parallel to multiplicand_digits [2,0,6]:
                                         # ingen mente over 2, mente 2 over 0, ingen mente over 6
     "expression_chain": "6×4=24 → 0×4+2=2 → 2×4=8",
@@ -174,7 +174,7 @@ Andet delprodukt for 206 × 14 (tens-ciffer) — bemærk `value=206` (pre-shift)
     "multiplier_position": 1,
     "value": 206,                       # pre-shift (206 × 1)
     "digits": [2, 0, 6],
-    "shift": 1,                         # én fadet placeholder-prik til højre
+    "shift": 1,                         # rendret som "2060" (én ekstra '0' til højre)
     "carries": [None, None, None],      # ingen menter når multiplier-ciffer er 1
     "expression_chain": "6×1=6 → 0×1=0 → 2×1=2",
 }
@@ -275,8 +275,8 @@ def _parse_multiplication_operands(assignment_text: str) -> tuple[int, int] | No
 
 def should_use_long_multiplication(assignment_type: str, assignment_text: str,
                                    assignment_topic: str = "") -> bool:
-    """Route multiplication with at least one multi-digit operand, no decimals,
-    and both operands within 3-digit range."""
+    """Route multiplication where the larger operand is ≤ 3 cifre, the smaller is
+    ≤ 2 cifre, at least one operand is multi-digit, and there are no decimals."""
     if not _is_multiplication(assignment_type, assignment_text, assignment_topic):
         return False
     if re.search(r'\d+[,.]\d+', assignment_text):
@@ -285,11 +285,12 @@ def should_use_long_multiplication(assignment_type: str, assignment_text: str,
     if operands is None:
         return False
     a, b = operands
-    # Both operands must fit in 3-digit range (matches compute_steps validation)
-    if a >= 1000 or b >= 1000:
+    larger, smaller = max(a, b), min(a, b)
+    # Cap: larger ≤ 999 (3 cifre), smaller ≤ 99 (2 cifre)
+    if larger >= 1000 or smaller >= 100:
         return False
-    # At least one operand must be multi-digit (scope choice B)
-    return a >= 10 or b >= 10
+    # At least one operand must be multi-digit (single × single hører til array-modellen)
+    return larger >= 10
 
 def _is_multiplication(assignment_type: str, assignment_text: str,
                        assignment_topic: str = "") -> bool:
@@ -333,16 +334,15 @@ Parallel til `generate_short_division_example`:
 6. Tilføj "Prøv selv"-trin med elevens egne tal i en ny `setup`-visual (ingen animation state, kun opstillingen)
 7. Returnér `{example_problem, pedagogy, steps, note}`
 
-**Trin-budget worst case (245 × 134, 3×3):**
+**Trin-budget worst case (999 × 99, 3×2):**
 1. setup
-2. partial 245 × 4 = 980 (shift 0)
-3. partial 245 × 3 = 735 (shift 1, rendret 7350)
-4. partial 245 × 1 = 245 (shift 2, rendret 24500)
-5. sum_partials (980 + 7350 + 24500 = 32830)
-6. reveal
-7. try_yours
+2. partial 999 × 9 = 8991 (shift 0)
+3. partial 999 × 9 = 8991 (shift 1, rendret 89910)
+4. sum_partials (8991 + 89910 = 98901)
+5. reveal
+6. try_yours
 
-= **7 trin**. Under `MAX_STEPS = 8`. Passer.
+= **6 trin**. Komfortabelt under `MAX_STEPS = 8`.
 
 **Single-partial specialtilfælde:** Når multiplier er enkelt-ciffer (fx 24 × 7), producerer `compute_steps` kun ét `partial_product` og **springer `sum_partials` over** — der er intet at summere. Trin-budget: setup + partial + reveal = 3 trin (+ try_yours = 4). `generate_long_multiplication_example` skal håndtere dette korrekt.
 
@@ -407,7 +407,7 @@ carries[2] = null   → ingen mente over 6 (ones)
 2. Multiplicand-række (28pt ink)
 3. Multiplier-række med `×`-tegn (28pt ink)
 4. Streg (3pt ink, fuld bredde)
-5. Delprodukt-rækker (28pt ink, én per entry i `partials`). Shift = ekstra tomme celler til højre. Aktiv række har `primary.opacity(0.1)` baggrund
+5. Delprodukt-rækker (28pt ink, én per entry i `partials`). `shift` = N ekstra **'0'-celler** til højre (faktiske nuller, ikke placeholder-prikker — eleven skal kunne læse det færdige delprodukt direkte, fx `2060` ikke `206·`). Aktiv række har `primary.opacity(0.1)` baggrund
 6. Sum-streg (3pt ink, kun når `showSum`)
 7. Sum-række (28pt ink, kun når `showSum`)
 8. Dobbelt-streg (to parallelle 3pt streger med 3pt gap, kun når `showResult`)
@@ -418,8 +418,9 @@ carries[2] = null   → ingen mente over 6 (ones)
 
 - Nye delprodukter: `.transition(.move(edge: .leading).combined(with: .opacity))`
 - Cifre inden i et delprodukt falder ind fra højre mod venstre med ~80ms forsinkelse per ciffer (via indekseret `.delay()`)
-- Mente-cifre: fader ind/ud med `.opacity`
+- Mente-cifre: fader ind/ud med `.opacity`. Hver mente synkroniseres med det del-udtryk i kæden der genererer den (se nedenfor)
 - Udtryks-bobbel: `.transition(.scale.combined(with: .opacity))`
+- **Udtryks-kæde inden i boblen**: `expression_chain` indeholder N del-udtryk separeret af `→` (fx `"6×4=24 → 0×4+2=2 → 2×4=8"`). Disse animeres ind sekventielt med ~300ms mellemrum, så eleven ser kæden ske ciffer-for-ciffer uden at sprænge step-budgettet. Implementeres via en `@State`-revealedSegments-counter der inkrementeres på en `Timer`-publisher når visual'en aktiveres. Mente-cifrene fader ind synkront med det del-udtryk hvor de "fødes"
 - Result-tal: spring-animation med scale + teal shadow (kopier fra ShortDivisionView)
 
 ### Preview
@@ -441,9 +442,9 @@ Skal skrives TDD-style (rød → grøn → refactor) parallelt med service-koden
    - `compute_steps(24, 7) → 168` (single-digit multiplier, 1 partial product)
    - `compute_steps(14, 12) → 168` (2×2)
    - `compute_steps(206, 14) → 2884` (reference-eksempel, 3×2)
-   - `compute_steps(245, 134) → 32830` (worst case 3×3)
-   - `compute_steps(99, 99) → 9801` (max carries)
-   - `compute_steps(100, 100) → 10000` (nuller)
+   - `compute_steps(245, 14) → 3430` (3×2 typisk)
+   - `compute_steps(999, 99) → 98901` (worst case for cap, max carries)
+   - `compute_steps(100, 10) → 1000` (nuller)
    - Separat test for normalisering: `generate_long_multiplication_example` skal swappe `7 × 24`-input så multiplicand bliver 24, multiplier bliver 7 inden `compute_steps` kaldes
 
 2. **Step structure** — for hvert par:
@@ -451,7 +452,7 @@ Skal skrives TDD-style (rød → grøn → refactor) parallelt med service-koden
    - Der er præcis ét `partial_product`-step per multiplier-ciffer
    - Der er præcis ét `sum_partials`-step **når der er ≥ 2 delprodukter**; `sum_partials` springes over hvis kun ét delprodukt
    - Sidste step fra `compute_steps` er `reveal`
-   - Total step-count fra `compute_steps` ≤ 6 (så der er plads til try_yours tilføjet af `generate_long_multiplication_example`)
+   - Total step-count fra `compute_steps` ≤ 5 worst case (setup + 2 partials + sum + reveal). Plus try_yours fra `generate_long_multiplication_example` = ≤ 6 total.
 
 3. **Mental steps korrekthed** — for hvert `partial_product` (via den parallelle `mental_steps_by_partial[i]`-liste fra compute_steps-returen):
    - Simulér cifer-for-cifer med carry
@@ -481,6 +482,15 @@ Skal skrives TDD-style (rød → grøn → refactor) parallelt med service-koden
    - `"Regn 25 opgaver: 14 × 206"` → `(14, 206)` (ikke `(25, 14)`)
    - `"Hej"` → `None`
    - Accepterer `×`, `*`, og `·` som operator
+
+7b. **`should_use_long_multiplication` cap-håndhævelse:**
+   - `"14 × 206"` → `True` (3×2, indenfor cap)
+   - `"24 × 7"` → `True` (2×1, mindst én multi-digit)
+   - `"9 × 7"` → `False` (single × single, hører til array-modellen)
+   - `"245 × 134"` → `False` (3×3, over cap)
+   - `"1234 × 5"` → `False` (større operand > 3 cifre)
+   - `"3,4 × 2,5"` → `False` (decimaler ikke i scope)
+   - `"Hvad er klokken?"` → `False` (ingen multiplikation)
 
 8. **`generate_text` smoke test:**
    - Hver step-type producerer ikke-tom dansk tekst
