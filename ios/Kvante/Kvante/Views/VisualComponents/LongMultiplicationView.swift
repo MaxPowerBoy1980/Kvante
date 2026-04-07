@@ -126,28 +126,76 @@ struct LongMultiplicationView: View {
     }
 
     var body: some View {
-        VStack(alignment: .center, spacing: 4) {
-            // Mente (carry) row
-            carryRow()
-            // Multiplicand row
-            digitRow(state.multiplicandDigits, alignRight: true,
-                     prefix: "", color: KvanteTheme.Colors.ink)
-            // Multiplier row with × prefix
-            digitRow(state.multiplierDigits, alignRight: true,
-                     prefix: "×", color: KvanteTheme.Colors.ink)
-            // Line under multiplier
-            Rectangle()
-                .fill(KvanteTheme.Colors.ink.opacity(0.5))
-                .frame(height: 3)
-                .frame(width: CGFloat(gridWidth + 1) * cellSize)
-            // Partial product rows
-            ForEach(Array(state.partials.enumerated()), id: \.offset) { idx, partial in
-                partialRow(partial, isActive: state.activePartialIndex == idx)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
+        VStack(spacing: 12) {
+            if let chain = state.currentExpressionChain {
+                expressionBubble(chain)
+                    .transition(.scale.combined(with: .opacity))
             }
+
+            VStack(alignment: .center, spacing: 4) {
+                // Mente (carry) row
+                carryRow()
+                // Multiplicand row
+                digitRow(state.multiplicandDigits, alignRight: true,
+                         prefix: "", color: KvanteTheme.Colors.ink)
+                // Multiplier row with × prefix
+                digitRow(state.multiplierDigits, alignRight: true,
+                         prefix: "×", color: KvanteTheme.Colors.ink)
+                // Line under multiplier
+                Rectangle()
+                    .fill(KvanteTheme.Colors.ink.opacity(0.5))
+                    .frame(height: 3)
+                    .frame(width: CGFloat(gridWidth + 1) * cellSize)
+                // Partial product rows
+                ForEach(Array(state.partials.enumerated()), id: \.offset) { idx, partial in
+                    partialRow(partial, isActive: state.activePartialIndex == idx)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+            }
+            .animation(.easeOut(duration: 0.3), value: state.partials.count)
         }
         .padding(16)
-        .animation(.easeOut(duration: 0.3), value: state.partials.count)
+        .onChange(of: state.currentExpressionChain) { _, newChain in
+            startChainReveal(for: newChain)
+        }
+        .onAppear {
+            startChainReveal(for: state.currentExpressionChain)
+        }
+        .onDisappear {
+            chainAnimationTask?.cancel()
+        }
+    }
+
+    private func startChainReveal(for chain: String?) {
+        chainAnimationTask?.cancel()
+        revealedSegments = 0
+        guard let chain else { return }
+        let segmentCount = chain.split(separator: "→").count
+        chainAnimationTask = Task { @MainActor in
+            for i in 1...segmentCount {
+                try? await Task.sleep(for: .milliseconds(300))
+                if Task.isCancelled { return }
+                revealedSegments = i
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func expressionBubble(_ chain: String) -> some View {
+        let segments = chain.split(separator: "→").map { $0.trimmingCharacters(in: .whitespaces) }
+        let visibleCount = min(revealedSegments, segments.count)
+        let visibleText = segments.prefix(visibleCount).joined(separator: " → ")
+
+        Text(visibleText.isEmpty ? " " : visibleText)
+            .font(.system(size: 16, weight: .semibold, design: .rounded))
+            .foregroundStyle(KvanteTheme.Colors.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                KvanteTheme.Colors.primary.opacity(0.15),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .animation(.easeOut(duration: 0.2), value: visibleCount)
     }
 
     @ViewBuilder
