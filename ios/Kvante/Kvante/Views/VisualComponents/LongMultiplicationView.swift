@@ -127,6 +127,8 @@ struct LongMultiplicationView: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 4) {
+            // Mente (carry) row
+            carryRow()
             // Multiplicand row
             digitRow(state.multiplicandDigits, alignRight: true,
                      prefix: "", color: KvanteTheme.Colors.ink)
@@ -146,6 +148,36 @@ struct LongMultiplicationView: View {
         }
         .padding(16)
         .animation(.easeOut(duration: 0.3), value: state.partials.count)
+    }
+
+    @ViewBuilder
+    private func carryRow() -> some View {
+        // currentCarries is parallel to multiplicandDigits in WRITTEN order.
+        // Pad on the left so the carry positions line up with the multiplicand
+        // row above the line.
+        let leadingEmptyCells = gridWidth - state.multiplicandDigits.count
+
+        HStack(spacing: 0) {
+            // Operator cell column
+            Color.clear.frame(width: cellSize, height: cellSize / 1.5)
+            // Empty leading cells
+            ForEach(0..<leadingEmptyCells, id: \.self) { _ in
+                Color.clear.frame(width: cellSize, height: cellSize / 1.5)
+            }
+            // Carry cells
+            ForEach(Array(state.currentCarries.enumerated()), id: \.offset) { _, carry in
+                if let c = carry {
+                    Text("\(c)")
+                        .font(smallFont)
+                        .foregroundStyle(.orange)
+                        .frame(width: cellSize, height: cellSize / 1.5)
+                        .transition(.opacity)
+                } else {
+                    Color.clear.frame(width: cellSize, height: cellSize / 1.5)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: state.currentCarries.map { $0 ?? -1 })
     }
 
     @ViewBuilder
