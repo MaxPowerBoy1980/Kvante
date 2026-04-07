@@ -99,7 +99,7 @@ struct ContentView: View {
         .onAppear {
             serverDiscovery.startSearching()
         }
-        .devShakeToSubmitScreenshot(apiClient: apiClient)
+        .devScreenshotSubmit(apiClient: apiClient)
     }
 
     private func startPracticeSession(topic: String, difficulty: Int) {
