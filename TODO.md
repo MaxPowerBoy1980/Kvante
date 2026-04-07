@@ -1,6 +1,6 @@
 # Kvante TODO
 
-## Gennemført (2026-04-06)
+## Gennemført (2026-04-07)
 
 - [x] **Phase 1: UI Overhaul** — Komplet redesign: cream/ink palette, Google AI Studio design, asymmetriske chat-bobler, teal student-bobler, kort-layout home screen, chat header, tactile 3D knapper
 - [x] **Phase 1: Onboarding** — Konversationsbaseret chat-onboarding erstatter 3-skærms flow
@@ -10,31 +10,29 @@
 - [x] **Sticky opgave-bar** — Aktuel opgavetekst altid synlig under progress pill
 - [x] **Kort Division Visual (slikkepindsmetoden)** — Ny `ShortDivisionView` med cirkel + lodret streg + progressive rækker. Understøtter rest → brøk → decimal. Deterministisk backend service. Merget til main.
 - [x] **Decimal-support i stacked arithmetic** — `3,4 + 2,8` viser nu tiendedele/hundrededele kolonner og komma-separator i gitteret
+- [x] **Lang Multiplikation Visual** — Ny `LongMultiplicationView` med mente-række, forskudte delprodukter (som faktiske nuller), expression-chain reveal animation, sum-række, dobbelt-streg. Deterministisk `LongMultiplicationService` (ingen LLM). Scope: max 3×2 cifre. Kolonne-for-kolonne dansk narration der navngiver ener/tier/hundreder og forklarer mente. Multiplikations-submissions routes nu til Vision OCR (ikke Apple OCR).
 
 ---
 
 ## Næste features (prioriteret)
 
-### 1. Multiplikation Visual (NÆSTE)
-Multiplikation bruger stadig LLM-genererede prikker, som bryder kardinalreglen og er ulæselige ved store tal (9×7 = 63 prikker). Byg deterministisk service ligesom `ShortDivisionService`.
+### 1. Lang Multiplikation — sekventiel narration-animation
+Den nuværende narration i partial_product-trin er korrekt men tekst-tæt: hele kolonne-for-kolonne forklaringen står som én lang blok over grid'et. Eleven får kognitiv overload. Brainstorm retning: sekventiel reveal af narration synkroniseret med expression-chain animationen, eller compact/expanded toggle på udtryks-boblen, eller fjernet tekst-blok til fordel for rent visuel + TTS. Kræver sin egen brainstorming + spec — se `docs/superpowers/specs/2026-04-07-long-multiplication-visual.md` for det nuværende design der skal udvides.
 
-To mulige metoder fra `docs/design/2026-04-06-math-methods-reference.md`:
-- **1a. Krydset** (kryds-multiplikation): Diagonale linjer der forbinder cifre
-- **1b. Lang multiplikation**: Standard opstilling med delprodukter (206·14 → 824 + 2060 → 2884)
+### 2. Single-digit multiplikation (array/areal-model)
+9 × 7 og lignende single×single hører ikke til long multiplication og blev bevidst ekskluderet fra scope. Bygges som separat feature med array/rektangel-model (ren gitter, ikke spredte prikker). Scope dækker 1×1 op til 9×9 og skal fungere som visuel bro til lang multiplikation.
 
-Start med 1b — mest brugt i 4.-6. klasse og kan udvide `stacked_arithmetic` med nye actions.
-
-### 2. AI Fejlanalyse ved Forkert Svar
+### 3. AI Fejlanalyse ved Forkert Svar
 Kvante analyserer elevens fejl og guider: "Du har lagt sammen i stedet for at trække fra" eller "Du glemte at låne fra tierne". Nuværende feedback siger bare "prøv igen".
-
-### 3. Claude Vision til submissions (erstat Apple OCR)
-Apple OCR kan ikke læse columnar matematik eller slikkepindsnotation. For at AI'en kan vurdere *metode* (ikke bare facit) skal billeder sendes til Claude Vision. Opdater `work_analyzer.py`.
 
 ### 4. Session Persistence
 iOS kalder ikke backend's ChatMessage save/load endpoints endnu. Elevens arbejde forsvinder ved app-lukning. Scannede billeder linkes ikke til assignments.
 
 ### 5. Lang Division Visual
 Bracket-layout med divide/subtract/bring-down cyklus (sektion 2a i math-methods-reference).
+
+### 6. Completed LongMultiplicationState visual efter submission
+Når eleven har scannet et korrekt multiplikations-svar, vises kun tekst-ros. Stacked addition/subtraction bygger en completed GridState der renderes. Tilsvarende `LongMultiplicationState.completed(a:b:)` for at vise elevens fulde opstilling med delprodukter ville være mere tilfredsstillende.
 
 ---
 
