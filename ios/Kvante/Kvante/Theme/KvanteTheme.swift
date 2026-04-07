@@ -4,69 +4,74 @@ enum KvanteTheme {
     // MARK: - Colors
 
     enum Colors {
-        // Background
-        static let backgroundStart = Color(hex: "faf6f0")
-        static let backgroundEnd = Color(hex: "fff8ee")
-        static var background: LinearGradient {
-            LinearGradient(
-                colors: [backgroundStart, backgroundEnd],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
+        // Background — warm paper
+        static let cream = Color(hex: "FDFBF7")
 
-        // Primary action / student bubbles
-        static let primary = Color(hex: "e85d26")
-        static let primaryShadow = Color(hex: "c44a1a")
+        // Ink — dark brown text
+        static let ink = Color(hex: "3D2C1E")
+        static let inkLight = ink.opacity(0.6)
+        static let inkSubtle = ink.opacity(0.05)
 
-        // Kvante bubbles
+        // Primary — warm orange
+        static let primary = Color(hex: "E85D26")
+        static let primaryShadow = Color(hex: "C44D1F")
+
+        // Teal — secondary / student bubbles
+        static let teal = Color(hex: "2AA68A")
+        static let tealShadow = Color(hex: "218A72")
+
+        // Green — success
+        static let success = Color(hex: "4CAF50")
+        static let successShadow = Color(hex: "3D8B40")
+
+        // Kvante bubbles — white with subtle border
         static let kvanteBubble = Color.white
-        static let kvanteBubbleBorder = Color(hex: "f0ebe3")
+        static let kvanteBubbleBorder = ink.opacity(0.05)
 
-        // Student bubbles
-        static let studentBubble = Color(hex: "e85d26")
+        // Student bubbles — teal
+        static let studentBubble = Color(hex: "2AA68A")
+        static let studentBubbleShadow = Color(hex: "218A72")
 
-        // Success / completion
-        static let success = Color(hex: "4caf50")
-        static let successSecondary = Color(hex: "2aa68a")
-        static var successGradient: LinearGradient {
-            LinearGradient(
-                colors: [success, successSecondary],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        }
+        // Cards — white with subtle border
+        static let card = Color.white
+        static let cardBorder = ink.opacity(0.05)
 
-        // Øvelser button
-        static let teal = Color(hex: "2aa68a")
-        static let tealShadow = Color(hex: "1e8a6f")
+        // Text aliases
+        static let textPrimary = ink
+        static let textSecondary = ink.opacity(0.6)
+        static let textMuted = ink.opacity(0.4)
+        static let textPlaceholder = ink.opacity(0.2)
 
-        // Pending / muted
+        // Pending / muted backgrounds
         static let muted = Color(hex: "f0ebe3")
-        static let mutedText = Color(hex: "c4b89e")
+        static let mutedText = ink.opacity(0.4)
 
-        // Text
-        static let textPrimary = Color(hex: "3d2c1e")
-        static let textSecondary = Color(hex: "8b7355")
+        // Tips — teal accent
+        static let tipBackground = Color.white
+        static let tipBorder = teal.opacity(0.2)
+        static let tipLabel = teal
 
-        // Tips
-        static let tipBackground = Color(hex: "fff9f0")
-        static let tipBorder = Color(hex: "fde4b8")
-        static let tipLabel = Color(hex: "92610a")
+        // Kvante avatar
+        static let kvanteAvatar = Color(hex: "E85D26")
 
-        // Kvante avatar background
-        static let kvanteAvatar = Color(hex: "e85d26")
-
-        // Input bar
-        static let inputBackground = Color(hex: "f0ebe3")
-        static let sendActive = Color(hex: "e85d26")
-        static let sendInactive = Color(hex: "c4b89e")
-
-        // Wrong answer (warm, not red)
-        static let wrong = Color(hex: "e85d26")
+        // Input
+        static let sendActive = Color(hex: "E85D26")
+        static let sendInactive = ink.opacity(0.4)
 
         // Assignment intro
-        static let assignmentBackground = Color(hex: "e85d26")
+        static let assignmentBackground = Color(hex: "E85D26")
+
+        // Wrong answer
+        static let wrong = Color(hex: "E85D26")
+
+        // Legacy aliases for compatibility
+        static let backgroundStart = cream
+        static var background: LinearGradient {
+            LinearGradient(colors: [cream, cream], startPoint: .top, endPoint: .bottom)
+        }
+        static var successGradient: LinearGradient {
+            LinearGradient(colors: [success, success], startPoint: .leading, endPoint: .trailing)
+        }
     }
 
     // MARK: - Fonts
@@ -94,13 +99,14 @@ enum KvanteTheme {
     // 16px standard. Nothing above 20px.
 
     enum Shapes {
-        static let radius: CGFloat = 16
         static let bubbleRadius: CGFloat = 16
-        static let cardRadius: CGFloat = 16
-        static let buttonRadius: CGFloat = 16
+        static let cardRadius: CGFloat = 24
+        static let buttonRadius: CGFloat = 12
+        static let iconBoxRadius: CGFloat = 16
+        static let avatarRadius: CGFloat = 12
         static let inputRadius: CGFloat = 16
         static let smallRadius: CGFloat = 12
-        static let buttonShadowHeight: CGFloat = 5
+        static let buttonShadowHeight: CGFloat = 4
     }
 
     // MARK: - Button Styles
