@@ -8,34 +8,33 @@
 - [x] **Phase 2: Backend** — ChatMessage model, chat persistence endpoints, assignment position
 - [x] **Phase 3: Ugematematik** — Backend genererer blandede ugentlige sæt, iOS ugematematik-knap aktiv, session historik på home screen, session dashboard view
 - [x] **Sticky opgave-bar** — Aktuel opgavetekst altid synlig under progress pill
+- [x] **Kort Division Visual (slikkepindsmetoden)** — Ny `ShortDivisionView` med cirkel + lodret streg + progressive rækker. Understøtter rest → brøk → decimal. Deterministisk backend service. Branch: `feature/animation-engine`
+- [x] **Decimal-support i stacked arithmetic** — `3,4 + 2,8` viser nu tiendedele/hundrededele kolonner og komma-separator i gitteret
 
 ---
 
 ## Næste features (prioriteret)
 
-### 1. Kort Division Visual (NÆSTE)
-Ny `StackedDivisionView` — den danske kort division metode:
-```
-  8
-7)56
-  56
-  --
-   0
-```
-Kræver: backend service (deterministisk) + iOS visual component + dispatch-routing.
-Ref: `docs/design/2026-04-06-math-methods-reference.md`
+### 1. Multiplikation Visual (NÆSTE)
+Multiplikation bruger stadig LLM-genererede prikker, som bryder kardinalreglen og er ulæselige ved store tal (9×7 = 63 prikker). Byg deterministisk service ligesom `ShortDivisionService`.
+
+To mulige metoder fra `docs/design/2026-04-06-math-methods-reference.md`:
+- **1a. Krydset** (kryds-multiplikation): Diagonale linjer der forbinder cifre
+- **1b. Lang multiplikation**: Standard opstilling med delprodukter (206·14 → 824 + 2060 → 2884)
+
+Start med 1b — mest brugt i 4.-6. klasse og kan udvide `stacked_arithmetic` med nye actions.
 
 ### 2. AI Fejlanalyse ved Forkert Svar
 Kvante analyserer elevens fejl og guider: "Du har lagt sammen i stedet for at trække fra" eller "Du glemte at låne fra tierne". Nuværende feedback siger bare "prøv igen".
 
-### 3. Session Persistence
+### 3. Claude Vision til submissions (erstat Apple OCR)
+Apple OCR kan ikke læse columnar matematik eller slikkepindsnotation. For at AI'en kan vurdere *metode* (ikke bare facit) skal billeder sendes til Claude Vision. Opdater `work_analyzer.py`.
+
+### 4. Session Persistence
 iOS kalder ikke backend's ChatMessage save/load endpoints endnu. Elevens arbejde forsvinder ved app-lukning. Scannede billeder linkes ikke til assignments.
 
-### 4. Lang Multiplikation Visual
-Udvid stacked arithmetic med delprodukter: 206·14 → 824 + 2060 → 2884.
-
 ### 5. Lang Division Visual
-Bracket-layout med divide/subtract/bring-down cyklus.
+Bracket-layout med divide/subtract/bring-down cyklus (sektion 2a i math-methods-reference).
 
 ---
 
