@@ -1,9 +1,13 @@
 // DevScreenshotSubmit.swift
 //
-// Debug-only feature: shake the iPad to capture a screenshot and send it
-// (with an optional note) to the backend's /dev/screenshots endpoint.
-// Claude can then fetch the latest screenshot during a dev session to
-// inspect what the user is seeing.
+// Debug-only feature: capture a screenshot and send it (with an optional
+// note) to the backend's /dev/screenshots endpoint. Claude can then fetch
+// the latest screenshot during a dev session to inspect what the user is
+// seeing.
+//
+// Two triggers:
+// 1. Tap the floating camera button in the bottom-right corner
+// 2. Shake the iPad (alternative/fallback gesture)
 //
 // All code in this file is gated by #if DEBUG and stripped from release
 // builds.
@@ -138,15 +142,44 @@ struct DevScreenshotSubmitSheet: View {
 
 // MARK: - View modifier
 
-private struct DevScreenshotShakeModifier: ViewModifier {
+// MARK: - Floating button overlay
+
+private struct DevScreenshotFloatingButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "camera.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(Color.orange.opacity(0.85))
+                        .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Send debug screenshot")
+    }
+}
+
+// MARK: - Combined modifier (shake + floating button)
+
+private struct DevScreenshotSubmitModifier: ViewModifier {
     let apiClient: APIClient?
     @State private var captured: UIImage?
 
     func body(content: Content) -> some View {
         content
             .onReceive(NotificationCenter.default.publisher(for: .kvanteDeviceDidShake)) { _ in
-                guard captured == nil else { return }
-                captured = ScreenshotCapture.captureKeyWindow()
+                triggerCapture()
+            }
+            .overlay(alignment: .bottomTrailing) {
+                DevScreenshotFloatingButton(action: triggerCapture)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+                    .allowsHitTesting(captured == nil)
             }
             .sheet(item: Binding(
                 get: { captured.map { ImageWrapper(image: $0) } },
@@ -159,6 +192,11 @@ private struct DevScreenshotShakeModifier: ViewModifier {
                 )
             }
     }
+
+    private func triggerCapture() {
+        guard captured == nil else { return }
+        captured = ScreenshotCapture.captureKeyWindow()
+    }
 }
 
 private struct ImageWrapper: Identifiable {
@@ -167,10 +205,10 @@ private struct ImageWrapper: Identifiable {
 }
 
 extension View {
-    /// Attach the dev shake-to-submit screenshot feature. Debug-only;
-    /// becomes a no-op in release builds.
-    func devShakeToSubmitScreenshot(apiClient: APIClient?) -> some View {
-        modifier(DevScreenshotShakeModifier(apiClient: apiClient))
+    /// Attach the dev screenshot submit feature (floating button + shake
+    /// gesture). Debug-only; becomes a no-op in release builds.
+    func devScreenshotSubmit(apiClient: APIClient?) -> some View {
+        modifier(DevScreenshotSubmitModifier(apiClient: apiClient))
     }
 }
 
@@ -180,7 +218,7 @@ import SwiftUI
 
 extension View {
     /// Release builds: no-op so callers don't need their own #if DEBUG.
-    func devShakeToSubmitScreenshot(apiClient: Any?) -> some View {
+    func devScreenshotSubmit(apiClient: Any?) -> some View {
         self
     }
 }
