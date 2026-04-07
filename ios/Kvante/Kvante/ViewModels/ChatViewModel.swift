@@ -331,7 +331,7 @@ class ChatViewModel {
                             imageData: imageData
                         )
                         readAnswer = result.studentAnswer
-                        source = "Gemini Vision"
+                        source = "Vision"
                     } catch {
                         replaceLoading(loadingId, with: ChatMessage(
                             sender: .kvante,
@@ -358,7 +358,7 @@ class ChatViewModel {
                         studentAnswer: result.studentAnswer,
                         correctAnswer: result.correctAnswer,
                         isCorrect: result.methodologySound,
-                        source: "",
+                        source: "Vision",
                         ocrDebug: "",
                         loadingId: loadingId
                     )

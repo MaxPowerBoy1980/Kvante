@@ -207,9 +207,11 @@ struct ChatBubble: View {
                     Text("Læste: **\(result.studentAnswer)**")
                         .font(.subheadline)
                         .foregroundStyle(KvanteTheme.Colors.ink)
-                    Text("via \(result.source)")
-                        .font(.caption2)
-                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                    if !result.source.isEmpty {
+                        Text("via \(result.source)")
+                            .font(.caption2)
+                            .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                    }
                 }
                 HStack(spacing: 6) {
                     Image(systemName: result.isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")

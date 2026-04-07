@@ -42,7 +42,6 @@ Når eleven har scannet et korrekt multiplikations-svar, vises kun tekst-ros. St
 - [ ] **Swift 6 concurrency warnings** — `append` kaldt fra baggrundstråd på @MainActor property. Warnings nu, fejl i fremtiden.
 - [ ] **Visuel/tekst-konsistens** — AI skriver "æbler" men appen tegner cirkler. Prompt instruerer nu "prikker" men kan stadig ske.
 - [ ] **Opgaveforklaring på engelsk** — Explain-endpoint returnerer nogle gange engelsk tekst.
-- [ ] **Hardcoded "Gemini Vision" label** — `ChatViewModel.scanAnswer` sætter `source = "Gemini Vision"` i vision-grenen, men den deployede backend kører `KVANTE_AI_PROVIDER=claude`. Etiketten er forkert. Fix: hent provider fra API-responset eller brug generisk "Vision".
 
 ---
 
