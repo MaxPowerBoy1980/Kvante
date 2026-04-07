@@ -1,6 +1,6 @@
 # Kort division — slikkepindsmetoden
 
-> Dato: 2026-04-06
+> Dato: 2026-04-07
 > Status: Godkendt
 > Bygger på: stacked arithmetic-mønsteret (deterministisk backend + SwiftUI view)
 
@@ -12,33 +12,23 @@ Understøtter hele kæden: hel division → rest → brøk → decimal (kun term
 
 Kun encifret divisor. Tocifret divisor hører til lang division (galgemanden) og er ikke i scope.
 
-## Eksempel
+## Eksempel — 589 ÷ 4 = 147,25
 
-588 ÷ 4 = 147 (uden rest):
+Dette er det kanoniske eksempel igennem hele specen. Det dækker hele kæden: hel division → rest → brøk → terminerende decimal.
 
 ```
     (4)        ← divisor i cirkel
      |
   5  | 1       ← 5 ÷ 4 = 1, rest 1
  18  | 4       ← 18 ÷ 4 = 4, rest 2
- 28  | 7       ← 28 ÷ 4 = 7, rest 0
-_____|_____
-              = 147
-```
-
-589 ÷ 4 = 147,25 (med rest → brøk → decimal):
-
-```
-    (4)
-     |
-  5  | 1
- 18  | 4
- 29  | 7       ← rest 1
+ 29  | 7       ← 29 ÷ 4 = 7, rest 1
 _____|_____
               = 147 rest 1
               = 147 1/4
               = 147,25
 ```
+
+Når en opgave ikke har rest (fx 588 ÷ 4 = 147), stopper flowet efter sidste `process_digit` og går direkte til `reveal` — `show_remainder`, `show_fraction` og `show_decimal` springes over.
 
 ## Edge cases
 
@@ -52,7 +42,7 @@ _____|_____
 
 ## Routing
 
-Alle divisionsopgaver bruger slikkepindsmetoden. Ingen `should_use_stacked()`-lignende logik nødvendig — `topic == "division"` er nok.
+Entry point er `backend/app/services/example_generator.py`. Alle divisionsopgaver bruger slikkepindsmetoden — ingen `should_use_stacked()`-lignende logik nødvendig, `topic == "division"` er nok til at route videre til `generate_short_division_example()`.
 
 `pick_example_numbers()` matcher antal cifre i dividend og encifret divisor til elevens opgave.
 
@@ -103,9 +93,15 @@ Returnerer steps:
 #### `pick_example_numbers(dividend: int, divisor: int) → tuple[int, int]`
 
 - Tager de strukturerede tal direkte (routeren i `example_generator.py` parser fra assignment)
-- Vælger nye tal med samme antal cifre i dividend, og encifret divisor
 - Sikrer at eksempeltallene er forskellige fra elevens
-- Vælger tal der giver resultater i samme sværhedsgrad (med/uden rest matcher)
+
+**"Samme sværhedsgrad"** er defineret eksplicit som alle fire kriterier:
+1. Samme antal cifre i dividend (fx 589 → 3-cifret → vælg et andet 3-cifret tal)
+2. Samme antal cifre i divisor (altid 1 i denne spec — encifret)
+3. Samme antal cifre i kvotienten (fx 589 ÷ 4 = 147 → 3-cifret → eksempel skal også give 3-cifret resultat)
+4. Samme rest-status (med rest → med rest, uden rest → uden rest). Hvis elevens opgave har terminerende decimal, skal eksemplet også have det
+
+Dette sikrer at eleven ser et visuelt ensartet eksempel — samme antal rækker i slikkepinden, samme type slutresultat.
 
 #### `generate_text(steps: list[dict]) → list[str]`
 
@@ -115,9 +111,14 @@ Danske templates:
 - process_digit (følgende): "Resten {prev_remainder} sættes foran {next_digit}, det giver {group}. {group} divideret med {divisor} giver {quotient}, rest {remainder}"
 - show_remainder: "Vi har rest {remainder}"
 - show_fraction: "Det skriver vi som brøken {num}/{den}"
-- show_decimal (kun terminerende): "{num}/{den} er det samme som {decimal} — så svaret er {result}"
+- show_decimal (kun terminerende): "{decimal} — det er det samme som brøken, bare skrevet med komma"
 - reveal (ingen rest): "Svaret er {result}"
+- reveal (med terminerende decimal): "Så svaret er {result}"
 - reveal (med brøk, ikke-terminerende): "Svaret er {whole} og {num}/{den}"
+
+Reveal-steget kører altid sidst — både som visuelt element (glow-animation på slutresultatet) og som tekstlinje. `show_decimal` står for selve konverterings-bridgen fra brøk til kommatal; reveal-linjen bekræfter sluttallet ovenpå det.
+
+Bemærk at `{decimal}` er det fulde resultat (fx "147,25"), ikke kun brøkdelen. At sige "1/4 er det samme som 147,25" ville være matematisk misvisende — derfor formulerer skabelonen det som "147,25 er det samme som brøken, skrevet med komma", hvilket læser korrekt når eleven lige har set show_fraction-steget ("147 og 1/4").
 
 ### Integration i `example_generator.py`
 
@@ -179,17 +180,28 @@ Fil: `ios/Kvante/Kvante/Views/VisualComponents/ShortDivisionView.swift`
 Layout (VStack):
 1. **Expression badge** — viser fx "18 ÷ 4 = 4 rest 2" (teal baggrund, rounded rect)
 2. **Slikkepind-layout:**
-   - Divisor (cirkel, 48pt, 3px border) centreret
+   - Divisor (cirkel, 48pt diameter, 3px border). Ciffer inde i cirklen: **Marker Felt 28pt** — efterlader ca. 10pt luft hver side til encifrede divisorer som "9"
    - HStack pr. række:
      - Venstre (60pt bred): group-tal, rest i orange lille skrift foran
      - Lodret streg (3px)
-     - Højre: quotient-ciffer i teal
+     - Højre: quotient-ciffer i teal. Rækker med `leading: true` fra backend skjules helt (ingen plads reserveres)
    - Aktiv række: teal baggrund 0.1 opacity
    - Vandret streg (3px) i bunden
 3. **Rest/brøk/decimal** — under slikkepinden som ekstra tekst-rækker
 4. **Resultat** — "= 147,25" med glow
 
-Styling: Marker Felt font, 44pt celler, KvanteTheme.Colors (ink, primary/teal), identisk med stacked arithmetic.
+Styling: Marker Felt font 28pt konsekvent (group-tal, quotient-cifre, og ciffer inde i divisor-cirklen), 44pt celler, KvanteTheme.Colors (ink, primary/teal), identisk med stacked arithmetic. 28pt er valgt efter iPad-test — større font overfylder 60pt group-cellen når rest-tallet også skal stå i samme celle.
+
+### State-livscyklus
+
+`cumulativeShortDivisionState` følger samme mønster som `cumulativeGridState` i stacked arithmetic:
+
+- **Nulstilles til `nil`** når `AnimationPlayer` modtager en ny `ExampleResponse` (ny opgave, nyt eksempel, eller retry). Dette sker i view-initialisering/`.onChange(of: response)` — *ikke* ved hver step.
+- **Initialiseres** ved første `setup`-visual via `ShortDivisionState.from(visual:)`. `setup` er garanteret det første step i en animation.
+- **Muteres** via `apply(visual:)` for hvert efterfølgende step i samme animation.
+- **Bevares mellem steps** — det er hele pointen med "cumulative" state: rækker akkumuleres, aktiv række flyttes, brøk/decimal tilføjes oven i.
+
+Hvis et step ankommer uden at state er initialiseret (fx `process_digit` før `setup`), er det en programmeringsfejl og bør logges — ikke silent ignoreres.
 
 ### Animationer
 
