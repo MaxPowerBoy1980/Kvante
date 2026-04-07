@@ -129,6 +129,11 @@ class ExampleGeneratorService:
                 assignment_text=assignment_text,
                 language=language,
             )
+        if should_use_long_multiplication(assignment_type, assignment_text, assignment_topic):
+            return self.generate_long_multiplication_example(
+                assignment_text=assignment_text,
+                language=language,
+            )
         if should_use_short_division(assignment_topic):
             return self.generate_short_division_example(
                 assignment_text=assignment_text,
