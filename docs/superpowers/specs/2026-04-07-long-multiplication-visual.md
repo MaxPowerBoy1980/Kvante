@@ -80,10 +80,13 @@ backend/app/services/example_generator.py
 ios/Kvante/Kvante/Views/VisualComponents/VisualComponentView.swift
   — route visual.type == "long_multiplication" til LongMultiplicationView
 
-ios/Kvante/Kvante/Models/VisualInstruction.swift
-  — tilføj helper til at parse array-of-dict params (mental_steps). Hvis
-    VisualInstruction allerede kan returnere [[String: Any]] via eksisterende
-    API gøres intet; ellers tilføjes en `dictArrayParam(key:)` metode
+ios/Kvante/Kvante/Views/AnimationPlayer.swift
+  — tilføj cumulativeLongMultiplicationState (samme mønster som
+    cumulativeGridState og cumulativeShortDivisionState)
+
+ios/Kvante/Kvante/Models/AnimationModels.swift
+  — tilføj optionalIntArrayParam(_:) -> [Int?]? helper på VisualInstruction
+    (bruges til carries-feltet — bevarer nil for "ingen mente")
 ```
 
 ## Backend service
@@ -93,15 +96,18 @@ ios/Kvante/Kvante/Models/VisualInstruction.swift
 ```python
 class LongMultiplicationService:
     @staticmethod
-    def compute_steps(multiplicand: int, multiplier: int) -> list[dict]:
-        """Produce ordered step dicts: setup, partial_product × N, sum_partials, reveal."""
+    def compute_steps(multiplicand: int, multiplier: int) -> tuple[list[dict], list[list[dict]]]:
+        """Produce ordered step dicts (setup, partial_product × N, sum_partials, reveal)
+        plus a parallel list of mental_steps-per-partial_product for narration."""
 
     @staticmethod
     def pick_example_numbers(multiplicand: int, multiplier: int) -> tuple[int, int]:
-        """Pick example numbers of matching digit-count. Never same as student's."""
+        """Pick example numbers of matching digit-count. Never same as student's.
+        Preserves the (larger, smaller) invariant."""
 
     @staticmethod
-    def generate_text(steps: list[dict]) -> list[dict]:
+    def generate_text(steps: list[dict],
+                      mental_steps_by_partial: list[list[dict]]) -> list[dict]:
         """Generate Danish narration text per step. Returns [{text, audio_cue}, ...]."""
 ```
 
@@ -134,27 +140,28 @@ steps = LongMultiplicationService.compute_steps(ex_a, ex_b)
     "step": "setup",
     "multiplicand": 206,
     "multiplier": 14,
-    "multiplicand_digits": [2, 0, 6],
-    "multiplier_digits": [1, 4],      # low-to-high order (ones first)
+    "multiplicand_digits": [2, 0, 6],  # written order (high-to-low / left-to-right)
+    "multiplier_digits": [1, 4],       # written order (high-to-low / left-to-right)
 }
 ```
 
-**`partial_product`** (ét per multiplier-ciffer, low-to-high). `value` og `digits` er **pre-shift** — den rå produktværdi. `shift` fortæller iOS-view'en hvor mange tomme pladser der skal tilføjes til højre for cifrene ved rendering.
+**Ciffer-rækkefølge kontrakt**: Begge `*_digits`-arrays er i *skrevet* rækkefølge, dvs. som eleven ville skrive tallet fra venstre mod højre (mest-signifikant først). Det matcher iOS-rendering direkte (ingen reversering nødvendig i view-koden).
+
+`compute_steps` itererer internt i *computation*-rækkefølge (ones→tens→hundreds) ved at reversere arraysene under løkken. `multiplier_position` i hvert `partial_product` refererer stadig til positionen i tallet (0=ones, 1=tens, 2=hundreds), *ikke* til indeks i arrayet.
+
+**`partial_product`** (ét per multiplier-ciffer, low-to-high). `value` og `digits` er **pre-shift** — den rå produktværdi. `shift` fortæller iOS-view'en hvor mange tomme pladser der skal tilføjes til højre for cifrene ved rendering. `carries` er et parallelt array til `multiplicand_digits` (samme længde) med mente-værdien der skal vises over hver multiplicand-kolonne, eller `None` hvis ingen mente.
 
 Første delprodukt for 206 × 14 (ones-ciffer):
 ```python
 {
     "step": "partial_product",
     "multiplier_digit": 4,
-    "multiplier_position": 0,         # 0 = ones, 1 = tens, 2 = hundreds
-    "value": 824,                      # pre-shift raw product (206 × 4)
-    "digits": [8, 2, 4],               # pre-shift digits
-    "shift": 0,                        # no placeholder cells
-    "mental_steps": [
-        {"expression": "6×4=24", "digit_written": 4, "carry_in": 0, "carry_out": 2, "column": 0},
-        {"expression": "0×4+2=2", "digit_written": 2, "carry_in": 2, "carry_out": 0, "column": 1},
-        {"expression": "2×4=8", "digit_written": 8, "carry_in": 0, "carry_out": 0, "column": 2},
-    ],
+    "multiplier_position": 0,          # 0 = ones, 1 = tens, 2 = hundreds
+    "value": 824,                       # pre-shift raw product (206 × 4)
+    "digits": [8, 2, 4],                # pre-shift digits, written order
+    "shift": 0,                         # no placeholder cells
+    "carries": [None, 2, None],         # parallel to multiplicand_digits [2,0,6]:
+                                        # ingen mente over 2, mente 2 over 0, ingen mente over 6
     "expression_chain": "6×4=24 → 0×4+2=2 → 2×4=8",
 }
 ```
@@ -165,17 +172,15 @@ Andet delprodukt for 206 × 14 (tens-ciffer) — bemærk `value=206` (pre-shift)
     "step": "partial_product",
     "multiplier_digit": 1,
     "multiplier_position": 1,
-    "value": 206,                      # pre-shift (206 × 1)
+    "value": 206,                       # pre-shift (206 × 1)
     "digits": [2, 0, 6],
-    "shift": 1,                        # én tom placeholder til højre → rendret som "206·"
-    "mental_steps": [
-        {"expression": "6×1=6", "digit_written": 6, "carry_in": 0, "carry_out": 0, "column": 0},
-        {"expression": "0×1=0", "digit_written": 0, "carry_in": 0, "carry_out": 0, "column": 1},
-        {"expression": "2×1=2", "digit_written": 2, "carry_in": 0, "carry_out": 0, "column": 2},
-    ],
+    "shift": 1,                         # én fadet placeholder-prik til højre
+    "carries": [None, None, None],      # ingen menter når multiplier-ciffer er 1
     "expression_chain": "6×1=6 → 0×1=0 → 2×1=2",
 }
 ```
+
+**Intern `mental_steps`-struktur**: Under beregningen holder `compute_steps` en detaljeret mental_steps-liste per partial_product (med `expression`, `digit_written`, `carry_in`, `carry_out`, `column` per ciffer). Den bruges af `generate_text` til at bygge narrationen ("6×4 er 24, vi skriver 4 og husker 2..."). Men den **returneres ikke** i step-dict'en til iOS — kun den afledte `carries`-liste og det fulde `expression_chain` eksponeres. Dette undgår at tilføje en ny `dictArrayParam`-helper til `VisualInstruction` og holder iOS-kontrakten flad.
 
 **`sum_partials`:**
 ```python
@@ -217,7 +222,9 @@ Teksten for dette trin er *"Prøv nu selv med din opgave — stil den op på sam
 
 ### `generate_text` narration
 
-Dansk tekst per trin-type. Eksempel for `partial_product` med `multiplier_digit=4`, `multiplier_position=0`, `value=824`, `mental_steps` som ovenfor:
+`generate_text` bygger narrationen ud fra de interne mental_steps-objekter som `compute_steps` holder per partial_product — disse er ikke en del af det returnerede step-dict, men lever i en parallel liste som `compute_steps` giver videre til `generate_text`.
+
+Eksempel for `partial_product` med `multiplier_digit=4`, `multiplier_position=0`, `value=824`:
 
 > "Vi ganger 206 med 4. 6×4 er 24, vi skriver 4 og husker 2. 0×4 er 0 plus 2 er 2. 2×4 er 8. Det giver 824."
 
@@ -233,13 +240,39 @@ For `reveal`:
 
 > "Svaret er 2884."
 
-Alle narrationer returneres som `{"text": ..., "audio_cue": ...}`-dicts — samme format som `ShortDivisionService.generate_text`.
+**`audio_cue`-indhold**: Kort version egnet til TTS. For partial_product: `"{multiplicand} gange {multiplier_digit} er {value}"` (fx `"206 gange 4 er 824"`). For sum_partials: `"Sum {total}"`. For reveal: `"Svaret er {result}"`. Alle narrationer returneres som `{"text": ..., "audio_cue": ...}`-dicts — samme format som `ShortDivisionService.generate_text`.
+
+**Implementeringsnote**: Da mental_steps ikke er i step-dict'en, kan `generate_text` ikke køre stateless på en liste af dicts alene. Signaturen bliver derfor:
+
+```python
+@staticmethod
+def generate_text(steps: list[dict], mental_steps_by_partial: list[list[dict]]) -> list[dict]:
+    ...
+```
+
+hvor `mental_steps_by_partial[i]` svarer til det `i`'te partial_product-step i `steps`. `compute_steps` returnerer et tuple `(steps, mental_steps_by_partial)`, eller en dict-wrapper med begge felter — vælg under implementering hvilken form der er renest.
 
 ## Routing
 
 ### `should_use_long_multiplication` i `example_generator.py`
 
 ```python
+# Matches the two operands of a multiplication expression specifically.
+# Accepts × (U+00D7), * (ASCII asterisk), and · (middle dot) as operators.
+MULTIPLICATION_PATTERN = re.compile(r'(\d+)\s*[×*·]\s*(\d+)')
+
+def _parse_multiplication_operands(assignment_text: str) -> tuple[int, int] | None:
+    """Extract the two operands of a multiplication expression from assignment text.
+
+    Returns None if no multiplication expression is found. Uses a regex that
+    specifically matches 'N op M' patterns, avoiding false matches on stray
+    numbers in the surrounding text ('Opgave 3:', '25 opgaver:', etc.).
+    """
+    match = MULTIPLICATION_PATTERN.search(assignment_text)
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
 def should_use_long_multiplication(assignment_type: str, assignment_text: str,
                                    assignment_topic: str = "") -> bool:
     """Route multiplication with at least one multi-digit operand, no decimals,
@@ -248,21 +281,26 @@ def should_use_long_multiplication(assignment_type: str, assignment_text: str,
         return False
     if re.search(r'\d+[,.]\d+', assignment_text):
         return False  # decimals out of scope in v1
-    numbers = [int(n) for n in re.findall(r'\d+', assignment_text)]
-    if len(numbers) < 2:
+    operands = _parse_multiplication_operands(assignment_text)
+    if operands is None:
         return False
+    a, b = operands
     # Both operands must fit in 3-digit range (matches compute_steps validation)
-    if any(n >= 1000 for n in numbers[:2]):
+    if a >= 1000 or b >= 1000:
         return False
     # At least one operand must be multi-digit (scope choice B)
-    return any(n >= 10 for n in numbers[:2])
+    return a >= 10 or b >= 10
 
 def _is_multiplication(assignment_type: str, assignment_text: str,
                        assignment_topic: str = "") -> bool:
     if assignment_type == "multiplication" or assignment_topic == "multiplication":
         return True
-    return bool(re.search(r'\d\s*[×*·]\s*\d', assignment_text)) or "gange" in assignment_text.lower()
+    return bool(MULTIPLICATION_PATTERN.search(assignment_text)) or "gange" in assignment_text.lower()
 ```
+
+**Hvorfor specifik multiplications-regex**: En naiv `re.findall(r'\d+', text)[:2]`-tilgang fejler på almindelige formuleringer som `"Opgave 3: Regn 14 × 206"` (parser ville tage `[3, 14]` i stedet for `[14, 206]`) eller `"Regn 25 opgaver: 14 × 206"`. `_parse_multiplication_operands` garanterer at de to tal der returneres er dem der faktisk står på hver side af multiplikations-tegnet.
+
+`generate_long_multiplication_example` bruger samme helper til at udtrække elevens tal til normalisering og try_yours-trinnet.
 
 ### Integration i `generate_example`
 
@@ -342,19 +380,20 @@ struct LongMultiplicationState {
 ### `apply(visual:)` switch-cases
 
 - `"setup"` — initialiser multiplicand/multiplier, nulstil alt andet (også try_yours bruger denne)
-- `"partial_product"` — append til `partials`, sæt `activePartialIndex`, sæt `currentExpressionChain`, byg `currentCarries` fra `mental_steps[*].carry_in` (se nedenfor)
+- `"partial_product"` — append til `partials`, sæt `activePartialIndex`, sæt `currentExpressionChain`, sæt `currentCarries` direkte fra visual'ens `carries`-felt
 - `"sum_partials"` — sæt `showSum = true`, `sumTotal = total`, clear `currentCarries`, clear `activePartialIndex`, clear `currentExpressionChain`
 - `"reveal"` — sæt `showResult = true`, `resultText = String(result)`
 
-**Carry-visning semantik:** På papir skrives en mente altid over *den kolonne hvor den skal bruges i næste beregning*. I vores mental_steps betyder det: hvis `mental_steps[i].carry_in > 0`, vises den værdi som lille ciffer over multiplicand-kolonne `i`. Eksempel for 206 × 4:
+**Carry-visning semantik:** På papir skrives en mente altid over *den kolonne hvor den skal bruges i næste beregning*. Backend'en har allerede beregnet denne afledte liste og sender den som `carries`-feltet på partial_product-visual'en — et array med længde = antal multiplicand-cifre, parallelt til `multiplicand_digits` (i skrevet rækkefølge, high-to-low). Hvert element er enten `null` (ingen mente) eller et ciffer (mente-værdien der skal vises over den kolonne).
 
+Eksempel for 206 × 4 (multiplicand_digits=[2,0,6]):
 ```
-mental_steps[0] = {column: 0, carry_in: 0, carry_out: 2}  → ingen mente over kol. 0
-mental_steps[1] = {column: 1, carry_in: 2, carry_out: 0}  → ₂ vises over kol. 1 (0-cifret)
-mental_steps[2] = {column: 2, carry_in: 0, carry_out: 0}  → ingen mente over kol. 2
+carries[0] = null   → ingen mente over 2 (hundreds)
+carries[1] = 2      → ₂ vises over 0 (tens)
+carries[2] = null   → ingen mente over 6 (ones)
 ```
 
-`currentCarries` er derfor et array med længde = antal multiplicand-cifre, hvor hvert element enten er `nil` (ingen mente) eller `Int` (mente-værdien der skal vises).
+**Deserialisering:** Backend sender `None` i Python, der serialiserer til `null` i JSON. På iOS-siden læses `carries` bedst via en ny `optionalIntArrayParam(_:)`-helper på `VisualInstruction` der returnerer `[Int?]?` — bevarer nil-semantikken uden en sentinel-værdi. Helper-metoden er ~10 linjer og tilføjes som en del af denne feature.
 
 ### Layout
 
@@ -414,23 +453,36 @@ Skal skrives TDD-style (rød → grøn → refactor) parallelt med service-koden
    - Sidste step fra `compute_steps` er `reveal`
    - Total step-count fra `compute_steps` ≤ 6 (så der er plads til try_yours tilføjet af `generate_long_multiplication_example`)
 
-3. **Mental steps korrekthed** — for hvert `partial_product`:
+3. **Mental steps korrekthed** — for hvert `partial_product` (via den parallelle `mental_steps_by_partial[i]`-liste fra compute_steps-returen):
    - Simulér cifer-for-cifer med carry
    - Verificér `digit_written`/`carry_out`-kæden
    - Verificér at cifrene kombineret giver `value`
-   - Verificér at `mental_steps` er i korrekt rækkefølge (low-to-high column)
+   - Verificér at mental_steps er i korrekt rækkefølge (low-to-high column)
 
-4. **Shift-korrekthed:**
+4. **`carries`-afledning** — for hvert `partial_product`-step:
+   - Længden af `carries` matcher længden af `multiplicand_digits`
+   - Elementer er enten `None` eller et ciffer 1-9
+   - Værdi på position `i` stemmer med `mental_steps[i].carry_in` (konverteret: 0 → None, ellers heltallet)
+
+5. **Shift-korrekthed:**
    - Multiplier-ciffer i position N har `shift=N`
    - `partials` i `sum_partials` er skaleret korrekt (partial × 10^shift)
 
-5. **`pick_example_numbers` constraints:**
+6. **`pick_example_numbers` constraints:**
    - Returnerer ALDRIG samme tal som input (kardinalregel — kør 50 iterationer og verificér)
    - Returnerer match på ciffer-antal for begge operander
+   - Bevarer `(større, mindre)`-invarianten: `ex_a >= ex_b` i alle 50 iterationer
    - Fallback-branch rammes når alle tilfældige forsøg fejler (tester med en seeded RNG eller monkey-patched `random.randint`)
    - Afviser `% 10 == 0` og under-2 tal
 
-6. **`generate_text` smoke test:**
+7. **Routing-parser robusthed** — `_parse_multiplication_operands`:
+   - `"14 × 206"` → `(14, 206)`
+   - `"Opgave 3: Regn 14 × 206"` → `(14, 206)` (ikke `(3, 14)`)
+   - `"Regn 25 opgaver: 14 × 206"` → `(14, 206)` (ikke `(25, 14)`)
+   - `"Hej"` → `None`
+   - Accepterer `×`, `*`, og `·` som operator
+
+8. **`generate_text` smoke test:**
    - Hver step-type producerer ikke-tom dansk tekst
    - Ingen KeyError på manglende felter
    - Ingen engelske ord (regex check på "the", "and", "times", "plus")
