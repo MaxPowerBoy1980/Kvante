@@ -127,7 +127,6 @@ struct LongMultiplicationView: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 4) {
-            // Mente row (placeholder; filled in next task)
             // Multiplicand row
             digitRow(state.multiplicandDigits, alignRight: true,
                      prefix: "", color: KvanteTheme.Colors.ink)
@@ -139,9 +138,44 @@ struct LongMultiplicationView: View {
                 .fill(KvanteTheme.Colors.ink.opacity(0.5))
                 .frame(height: 3)
                 .frame(width: CGFloat(gridWidth + 1) * cellSize)
-            // Partial product rows + sum row + result come in later tasks
+            // Partial product rows
+            ForEach(Array(state.partials.enumerated()), id: \.offset) { idx, partial in
+                partialRow(partial, isActive: state.activePartialIndex == idx)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
         }
         .padding(16)
+        .animation(.easeOut(duration: 0.3), value: state.partials.count)
+    }
+
+    @ViewBuilder
+    private func partialRow(_ partial: LongMultiplicationState.Partial,
+                            isActive: Bool) -> some View {
+        // Render with shifted zeros: a partial of digits=[8,2,4] and shift=1
+        // becomes "8 2 4 0" (one extra '0' on the right).
+        let displayDigits = partial.digits + Array(repeating: 0, count: partial.shift)
+        let leadingEmptyCells = gridWidth - displayDigits.count
+
+        HStack(spacing: 0) {
+            // Empty operator cell column
+            Color.clear.frame(width: cellSize, height: cellSize)
+            // Empty leading cells
+            ForEach(0..<leadingEmptyCells, id: \.self) { _ in
+                Color.clear.frame(width: cellSize, height: cellSize)
+            }
+            // Digit cells
+            ForEach(Array(displayDigits.enumerated()), id: \.offset) { _, d in
+                Text("\(d)")
+                    .font(largeFont)
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+                    .frame(width: cellSize, height: cellSize)
+            }
+        }
+        .background(
+            isActive
+                ? KvanteTheme.Colors.primary.opacity(0.1)
+                : Color.clear
+        )
     }
 
     @ViewBuilder
