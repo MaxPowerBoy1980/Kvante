@@ -262,6 +262,28 @@ class TestGenerateText:
         # The narration should explicitly route the leftover carry into hundreder
         assert "hundrederne" in partial_text
 
+    def test_leftover_carry_from_hundreds_names_thousands(self):
+        """497 × 9 = 4473: last column is hundrederne with carry_out 4 → tusinderne.
+        Regression test: _place_name must know position 3 or the narration leaks
+        'position 3' into the displayed text.
+        """
+        steps, mental = LongMultiplicationService.compute_steps(497, 9)
+        texts = LongMultiplicationService.generate_text(steps, mental)
+        partial_text = texts[1]["text"]
+        assert "tusinderne" in partial_text
+        assert "position 3" not in partial_text  # placeholder must never show
+
+    def test_no_placeholder_position_leaks(self):
+        """Scan a range of inputs and verify no 'position N' placeholder leaks."""
+        cases = [(999, 99), (245, 14), (497, 9), (206, 14), (24, 7)]
+        for mc, mp in cases:
+            steps, mental = LongMultiplicationService.compute_steps(mc, mp)
+            texts = LongMultiplicationService.generate_text(steps, mental)
+            for t in texts:
+                assert "position " not in t["text"], (
+                    f"placeholder leaked for {mc}×{mp}: {t['text']!r}"
+                )
+
     def test_partial_product_text_explains_shift(self):
         steps, mental = LongMultiplicationService.compute_steps(206, 14)
         texts = LongMultiplicationService.generate_text(steps, mental)

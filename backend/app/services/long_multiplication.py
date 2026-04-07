@@ -266,11 +266,20 @@ class LongMultiplicationService:
 
     @staticmethod
     def _place_name(position: int) -> str:
-        """Return the Danish place-value name for a multiplier position."""
+        """Return the Danish place-value name for a column position.
+
+        Covers positions 0-5 so the leftover-carry narration can name the
+        column where a last-column carry lands (worst case in current scope:
+        larger operand 999 → hundrederne has carry_out → tusinderne, so we
+        need at least position 3 named).
+        """
         return {
             0: "enerne",
             1: "tierne",
             2: "hundrederne",
+            3: "tusinderne",
+            4: "titusinderne",
+            5: "hundredetusinderne",
         }.get(position, f"position {position}")
 
     @staticmethod
