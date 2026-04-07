@@ -238,9 +238,10 @@ class ChatViewModel {
         let step = pendingExampleSteps[currentExampleStepIndex]
         let isLast = currentExampleStepIndex == pendingExampleSteps.count - 1
 
-        // Build cumulative state for stacked arithmetic or short division
+        // Build cumulative state for stacked arithmetic, short division, and long multiplication
         var gridState: GridState? = nil
         var shortDivisionState: ShortDivisionState? = nil
+        var longMultState: LongMultiplicationState? = nil
         for i in 0...currentExampleStepIndex {
             let s = pendingExampleSteps[i]
             if s.visual.type == "stacked_arithmetic" {
@@ -253,6 +254,11 @@ class ChatViewModel {
                     shortDivisionState = ShortDivisionState.from(visual: s.visual)
                 }
                 shortDivisionState?.apply(visual: s.visual)
+            } else if s.visual.type == "long_multiplication" {
+                if s.visual.action == "setup" {
+                    longMultState = LongMultiplicationState.from(visual: s.visual)
+                }
+                longMultState?.apply(visual: s.visual)
             }
         }
 
@@ -262,7 +268,8 @@ class ChatViewModel {
 
         messages.append(ChatMessage(
             sender: .kvante,
-            content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count, gridState, shortDivisionState),
+            content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count,
+                                  gridState, shortDivisionState, longMultState),
             actions: chips
         ))
 
@@ -363,7 +370,7 @@ class ChatViewModel {
                             )
                             messages.append(ChatMessage(
                                 sender: .kvante,
-                                content: .exampleStep(step, 1, 1, completedState, nil),
+                                content: .exampleStep(step, 1, 1, completedState, nil, nil),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
                             ))
                         } else {
