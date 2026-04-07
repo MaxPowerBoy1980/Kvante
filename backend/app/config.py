@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     prompts_dir: Path = Path(__file__).parent / "prompts"
     log_level: str = "INFO"  # INFO or DEBUG
     log_dir: str = "/Users/oleserver/Library/Logs/Kvante"  # absolute path; ~ not expanded
+    dev_screenshots_dir: str = "/Users/oleserver/Library/Application Support/Kvante/dev-screenshots"
+    dev_screenshots_keep: int = 20
 
     model_config = {"env_prefix": "KVANTE_", "env_file": ".env"}
 

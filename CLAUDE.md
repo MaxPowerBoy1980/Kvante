@@ -104,7 +104,22 @@ launchctl load ~/Library/LaunchAgents/com.kvante.backend.plist
 
 (Dette er kun nødvendigt når plist'en selv ændres — normal Python-kodeændringer plukkes op automatisk af `--reload`.)
 
-## Maskinkontekst
+## Dev screenshot submission
+
+Kvante iOS-appen har en debug-only "shake to submit" feature: ryst iPaden, tag screenshot, skriv valgfri note, send. Backenden gemmer i `~/Library/Application Support/Kvante/dev-screenshots/` på Mac Mini (seneste 20).
+
+**Når brugeren beder dig kigge på et screenshot** ("kig på sidste screenshot", "vis mig screenshottet", etc.), hent det via backend-HTTP:
+
+```bash
+# Seneste screenshot som billede
+curl -sf http://192.168.1.60:8000/dev/screenshots/latest -o /tmp/kvante-latest.png
+# Derefter brug Read-toolet på /tmp/kvante-latest.png — du kan se billedet visuelt
+
+# Liste over de seneste screenshots med metadata (id, timestamp, brugerens note)
+curl -sf http://192.168.1.60:8000/dev/screenshots
+```
+
+Endpointen er auth-fri men kun nået på LAN. Brug ikke denne mekanisme til at gemme noget i git eller dele uden for det lokale netværk.
 
 Projektet eksisterer på to maskiner. **Tjek `hostname` ved sessionstart hvis du skal udføre maskine-specifikke operationer.**
 
