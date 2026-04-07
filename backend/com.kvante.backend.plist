@@ -16,6 +16,9 @@
         <string>0.0.0.0</string>
         <string>--port</string>
         <string>8000</string>
+        <string>--reload</string>
+        <string>--reload-dir</string>
+        <string>/Users/oleserver/Kvante/backend/app</string>
     </array>
 
     <key>WorkingDirectory</key>
