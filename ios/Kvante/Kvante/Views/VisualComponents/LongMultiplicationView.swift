@@ -151,8 +151,33 @@ struct LongMultiplicationView: View {
                     partialRow(partial, isActive: state.activePartialIndex == idx)
                         .transition(.move(edge: .leading).combined(with: .opacity))
                 }
+                // Sum line + sum row (only when showSum)
+                if state.showSum, let total = state.sumTotal {
+                    Rectangle()
+                        .fill(KvanteTheme.Colors.ink.opacity(0.5))
+                        .frame(height: 3)
+                        .frame(width: CGFloat(gridWidth + 1) * cellSize)
+                        .transition(.opacity)
+                    sumRow(total: total)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                // Double underline (only when showResult)
+                if state.showResult {
+                    VStack(spacing: 3) {
+                        Rectangle()
+                            .fill(KvanteTheme.Colors.ink)
+                            .frame(height: 3)
+                        Rectangle()
+                            .fill(KvanteTheme.Colors.ink)
+                            .frame(height: 3)
+                    }
+                    .frame(width: CGFloat(gridWidth + 1) * cellSize)
+                    .transition(.opacity)
+                }
             }
             .animation(.easeOut(duration: 0.3), value: state.partials.count)
+            .animation(.easeOut(duration: 0.3), value: state.showSum)
+            .animation(.easeOut(duration: 0.3), value: state.showResult)
         }
         .padding(16)
         .onChange(of: state.currentExpressionChain) { _, newChain in
@@ -278,6 +303,35 @@ struct LongMultiplicationView: View {
                     .font(largeFont)
                     .foregroundStyle(color)
                     .frame(width: cellSize, height: cellSize)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sumRow(total: Int) -> some View {
+        let totalDigits = String(total).map { Int(String($0)) ?? 0 }
+        let leadingEmptyCells = gridWidth - totalDigits.count
+
+        HStack(spacing: 0) {
+            Color.clear.frame(width: cellSize, height: cellSize)
+            ForEach(0..<leadingEmptyCells, id: \.self) { _ in
+                Color.clear.frame(width: cellSize, height: cellSize)
+            }
+            ForEach(Array(totalDigits.enumerated()), id: \.offset) { _, d in
+                Text("\(d)")
+                    .font(largeFont)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
+                    .frame(width: cellSize, height: cellSize)
+                    .shadow(
+                        color: state.showResult ? .teal.opacity(0.6) : .clear,
+                        radius: state.showResult ? 8 : 0
+                    )
+                    .scaleEffect(state.showResult ? 1.05 : 1.0)
+                    .animation(
+                        .spring(duration: 0.5).repeatCount(state.showResult ? 2 : 0,
+                                                            autoreverses: true),
+                        value: state.showResult
+                    )
             }
         }
     }
