@@ -336,3 +336,68 @@ struct LongMultiplicationView: View {
         }
     }
 }
+
+#Preview("Setup (206 × 14)") {
+    let state = LongMultiplicationState(
+        multiplicand: 206, multiplier: 14,
+        multiplicandDigits: [2, 0, 6], multiplierDigits: [1, 4]
+    )
+    LongMultiplicationView(
+        visual: VisualInstruction.make(type: "long_multiplication", action: "setup"),
+        animate: false,
+        state: state
+    )
+    .padding()
+}
+
+#Preview("After partial 1 (824 + carry)") {
+    var state = LongMultiplicationState(
+        multiplicand: 206, multiplier: 14,
+        multiplicandDigits: [2, 0, 6], multiplierDigits: [1, 4]
+    )
+    state.partials = [.init(value: 824, digits: [8, 2, 4], shift: 0)]
+    state.activePartialIndex = 0
+    state.currentExpressionChain = "6×4=24 → 0×4+2=2 → 2×4=8"
+    state.currentCarries = [nil, 2, nil]
+    return LongMultiplicationView(
+        visual: VisualInstruction.make(type: "long_multiplication",
+                                        action: "partial_product"),
+        animate: false,
+        state: state
+    )
+    .padding()
+}
+
+#Preview("After reveal (full)") {
+    var state = LongMultiplicationState(
+        multiplicand: 206, multiplier: 14,
+        multiplicandDigits: [2, 0, 6], multiplierDigits: [1, 4]
+    )
+    state.partials = [
+        .init(value: 824, digits: [8, 2, 4], shift: 0),
+        .init(value: 206, digits: [2, 0, 6], shift: 1),
+    ]
+    state.showSum = true
+    state.sumTotal = 2884
+    state.showResult = true
+    state.resultText = "2884"
+    return LongMultiplicationView(
+        visual: VisualInstruction.make(type: "long_multiplication", action: "reveal"),
+        animate: false,
+        state: state
+    )
+    .padding()
+}
+
+#Preview("Try yours (178 × 23 reset)") {
+    let state = LongMultiplicationState(
+        multiplicand: 178, multiplier: 23,
+        multiplicandDigits: [1, 7, 8], multiplierDigits: [2, 3]
+    )
+    LongMultiplicationView(
+        visual: VisualInstruction.make(type: "long_multiplication", action: "setup"),
+        animate: false,
+        state: state
+    )
+    .padding()
+}
