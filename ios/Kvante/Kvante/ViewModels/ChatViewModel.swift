@@ -42,6 +42,24 @@ class ChatViewModel {
         return isAddSub && numbers.contains(where: { $0 > 30 })
     }
 
+    /// Whether current assignment is multiplication (×, ·, or *)
+    private var isMultiplicationAssignment: Bool {
+        let text = currentAssignment.text
+        let topic = currentAssignment.topic
+        if topic == "multiplication" { return true }
+        // Match × (U+00D7) or middle dot. Skip ASCII '*' since it's also used
+        // as a bullet/wildcard in non-math text — multiplication tasks always
+        // use × in our seed data and parsed pages.
+        return text.contains("×") || text.contains("·")
+    }
+
+    /// Whether the current assignment's handwritten work needs Vision OCR.
+    /// Apple OCR can't read columnar layouts (stacked addition/subtraction
+    /// or long multiplication with mente notation).
+    private var needsVisionOCR: Bool {
+        isStackedArithmetic || isMultiplicationAssignment
+    }
+
     var onSetComplete: (() -> Void)?
 
     // MARK: - Init
@@ -293,9 +311,10 @@ class ChatViewModel {
             var readAnswer: String
             var source: String
 
-            // For stacked arithmetic (numbers > 30), use LLM Vision directly —
-            // Apple OCR can't read columnar handwriting.
-            let useVision = isStackedArithmetic
+            // For columnar methods (stacked addition/subtraction with big numbers,
+            // or long multiplication), use LLM Vision directly — Apple OCR can't
+            // read columnar handwriting or mente notation.
+            let useVision = needsVisionOCR
 
             if !useVision {
                 // Simple problems: Apple OCR first (instant, on-device)
@@ -344,15 +363,24 @@ class ChatViewModel {
                         loadingId: loadingId
                     )
 
-                    // For correct stacked arithmetic: show completed grid + explanation
+                    // For correct columnar work: show completed grid (stacked) +
+                    // explanation, or just the explanation text (multiplication).
                     if result.methodologySound {
                         let explanation = buildStackedExplanation(
                             answer: result.studentAnswer
                         )
-                        // Build completed grid visual
                         let text = currentAssignment.text
                         let numbers = text.matches(of: /\d+/).compactMap { Int(String($0.output)) }
-                        if numbers.count >= 2 {
+
+                        if isMultiplicationAssignment {
+                            // No completed long-multiplication grid yet — just praise.
+                            messages.append(ChatMessage(
+                                sender: .kvante,
+                                content: .text(explanation),
+                                actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
+                            ))
+                        } else if numbers.count >= 2 {
+                            // Stacked addition/subtraction: render the filled grid.
                             let a = numbers[0], b = numbers[1]
                             let topic = currentAssignment.topic
                             let op = (topic == "addition" || text.contains("+")) ? "addition" : "subtraction"
@@ -540,7 +568,8 @@ class ChatViewModel {
         }
     }
 
-    /// Build a deterministic explanation of how the student solved a stacked arithmetic problem.
+    /// Build a deterministic explanation of how the student solved a columnar
+    /// arithmetic problem (stacked addition/subtraction or long multiplication).
     private func buildStackedExplanation(answer: String) -> String {
         let text = currentAssignment.text
         let numbers = text.matches(of: /\d+/).compactMap { Int(String($0.output)) }
@@ -550,6 +579,13 @@ class ChatViewModel {
 
         let a = numbers[0]
         let b = numbers[1]
+
+        // Multiplication path: praise for delprodukter + sum
+        if isMultiplicationAssignment {
+            let result = a * b
+            return "Du stillede \(a) og \(b) op og gangede dem ciffer for ciffer med delprodukter. Det gav \(result) — helt rigtigt!"
+        }
+
         let topic = currentAssignment.topic
         let isAddition = topic == "addition" || text.contains("+")
         let op = isAddition ? "plus" : "minus"
