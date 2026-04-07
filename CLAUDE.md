@@ -79,6 +79,28 @@ docs/superpowers/       # Originale specs og planer
 - Bonjour service: `_kvante._tcp` port 8000
 - Begge maskiner har Tailscale — mDNS kræver at Zeroconf bindes til LAN-IP, ikke alle interfaces
 
+## Maskinkontekst
+
+Projektet eksisterer på to maskiner. **Tjek `hostname` ved sessionstart hvis du skal udføre maskine-specifikke operationer.**
+
+| Hostname | Maskine | User | Rolle |
+|---|---|---|---|
+| `macair.home.lab` | MacBook Pro | `olsen` | iOS udvikling, Xcode, simulator, planning |
+| `macmini4` | Mac Mini M4 | `oleserver` | Backend (FastAPI port 8000, launchd daemon, logs, SQLite db) |
+
+**Backend-operationer skal køre PÅ Mac Mini**, ikke MacBook:
+- Genstart daemon: `launchctl kickstart -k gui/$(id -u)/com.kvante.backend`
+- Log-inspektion: `tail -f ~/Library/Logs/Kvante/kvante.log`
+- DB-inspektion: `sqlite3 backend/kvante.db`
+- Test backend health: `curl http://localhost:8000/health`
+
+Hvis CWD er Kvante-mappen på MacBook men du skal røre backend, ssh først:
+```bash
+ssh oleserver@macmini4   # eller oleserver@192.168.1.60
+```
+
+Repoet pulles på begge maskiner via git — så ændringer du commit'er på MacBook skal pulles på Mac Mini før backend-genstart kan se dem.
+
 ## AI Provider
 
 Konfigureres via environment:
