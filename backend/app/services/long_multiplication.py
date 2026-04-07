@@ -117,6 +117,44 @@ class LongMultiplicationService:
         return value, mental_steps
 
     @staticmethod
+    def pick_example_numbers(multiplicand: int, multiplier: int) -> tuple[int, int]:
+        """Pick example numbers matching the digit count of both operands.
+
+        Cardinal rule: never returns the same numbers as input. Preserves the
+        (larger, smaller) invariant: returned tuple always has a >= b. Avoids
+        trivial cases (multiples of 10, numbers < 2).
+        """
+        mc_digits = len(str(multiplicand))
+        mp_digits = len(str(multiplier))
+        mc_lo, mc_hi = 10 ** (mc_digits - 1), 10 ** mc_digits - 1
+        mp_lo, mp_hi = 10 ** (mp_digits - 1), 10 ** mp_digits - 1
+
+        # If single-digit slot, allow 2-9 (not 0/1)
+        mc_lo = max(mc_lo, 2)
+        mp_lo = max(mp_lo, 2)
+
+        for _ in range(200):
+            ex_a = random.randint(mc_lo, mc_hi)
+            ex_b = random.randint(mp_lo, mp_hi)
+            if ex_a == multiplicand and ex_b == multiplier:
+                continue
+            if ex_a % 10 == 0 or ex_b % 10 == 0:
+                continue
+            if ex_a < ex_b:
+                ex_a, ex_b = ex_b, ex_a
+                # Re-check digit-count after swap (only an issue if mc_digits == mp_digits)
+                if len(str(ex_a)) != mc_digits or len(str(ex_b)) != mp_digits:
+                    continue
+            return ex_a, ex_b
+
+        # Fallback: deterministic safe values
+        fallback_a = mc_lo + 1 if mc_lo + 1 != multiplicand else mc_lo + 3
+        fallback_b = mp_lo + 1 if mp_lo + 1 != multiplier else mp_lo + 3
+        if fallback_a < fallback_b:
+            fallback_a, fallback_b = fallback_b, fallback_a
+        return fallback_a, fallback_b
+
+    @staticmethod
     def _derive_carries(multiplicand_digits: list[int], mental_steps: list[dict]) -> list:
         """Map mental_steps carry_in values to written-order carry array.
 

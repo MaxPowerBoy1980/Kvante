@@ -178,3 +178,46 @@ class TestComputeStepsEdgeCases:
         """compute_steps must reject multiplier > multiplicand (caller's job)."""
         with pytest.raises(AssertionError, match="normalise"):
             LongMultiplicationService.compute_steps(7, 24)
+
+
+class TestPickExampleNumbers:
+    def test_never_returns_student_numbers(self):
+        """Cardinal rule: example numbers are never the student's numbers (50 iters)."""
+        for _ in range(50):
+            ex_a, ex_b = LongMultiplicationService.pick_example_numbers(206, 14)
+            assert (ex_a, ex_b) != (206, 14)
+            assert ex_a != 206 or ex_b != 14
+
+    def test_matches_digit_count(self):
+        """Picked example matches the digit count of both operands (50 iters)."""
+        for _ in range(50):
+            ex_a, ex_b = LongMultiplicationService.pick_example_numbers(206, 14)
+            assert len(str(ex_a)) == 3, f"Expected 3-digit, got {ex_a}"
+            assert len(str(ex_b)) == 2, f"Expected 2-digit, got {ex_b}"
+
+    def test_preserves_larger_smaller_invariant(self):
+        """Returned (ex_a, ex_b) always has ex_a >= ex_b (50 iters)."""
+        for _ in range(50):
+            ex_a, ex_b = LongMultiplicationService.pick_example_numbers(206, 14)
+            assert ex_a >= ex_b
+
+    def test_rejects_multiples_of_ten(self):
+        """Picked numbers should not be multiples of 10 (trivial cases)."""
+        for _ in range(50):
+            ex_a, ex_b = LongMultiplicationService.pick_example_numbers(206, 14)
+            assert ex_a % 10 != 0
+            assert ex_b % 10 != 0
+
+    def test_rejects_below_two(self):
+        """Picked numbers should not include 0 or 1."""
+        for _ in range(50):
+            ex_a, ex_b = LongMultiplicationService.pick_example_numbers(24, 7)
+            assert ex_a >= 2 and ex_b >= 2
+
+    def test_2cif_x_1cif(self):
+        """Smaller scope: 2-cifret × 1-cifret should still match digit counts."""
+        for _ in range(50):
+            ex_a, ex_b = LongMultiplicationService.pick_example_numbers(24, 7)
+            assert len(str(ex_a)) == 2
+            assert len(str(ex_b)) == 1
+            assert ex_a >= ex_b
