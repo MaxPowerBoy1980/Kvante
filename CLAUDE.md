@@ -95,3 +95,19 @@ Konfigureres via environment:
 4. **Strukturerede prompts**: Eleven vælger knapper, skriver ikke
 5. **Transparens**: System prompts gemt som læsbare .txt filer
 6. **Privatliv**: Alt på lokalt netværk, ingen cloud-lagring af fotos
+
+## Projektkontekst — påkrævet læsning
+
+Dette projekt har to komplementære kilder til status og næste features:
+
+1. **`TODO.md`** (i projektroden) — menneske-læsbar prioriteret køreplan ejet af brugeren
+2. **`~/.claude/projects/-Users-olsen-code-Kvante/memory/project_next_features.md`** — detaljeret kontekst med **Why:** og **How to apply:** for hver feature
+
+**Du SKAL læse begge filer når:**
+- Brugeren spørger om status, fremskridt, eller hvad der er næste ("hvad er status?", "hvad skal vi bygge nu?", "hvor er vi?")
+- Brugeren starter en ny feature ("lad os bygge X") — tjek om der er eksisterende kontekst i memory før du brainstormer
+- Du er i tvivl om en beslutning hænger sammen med tidligere valg
+
+TODO.md giver *hvad* og *prioritet*. Memory-filen giver *hvorfor* og *hvordan*. Begge er nødvendige for fuldt billede.
+
+**Når en feature er færdiggjort:** Opdater BEGGE filer. Flyt i TODO.md fra "Næste" til "Gennemført", og opdater memory-filen med ny status og evt. nye observationer.
