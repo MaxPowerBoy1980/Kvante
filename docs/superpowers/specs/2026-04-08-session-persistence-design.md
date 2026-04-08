@@ -67,22 +67,30 @@ For at undgå en regression hvor single-digit multiplikation og simple stacked-p
 - Hybrid persistering (base64 for Apple-OCR, scan_id for Vision-OCR) — to datamodeller for samme ting, grimt.
 - Accepter regressionen — mister billeder for de hyppigste opgavetyper, underminerer pakke 5's bog-arkiv.
 
-### Beslutning 5: Save efter hver besked med en lokal cursor
+### Beslutning 5: Save efter hver besked med et `syncedMessageIds`-sæt
 
-Hver gang `ChatViewModel.messages` får en ny besked, fyres et save-kald af i baggrunden. En lokal `savedCursor: Int` tracker hvor langt vi er nået — save-kaldet sender kun `messages[cursor..<count]`. Cursor rykker kun frem ved success. Ved fejl retrier næste append automatisk (kumulativ batch).
+Hver gang `ChatViewModel.messages` får en ny eller opdateret besked, fyres et save-kald af i baggrunden. ViewModel'en holder en `syncedMessageIds: Set<UUID>` over messages der er kvitteret gemt af backend. Save-kaldet sender `messages.filter { !syncedMessageIds.contains($0.id) }.compactMap { $0.toCreateDTO() }`. Ved success tilføjes de sendte IDs til sættet. Ved fejl forbliver sættet uændret, og næste append retrier automatisk.
+
+**Hvorfor ikke en simpel `Int`-cursor:** Et mere naivt design — `savedCursor: Int` der peger på første unsendte index — bryder når en besked returnerer nil fra `toCreateDTO()` (f.eks. `scannedImage(data, nil)` før upload er færdig). Cursor ville rykke forbi beskeden via `toSave.isEmpty`-grenen; når upload senere giver den en scanId, ville beskeden være bag cursor og aldrig blive persisteret. Set-baseret tilgang undgår den ordering-antagelse og er robust mod asynkron state-mutation.
 
 **Afviste alternativer:**
 - Debounced save + force på `.background` — mere kompleksitet uden betydelig gevinst på LAN.
 - Kun save på `.background` — risikabelt ved crash eller force-kill.
-- Full-list replace-all — backend skulle ændres til DELETE+INSERT; unødvendigt når cursor-modellen virker.
+- Full-list replace-all — backend skulle ændres til DELETE+INSERT; unødvendigt.
+- Monotonic `Int`-cursor — kan ikke håndtere nil-DTO-beskeder der senere bliver persisterbare (se ovenfor).
 
-### Beslutning 6: Load async i `ChatViewModel.init()`, conditional welcome
+**Accepteret trade-off (ordering):** Hvis en scan-upload tager længere end den efterfølgende OCR + tekst-besked (sjældent på LAN), kan den scannede besked blive sync'et *efter* en senere besked. Backend `created_at` er derfor ikke altid i samme orden som iOS `messages[]`. Ved reload vises beskeder i backend-orden. På LAN er upload nærmest altid hurtigere end OCR, så det er et edge case. Hvis det bliver et problem, kan `SaveMessagesRequest.messages[]` udvides med valgfri `client_timestamp` som backend bruger i stedet for `_now` — minimal ændring.
 
-`init()` starter en Task der først kalder `loadMessages(sessionId)`. Hvis resultatet er tomt, kaldes `sendWelcome()`. Hvis ikke, skippes velkomst. `savedCursor` sættes til `messages.count` efter load, så den indledende snapshot ikke re-sendes.
+### Beslutning 6: Load async i `ChatViewModel.init()`, conditional welcome, loading-state
+
+`init()` starter en Task der først kalder `loadMessages(sessionId)`. Hvis resultatet er tomt, kaldes `sendWelcome()`. Hvis ikke, skippes velkomst. Alle de loadede beskeders IDs indsættes i `syncedMessageIds`, så det indledende snapshot ikke re-sendes.
+
+ViewModel eksponerer `isLoadingHistory: Bool` (starter som `true`, sættes `false` efter load-task er færdig uanset udfald). ChatView renderer en `ProgressView()` i stedet for chat-UI'et mens `isLoadingHistory == true`. Dette undgår det visuelle flash hvor eleven ser blank chat i 100-500ms før load-resultatet ankommer. For friske sessioner er flashet kortere men stadig synligt; loading-state er det rigtige for begge tilfælde.
 
 **Afviste alternativer:**
-- Altid sende welcome og merge load ovenpå — visuelt flash.
+- Altid sende welcome og merge load ovenpå — visuelt flash, samme problem men værre.
 - Betinget welcome baseret på "er session ny"-flag fra calling-site — spreder ansvar.
+- Ingen loading-state — spec'et nævner en "rigtig" men lille UX-defekt, og pakke 2/5 ville arve den.
 
 ## Data-kontrakten
 
@@ -131,7 +139,7 @@ GET /scans/{scan_id}/image
   404 hvis ikke fundet
 ```
 
-Scan-upload kører `preprocess_handwritten_work()` fra `image_preprocessor.py` (samme pipeline som eksisterende submission-flow) og gemmer til `{settings.upload_dir}/scan_{id}.jpg`.
+Scan-upload kører `preprocess_handwritten_work()` fra `image_preprocessor.py` (samme pipeline som eksisterende submission-flow) og gemmer til `{settings.upload_dir}/scans/scan_{id}.jpg`. Mappen oprettes ved modul-init hvis den ikke findes. Scans gemmes i egen undermappe for at holde dem adskilt fra submission-billederne — begge lever lige så længe som sessionerne, men separation gør det nemmere at rydde op per-type senere.
 
 ### Content schema pr. content_type
 
@@ -147,7 +155,7 @@ Hver `content_type` har en fast dict-struktur som iOS mapper til/fra. Backend va
 | `tip`               | `{"text": "Husk at låne fra tieren..."}`                                                                               |
 | `celebration`       | `{"tier": "great"}`                                                                                                    |
 
-**Ordering:** Backend returnerer `order_by(ChatMessage.created_at)` som autoritativ rækkefølge. iOS sender ikke eget timestamp; backend bruger `_now` default. Dette forenkler racing mellem kald.
+**Ordering:** Backend returnerer `order_by(ChatMessage.created_at)` som autoritativ rækkefølge. iOS sender ikke eget timestamp; backend bruger `_now` default. Dette forenkler racing mellem kald. Se Beslutning 5 for den accepterede trade-off omkring scan-upload-ordering.
 
 **Assignment-association:** Beskeder der hører til en specifik opgave (tekst-dialog under opgave 3, scannede svar, feedback) sættes med `assignment_id` på save-kaldet. Beskeder mellem opgaver (velkomst, session-afslutning) får `assignment_id: null`.
 
@@ -166,8 +174,33 @@ func scanImageURL(scanId: String) -> URL
 
 ### Nye DTO-typer
 
+Content-dict'en indeholder kun leaf-typer: `String`, `Int`, `Bool`. Ingen nested objekter eller arrays i nogen af de definerede content_type-schemas (se data-kontrakten). Vi definerer derfor en kompakt typed leaf-enum i stedet for en fuld-generisk AnyCodable:
+
 ```swift
 // ios/Kvante/Kvante/Models/APIResponses.swift
+
+enum ContentValue: Codable {
+    case string(String)
+    case int(Int)
+    case bool(Bool)
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if let s = try? c.decode(String.self) { self = .string(s); return }
+        if let b = try? c.decode(Bool.self)   { self = .bool(b);   return }
+        if let i = try? c.decode(Int.self)    { self = .int(i);    return }
+        throw DecodingError.typeMismatch(ContentValue.self, .init(codingPath: decoder.codingPath, debugDescription: "Unsupported content value"))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try c.encode(s)
+        case .int(let i):    try c.encode(i)
+        case .bool(let b):   try c.encode(b)
+        }
+    }
+}
 
 struct ScanUploadResponse: Codable {
     let scanId: String
@@ -176,7 +209,7 @@ struct ScanUploadResponse: Codable {
 struct ChatMessageCreate: Codable {
     let sender: String           // "kvante" | "student"
     let contentType: String      // "text" | "scanned_image" | ...
-    let content: [String: AnyCodable]
+    let content: [String: ContentValue]
     let assignmentId: String?
 }
 
@@ -186,12 +219,12 @@ struct ChatMessageOut: Codable {
     let assignmentId: String?
     let sender: String
     let contentType: String
-    let content: [String: AnyCodable]
+    let content: [String: ContentValue]
     let createdAt: String
 }
 ```
 
-`AnyCodable` er en ny lille helper (tilføjes i samme PR) der wraps arbitrary JSON-værdier (String, Int, Double, Bool, Array, Dict) i et Codable-kompatibelt envelope.
+**Hvorfor ikke en generisk `AnyCodable`:** En fuld-generisk AnyCodable der håndterer nested dicts, arrays, og mixed types korrekt er ikke-trivielt (rekursive decode/encode, type-discrimination, edge cases). Flight-School/AnyCodable er en populær løsning men tilføjer en SPM-dependency for en feature vi faktisk ikke har brug for. Vores content schemas bruger kun `String`/`Int`/`Bool` på leaf-niveau; den typede enum er 20 linjer og dækker alt vi har brug for. Hvis vi senere introducerer content_type-schemas med nested objekter eller arrays, swapper vi til Flight-School/AnyCodable da.
 
 ### `ChatMessage`-udvidelse
 
@@ -205,18 +238,32 @@ enum ChatMessageContent {
 }
 
 struct ChatMessage: Identifiable {
-    let id = UUID()
+    let id: UUID                   // ← ÆNDRET fra stored default (= UUID())
     let sender: ChatSender
     let content: ChatMessageContent
-    let timestamp: Date            // custom init tillader backend-timestamp ved load
+    let timestamp: Date
     var actions: [ActionChipModel] = []
     var assignmentId: String? = nil  // ← NY
 
-    init(sender: ChatSender, content: ChatMessageContent, timestamp: Date = Date(), actions: [ActionChipModel] = [], assignmentId: String? = nil)
+    init(
+        id: UUID = UUID(),          // ← NY parameter, så mutate-i-place kan bevare id
+        sender: ChatSender,
+        content: ChatMessageContent,
+        timestamp: Date = Date(),
+        actions: [ActionChipModel] = [],
+        assignmentId: String? = nil
+    ) {
+        self.id = id
+        self.sender = sender
+        self.content = content
+        self.timestamp = timestamp
+        self.actions = actions
+        self.assignmentId = assignmentId
+    }
 }
 ```
 
-Touch-sites der bruger `.scannedImage(data)`: alle opdateres til `.scannedImage(data, scanId: nil)` som initial tilstand. `ChatViewModel.scanAnswer` opdaterer beskeden til `.scannedImage(data, scanId: id)` når upload-kaldet returnerer.
+Touch-sites der bruger `.scannedImage(data)`: alle opdateres til `.scannedImage(data, scanId: nil)` som initial tilstand. `ChatViewModel.scanAnswer` opdaterer beskeden til `.scannedImage(data, scanId: id)` når upload-kaldet returnerer — og vigtigt: videregiver `id: tempMessage.id` i erstatnings-konstruktøren så UUID'et bevares på tværs af mutationen. Stabile IDs er en forudsætning for `syncedMessageIds`-sættet i ChatViewModel.
 
 ### Ny fil: `ChatMessagePersistence.swift`
 
@@ -238,14 +285,16 @@ extension ChatMessage {
 
 `exampleStep` / `example`-cases har ingen gen-hydrering overhovedet. Det er ChatViewModel's ansvar (se Beslutning 1) at tilføje en `.text`-markørbesked før selve example-flowet starter. Markøren persisteres naturligt som `text`-case og er det eneste eleven ser af eksemplet ved reload.
 
-### `ChatViewModel` — save-cursor og load-flow
+### `ChatViewModel` — synced-set og load-flow
 
 ```swift
 @MainActor
 @Observable
 final class ChatViewModel {
     var messages: [ChatMessage] = []
-    private var savedCursor: Int = 0
+    var isLoadingHistory: Bool = true
+
+    private var syncedMessageIds: Set<UUID> = []
     private var isSyncing: Bool = false
     private var pendingSync: Bool = false
 
@@ -263,7 +312,7 @@ final class ChatViewModel {
             if messages.isEmpty {
                 sendWelcome()
             }
-            savedCursor = messages.count
+            isLoadingHistory = false
         }
     }
 
@@ -271,7 +320,10 @@ final class ChatViewModel {
         do {
             let dtos = try await apiClient.loadMessages(sessionId: sessionId)
             let byId = Dictionary(uniqueKeysWithValues: assignments.map { ($0.id, $0) })
-            messages = dtos.compactMap { ChatMessage.fromLoadedDTO($0, assignments: byId) }
+            let loaded = dtos.compactMap { ChatMessage.fromLoadedDTO($0, assignments: byId) }
+            messages = loaded
+            // Alle loadede beskeder er per definition allerede persisteret — markér dem
+            syncedMessageIds = Set(loaded.map { $0.id })
         } catch {
             // Fail silently — start fresh, sendWelcome kaldes bagefter
         }
@@ -286,17 +338,23 @@ final class ChatViewModel {
         syncUnsavedMessages()
     }
 
+    /// Kaldes også når en eksisterende message *opdateres* (f.eks. scanId sat efter upload).
     private func syncUnsavedMessages() {
         if isSyncing {
             pendingSync = true
             return
         }
-        let toSave = messages[savedCursor..<messages.count].compactMap { $0.toCreateDTO() }
-        let newCursor = messages.count
-        if toSave.isEmpty {
-            savedCursor = newCursor
-            return
+        // Find unsynced messages — dem der ikke er i sættet AND som har en DTO-repræsentation
+        let unsynced = messages.filter { !syncedMessageIds.contains($0.id) }
+        let pairs: [(id: UUID, dto: ChatMessageCreate)] = unsynced.compactMap { msg in
+            guard let dto = msg.toCreateDTO() else { return nil }
+            return (msg.id, dto)
         }
+        if pairs.isEmpty {
+            return  // ingen ændringer — messages med nil DTO forbliver uden for sættet
+        }
+        let toSave = pairs.map { $0.dto }
+        let idsBeingSent = pairs.map { $0.id }
         isSyncing = true
         Task { @MainActor in
             defer {
@@ -308,16 +366,36 @@ final class ChatViewModel {
             }
             do {
                 try await apiClient.saveMessages(sessionId: sessionId, messages: toSave)
-                savedCursor = newCursor
+                syncedMessageIds.formUnion(idsBeingSent)
             } catch {
-                // Cursor rykker ikke; næste append retrier
+                // Sættet rykker ikke; næste append eller mutation retrier
             }
         }
     }
 }
 ```
 
+**Nøglesemantikker:**
+- En besked er "persisteret" hvis dens `id` er i `syncedMessageIds`.
+- `scannedImage(data, nil)` har ingen DTO → aldrig i sættet → forbliver "unsynced".
+- Når upload-success erstatter beskeden med `scannedImage(data, scanId)` *og samme UUID*, har beskeden nu en DTO → næste `syncUnsavedMessages()` plukker den op.
+- `messages`-arrayets rækkefølge er uændret; vi ændrer kun dict-semantikken af "hvad er gemt".
+
 Alle eksisterende `messages.append(...)` kald i `ChatViewModel` erstattes med `appendMessage(...)`. Det er ~20 kald-sites.
+
+**ChatView skal gate på `isLoadingHistory`:**
+
+```swift
+// I ChatView eller dets container
+if viewModel.isLoadingHistory {
+    ProgressView()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+} else {
+    // eksisterende chat-UI
+}
+```
+
+Minimal ændring — én if-gren i det view der i dag renderer `viewModel.messages`.
 
 ### Scan-upload integration i `scanAnswer`
 
@@ -329,7 +407,7 @@ func scanAnswer(_ imageData: Data) async {
         assignmentId: currentAssignment?.id
     )
     appendMessage(tempMessage)
-    let tempId = tempMessage.id  // track via UUID, ikke index
+    let tempId = tempMessage.id  // stable UUID, bevares på tværs af mutation
 
     // Parallel upload
     Task { @MainActor in
@@ -337,6 +415,7 @@ func scanAnswer(_ imageData: Data) async {
             let response = try await apiClient.uploadScan(imageData: imageData)
             if let idx = messages.firstIndex(where: { $0.id == tempId }) {
                 messages[idx] = ChatMessage(
+                    id: tempId,                              // ← BEVAR UUID
                     sender: .student,
                     content: .scannedImage(imageData, scanId: response.scanId),
                     timestamp: tempMessage.timestamp,
@@ -353,6 +432,8 @@ func scanAnswer(_ imageData: Data) async {
     // ...
 }
 ```
+
+**Kritisk detalje:** `id: tempId` i erstatnings-konstruktøren er det der binder pre-upload og post-upload beskeden sammen. Uden det ville den opdaterede besked få ny UUID og ikke dele identitet med den der allerede er i `messages[idx]` — `syncUnsavedMessages` ville stadig virke (ny UUID er heller ikke i `syncedMessageIds`), men downstream referencer (pakke 2 ark-overlay, pakke 5 bogarkivet) kunne blive inkonsistente.
 
 ### Billed-rendering ved reload
 
@@ -391,7 +472,7 @@ Eksisterende steder i chat-rendering der håndterer `.scannedImage(data)` opdate
 
 ## Fejlhåndtering og kanttilfælde
 
-**Save-fejl:** Logs til console. Cursor rykker ikke — næste append sender både ny + forrige uafsendte besked som batch. Eventual consistency. Hvis appen lukkes mellem fejl og næste append, tabes 1-2 seneste beskeder. Accepteret.
+**Save-fejl:** Logs til console. `syncedMessageIds` opdateres ikke — næste `syncUnsavedMessages()`-kald plukker stadig de forrige uafsendte beskeder op som en del af den næste batch. Eventual consistency. Hvis appen lukkes mellem fejl og næste append, tabes 1-2 seneste beskeder. Accepteret.
 
 **Load-fejl:** Logs til console. `messages` forbliver tom, `sendWelcome()` kaldes. Degraderet men funktionel. Ved næste reload prøves load igen.
 
@@ -427,10 +508,13 @@ Sanity-check i `tests/test_chat_messages.py` (eller ny): `save_messages` accepte
 
 `ChatViewModelPersistenceTests.swift`:
 - Mock APIClient, verificér `loadMessages` kaldes i init.
-- Mock `loadMessages` returnerer stubbed beskeder → assert `messages` populeret og `sendWelcome` ikke kaldt.
-- Mock `loadMessages` returnerer tom → assert `sendWelcome` kaldt.
-- Mock `saveMessages` fejler → verificér cursor ikke rykker og næste append-sync inkluderer den forrige.
+- Mock `loadMessages` returnerer stubbed beskeder → assert `messages` populeret, `syncedMessageIds` inkluderer alle, `sendWelcome` ikke kaldt, `isLoadingHistory` er `false` efter task.
+- Mock `loadMessages` returnerer tom → assert `sendWelcome` kaldt, `isLoadingHistory` `false`.
+- Mock `loadMessages` kaster → assert `isLoadingHistory` stadig `false` efter fejl, `sendWelcome` kaldt.
+- Mock `saveMessages` fejler → verificér `syncedMessageIds` ikke opdateres og næste append-sync inkluderer den forrige.
 - To hurtige appends → verificér kun ét sync-kald ad gangen, anden merges ind i næste run.
+- **Critical case — scanId-forsinkelse:** Append `scannedImage(data, nil)` → assert ingen save-kald (ingen DTO). Kald `messages[0] = scannedImage(data, scanId: "x")` med *samme UUID* → kald `syncUnsavedMessages()` → assert save-kald sendt med den opdaterede besked → assert `syncedMessageIds` inkluderer dens id.
+- **Critical case — UUID bevarelse:** Verificér at `scanAnswer` erstatnings-flowet bevarer `id` på tværs af den gamle og nye ChatMessage. `messages[idx].id == tempId` efter upload.
 
 ### End-to-end manuel QA (primær)
 
@@ -453,13 +537,14 @@ Sanity-check i `tests/test_chat_messages.py` (eller ny): `save_messages` accepte
 
 Implementation-planen vil sandsynligvis følge denne orden (skrives af writing-plans-skill):
 
-1. Backend: `Scan` model + `POST /scans/upload` + `GET /scans/{id}/image` + tests
-2. iOS: `AnyCodable` + DTO-structs + APIClient-metoder
-3. iOS: `ChatMessage.scannedImage` udvides + touch-sites opdateres
+1. Backend: `Scan` model + `POST /scans/upload` + `GET /scans/{id}/image` + tests. `{upload_dir}/scans/`-mappe oprettes ved modul-init.
+2. iOS: `ContentValue`-enum + DTO-structs + APIClient-metoder
+3. iOS: `ChatMessage.id` parameteriseret + `scannedImage`-case udvides + touch-sites opdateres
 4. iOS: `ChatMessagePersistence.swift` + round-trip tests
-5. iOS: `ChatViewModel` save-cursor + load-flow + `appendMessage`-refaktor
-6. iOS: `scanAnswer` parallel upload-integration + `ScannedImageView`
-7. End-to-end manuel QA
+5. iOS: `ChatViewModel` `syncedMessageIds` + `isLoadingHistory` + load-flow + `appendMessage`-refaktor
+6. iOS: `scanAnswer` parallel upload-integration (med `id: tempId`-bevarelse) + `ScannedImageView`
+7. iOS: ChatView gater på `isLoadingHistory`
+8. End-to-end manuel QA
 
 ## Succeskriterier
 
