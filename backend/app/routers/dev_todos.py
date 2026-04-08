@@ -146,3 +146,21 @@ async def create_todo(
         stripped_note[:80],
     )
     return meta
+
+
+@router.get("", response_model=TodoListResponse)
+async def list_todos():
+    """List all TODOs sorted newest-first by timestamp."""
+    return TodoListResponse(todos=_list_todos(newest_first=True))
+
+
+# IMPORTANT: /latest MUST be declared before /{todo_id} — FastAPI matches
+# routes in declaration order, and /{todo_id} would otherwise capture
+# "latest" as an id value and return 404.
+@router.get("/latest", response_model=TodoMeta)
+async def get_latest_todo():
+    """Return metadata for the most recent TODO."""
+    todos = _list_todos(newest_first=True)
+    if not todos:
+        raise HTTPException(status_code=404, detail="Ingen TODOs")
+    return todos[0]

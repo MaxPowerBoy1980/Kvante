@@ -90,3 +90,41 @@ def test_post_oversized_image(client, monkeypatch):
         files={"image": ("shot.png", big_png, "image/png")},
     )
     assert resp.status_code == 400
+
+
+def test_list_empty(client):
+    """GET /dev/todos on empty directory returns empty list."""
+    resp = client.get("/dev/todos")
+    assert resp.status_code == 200
+    assert resp.json() == {"todos": []}
+
+
+def test_list_newest_first(client):
+    """GET /dev/todos returns TODOs sorted by timestamp, newest first."""
+    import time
+    for note in ["first", "second", "third"]:
+        client.post("/dev/todos", data={"note": note})
+        time.sleep(0.01)  # ensure distinct timestamps
+
+    resp = client.get("/dev/todos")
+    assert resp.status_code == 200
+    notes = [t["note"] for t in resp.json()["todos"]]
+    assert notes == ["third", "second", "first"]
+
+
+def test_latest_endpoint_empty(client):
+    """GET /dev/todos/latest on empty returns 404."""
+    resp = client.get("/dev/todos/latest")
+    assert resp.status_code == 404
+
+
+def test_latest_endpoint_returns_newest(client):
+    """GET /dev/todos/latest returns the most recent TODO metadata."""
+    import time
+    client.post("/dev/todos", data={"note": "old"})
+    time.sleep(0.01)
+    client.post("/dev/todos", data={"note": "new"})
+
+    resp = client.get("/dev/todos/latest")
+    assert resp.status_code == 200
+    assert resp.json()["note"] == "new"
