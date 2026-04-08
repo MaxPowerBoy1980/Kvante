@@ -129,3 +129,50 @@ def test_latest_endpoint_returns_newest(client):
     resp = client.get("/dev/todos/latest")
     assert resp.status_code == 200
     assert resp.json()["note"] == "new"
+
+
+def test_get_metadata_by_id(client):
+    """GET /dev/todos/{id} returns metadata for a specific TODO."""
+    upload = client.post("/dev/todos", data={"note": "find me"})
+    todo_id = upload.json()["id"]
+
+    resp = client.get(f"/dev/todos/{todo_id}")
+    assert resp.status_code == 200
+    assert resp.json()["note"] == "find me"
+    assert resp.json()["id"] == todo_id
+
+
+def test_get_metadata_by_id_404(client):
+    """GET /dev/todos/{id} returns 404 for unknown id."""
+    resp = client.get("/dev/todos/nonexistent1")
+    assert resp.status_code == 404
+
+
+def test_get_image_by_id(client):
+    """GET /dev/todos/{id}/image returns PNG for TODO with image."""
+    upload = client.post(
+        "/dev/todos",
+        data={"note": "with image"},
+        files={"image": ("shot.png", _png("blue"), "image/png")},
+    )
+    todo_id = upload.json()["id"]
+
+    resp = client.get(f"/dev/todos/{todo_id}/image")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/png"
+    assert len(resp.content) > 0
+
+
+def test_get_image_404_when_no_image(client):
+    """GET /dev/todos/{id}/image returns 404 when TODO has no image."""
+    upload = client.post("/dev/todos", data={"note": "no image"})
+    todo_id = upload.json()["id"]
+
+    resp = client.get(f"/dev/todos/{todo_id}/image")
+    assert resp.status_code == 404
+
+
+def test_get_image_404_for_unknown_id(client):
+    """GET /dev/todos/{id}/image returns 404 for unknown TODO id."""
+    resp = client.get("/dev/todos/nonexistent1/image")
+    assert resp.status_code == 404

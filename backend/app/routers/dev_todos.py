@@ -164,3 +164,26 @@ async def get_latest_todo():
     if not todos:
         raise HTTPException(status_code=404, detail="Ingen TODOs")
     return todos[0]
+
+
+@router.get("/{todo_id}", response_model=TodoMeta)
+async def get_todo(todo_id: str):
+    """Return metadata for a specific TODO."""
+    meta = _find_by_id(todo_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="TODO ikke fundet")
+    return meta
+
+
+@router.get("/{todo_id}/image")
+async def get_todo_image(todo_id: str):
+    """Return the PNG image for a specific TODO. 404 if no image attached."""
+    meta = _find_by_id(todo_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="TODO ikke fundet")
+    if not meta.has_image:
+        raise HTTPException(status_code=404, detail="TODO har ikke et billede")
+    image_file = _image_path(meta.base_filename)
+    if not image_file.exists():
+        raise HTTPException(status_code=404, detail="Billede mangler på disk")
+    return FileResponse(image_file, media_type="image/png")
