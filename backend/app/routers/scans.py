@@ -2,6 +2,7 @@ import logging
 import os
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session as DBSession
 
 from app.config import settings
@@ -41,3 +42,12 @@ async def upload_scan(
 
     logger.info("Scan uploaded: id=%s bytes=%d", scan.id, len(contents))
     return ScanUploadResponse(scan_id=scan.id)
+
+
+@router.get("/scans/{scan_id}/image")
+def get_scan_image(scan_id: str, db: DBSession = Depends(get_db)):
+    """Returnér billedet for et gemt scan. Bruges af iOS ved session-reload."""
+    scan = db.query(Scan).filter(Scan.id == scan_id).first()
+    if not scan or not os.path.exists(scan.image_path):
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return FileResponse(scan.image_path, media_type="image/jpeg")
