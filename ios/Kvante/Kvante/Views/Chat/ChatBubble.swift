@@ -77,11 +77,12 @@ struct ChatBubble: View {
             answerResultBubble(result)
         case .example(let example):
             exampleBubble(example)
-        case .exampleStep(let step, let num, let total, let gridState, let shortDivisionState, let longMultState):
+        case .exampleStep(let step, let num, let total, let gridState, let shortDivisionState, let longMultState, let arrayGridState):
             exampleStepBubble(step, stepNumber: num, total: total,
                               gridState: gridState,
                               shortDivisionState: shortDivisionState,
-                              longMultiplicationState: longMultState)
+                              longMultiplicationState: longMultState,
+                              arrayGridState: arrayGridState)
         case .tip(let text):
             tipBubble(text)
         case .scannedImage(let data):
@@ -259,7 +260,8 @@ struct ChatBubble: View {
     private func exampleStepBubble(_ step: AnimationStep, stepNumber: Int, total: Int,
                                    gridState: GridState? = nil,
                                    shortDivisionState: ShortDivisionState? = nil,
-                                   longMultiplicationState: LongMultiplicationState? = nil) -> some View {
+                                   longMultiplicationState: LongMultiplicationState? = nil,
+                                   arrayGridState: ArrayGridState? = nil) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             // Step header
             HStack(spacing: 8) {
@@ -278,19 +280,22 @@ struct ChatBubble: View {
                 .font(.body)
                 .foregroundStyle(KvanteTheme.Colors.ink)
 
-            // Visual component
-            VisualComponentView(
-                visual: step.visual,
-                animate: true,
-                cumulativeObjects: 0,
-                cumulativeCrossedOut: 0,
-                cumulativeRows: 2,
-                cumulativeGrouped: 0,
-                cumulativeGridState: gridState,
-                cumulativeShortDivisionState: shortDivisionState,
-                cumulativeLongMultiplicationState: longMultiplicationState
-            )
-            .frame(maxWidth: .infinity)
+            // Visual component (skipped for text-only steps)
+            if let visual = step.visual {
+                VisualComponentView(
+                    visual: visual,
+                    animate: true,
+                    cumulativeObjects: 0,
+                    cumulativeCrossedOut: 0,
+                    cumulativeRows: 2,
+                    cumulativeGrouped: 0,
+                    cumulativeGridState: gridState,
+                    cumulativeShortDivisionState: shortDivisionState,
+                    cumulativeLongMultiplicationState: longMultiplicationState,
+                    cumulativeArrayGridState: arrayGridState
+                )
+                .frame(maxWidth: .infinity)
+            }
         }
         .padding(14)
         .background(KvanteTheme.Colors.kvanteBubble, in: kvanteBubbleShape)

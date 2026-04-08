@@ -15,6 +15,7 @@ class AnimationPlayer {
     private(set) var cumulativeGridState: GridState?
     private(set) var cumulativeShortDivisionState: ShortDivisionState?
     private(set) var cumulativeLongMultiplicationState: LongMultiplicationState?
+    private(set) var cumulativeArrayGridState: ArrayGridState?
 
     var currentStep: AnimationStep? {
         guard currentStepIndex < steps.count else { return nil }
@@ -61,6 +62,7 @@ class AnimationPlayer {
         cumulativeGridState = nil
         cumulativeShortDivisionState = nil
         cumulativeLongMultiplicationState = nil
+        cumulativeArrayGridState = nil
         isPlaying = false
         autoAdvanceTask?.cancel()
     }
@@ -84,17 +86,19 @@ class AnimationPlayer {
     }
 
     private func pauseDuration(for step: AnimationStep) -> Double {
-        switch step.visual.type {
+        guard let visual = step.visual else { return 2.5 }
+        switch visual.type {
         case "equation": return 1.5
         case "object_collection":
-            let count = step.visual.intParam("count") ?? 0
+            let count = visual.intParam("count") ?? 0
             return count > 10 ? 3.5 : 2.5
         case "array_grid": return 3.5
         case "number_line":
-            let jumps = step.visual.intParam("jumps") ?? 1
+            let jumps = visual.intParam("jumps") ?? 1
             return 2.0 + Double(jumps) * 0.5
         case "stacked_arithmetic": return 2.5
         case "short_division": return 2.5
+        case "single_digit_array": return 2.0
         default: return 2.5
         }
     }
@@ -102,7 +106,7 @@ class AnimationPlayer {
     // MARK: - Cumulative state
 
     private func updateCumulativeState(for step: AnimationStep) {
-        let v = step.visual
+        guard let v = step.visual else { return }
         switch (v.type, v.action) {
         case ("object_collection", "draw"), ("object_collection", "add"):
             cumulativeObjects += v.intParam("count") ?? 0
@@ -128,6 +132,11 @@ class AnimationPlayer {
                 cumulativeLongMultiplicationState = LongMultiplicationState.from(visual: v)
             }
             cumulativeLongMultiplicationState?.apply(visual: v)
+        case ("single_digit_array", _):
+            if v.action == "setup" {
+                cumulativeArrayGridState = ArrayGridState.from(visual: v)
+            }
+            cumulativeArrayGridState?.apply(visual: v)
         default: break
         }
     }
@@ -139,6 +148,7 @@ class AnimationPlayer {
         cumulativeGrouped = 0
         cumulativeShortDivisionState = nil
         cumulativeLongMultiplicationState = nil
+        cumulativeArrayGridState = nil
         for i in 0..<currentStepIndex {
             updateCumulativeState(for: steps[i])
         }

@@ -36,7 +36,7 @@ class AnimationStep(BaseModel):
     step: int
     phase: str          # concrete, semi-concrete, abstract
     text: str
-    visual: VisualInstruction
+    visual: VisualInstruction | None = None
     audio_cue: str = ""
 
 
