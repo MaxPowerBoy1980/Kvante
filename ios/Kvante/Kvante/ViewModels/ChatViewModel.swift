@@ -7,8 +7,13 @@ class ChatViewModel {
 
     var messages: [ChatMessage] = []
     var isLoading = false
+    var isLoadingHistory = true
     var showScanner = false
     var inputText = ""
+
+    private var syncedMessageIds: Set<UUID> = []
+    private var isSyncing = false
+    private var pendingSync = false
 
     // MARK: - Context
 
@@ -68,7 +73,14 @@ class ChatViewModel {
         self.allAssignments = assignments
         self.sessionId = sessionId
         self.apiClient = apiClient
-        sendWelcome()
+
+        Task { @MainActor in
+            await loadExistingMessages()
+            if messages.isEmpty {
+                sendWelcome()
+            }
+            isLoadingHistory = false
+        }
     }
 
     // MARK: - Welcome
@@ -656,6 +668,78 @@ class ChatViewModel {
             sender: .kvante,
             content: .text("Godt, prøv igen! Scan dit nye svar med + knappen når du er klar 🤖")
         ))
+    }
+
+    // MARK: - Persistence
+
+    /// Append en besked til messages[] og tag automatisk currentAssignmentId
+    /// hvis beskeden ikke selv har et. Alle eksisterende messages.append-kald
+    /// skal gå gennem denne metode (Task 14).
+    private func appendMessage(_ msg: ChatMessage) {
+        var tagged = msg
+        if tagged.assignmentId == nil {
+            tagged.assignmentId = currentAssignment.id
+        }
+        messages.append(tagged)
+        syncUnsavedMessages()
+    }
+
+    /// Kald dette når en eksisterende besked muterer i-place (fx scanId sat
+    /// efter upload er færdig). syncUnsavedMessages tager sig af at plukke de
+    /// muterede beskeder op næste gang.
+    private func syncUnsavedMessages() {
+        if isSyncing {
+            pendingSync = true
+            return
+        }
+
+        // Find unsynced messages og deres DTO-repræsentationer
+        let unsynced = messages.filter { !syncedMessageIds.contains($0.id) }
+        var pairs: [(id: UUID, dto: ChatMessageCreate)] = []
+        for msg in unsynced {
+            if let dto = msg.toCreateDTO() {
+                pairs.append((msg.id, dto))
+            }
+        }
+
+        if pairs.isEmpty {
+            return  // ingen ændringer — messages med nil DTO forbliver uden for sættet
+        }
+
+        let toSave = pairs.map { $0.dto }
+        let idsBeingSent = pairs.map { $0.id }
+        isSyncing = true
+
+        Task { @MainActor in
+            defer {
+                self.isSyncing = false
+                if self.pendingSync {
+                    self.pendingSync = false
+                    self.syncUnsavedMessages()
+                }
+            }
+            do {
+                try await self.apiClient.saveMessages(sessionId: self.sessionId, messages: toSave)
+                self.syncedMessageIds.formUnion(idsBeingSent)
+            } catch {
+                // Sættet rykker ikke; næste append eller mutation retrier
+                print("[ChatViewModel] saveMessages failed: \(error)")
+            }
+        }
+    }
+
+    /// Load eksisterende historik fra backend. Kaldes én gang i init.
+    private func loadExistingMessages() async {
+        do {
+            let dtos = try await apiClient.loadMessages(sessionId: sessionId)
+            let byId = Dictionary(uniqueKeysWithValues: allAssignments.map { ($0.id, $0) })
+            let loaded = dtos.compactMap { ChatMessage.fromLoadedDTO($0, assignments: byId) }
+            self.messages = loaded
+            self.syncedMessageIds = Set(loaded.map { $0.id })
+        } catch {
+            print("[ChatViewModel] loadMessages failed: \(error)")
+            // Fail silently — messages forbliver tom, sendWelcome kaldes bagefter
+        }
     }
 
     // MARK: - Loading Helpers
