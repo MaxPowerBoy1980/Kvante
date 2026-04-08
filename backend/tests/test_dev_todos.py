@@ -146,6 +146,7 @@ def test_get_metadata_by_id_404(client):
     """GET /dev/todos/{id} returns 404 for unknown id."""
     resp = client.get("/dev/todos/nonexistent1")
     assert resp.status_code == 404
+    assert resp.json()["detail"] == "TODO ikke fundet"
 
 
 def test_get_image_by_id(client):
@@ -170,9 +171,11 @@ def test_get_image_404_when_no_image(client):
 
     resp = client.get(f"/dev/todos/{todo_id}/image")
     assert resp.status_code == 404
+    assert resp.json()["detail"] == "TODO har ikke et billede"
 
 
 def test_get_image_404_for_unknown_id(client):
     """GET /dev/todos/{id}/image returns 404 for unknown TODO id."""
     resp = client.get("/dev/todos/nonexistent1/image")
     assert resp.status_code == 404
+    assert resp.json()["detail"] == "TODO ikke fundet"
