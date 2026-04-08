@@ -61,7 +61,7 @@ struct ArrayGridCleanView: View {
                     HStack(spacing: cellSpacing) {
                         ForEach(0..<state.cols, id: \.self) { _ in
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(KvanteTheme.Colors.primary)
+                                .fill(KvanteTheme.Colors.teal)
                                 .frame(width: cellSize, height: cellSize)
                         }
                     }
@@ -76,7 +76,7 @@ struct ArrayGridCleanView: View {
             if let cum = state.currentCumulative, !state.showResult {
                 Text("\(cum)")
                     .font(.custom("Marker Felt", size: 22))
-                    .foregroundStyle(KvanteTheme.Colors.primary)
+                    .foregroundStyle(KvanteTheme.Colors.teal)
                     .transition(.opacity)
             }
 
