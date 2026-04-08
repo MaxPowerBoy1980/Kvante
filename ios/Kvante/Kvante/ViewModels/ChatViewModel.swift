@@ -90,13 +90,13 @@ class ChatViewModel {
             sender: .kvante,
             content: .assignmentIntro(currentAssignment)
         )
-        messages.append(intro)
+        appendMessage(intro)
 
         let welcome = ChatMessage(
             sender: .kvante,
             content: .text("Hej! Klar til at kigge på denne opgave? Løs den med blyant og papir, og scan dit svar når du er klar. Tryk + hvis du har brug for hjælp 🤖")
         )
-        messages.append(welcome)
+        appendMessage(welcome)
     }
 
     // MARK: - Multi-assignment Navigation
@@ -109,7 +109,7 @@ class ChatViewModel {
                 sender: .kvante,
                 content: .celebration(.setComplete)
             )
-            messages.append(celebration)
+            appendMessage(celebration)
             onSetComplete?()
             return
         }
@@ -127,13 +127,13 @@ class ChatViewModel {
             sender: .kvante,
             content: .assignmentIntro(currentAssignment)
         )
-        messages.append(intro)
+        appendMessage(intro)
 
         let prompt = ChatMessage(
             sender: .kvante,
             content: .text("Her er din næste opgave. Brug + knappen for at scanne dit svar eller bede om hjælp.")
         )
-        messages.append(prompt)
+        appendMessage(prompt)
     }
 
     func jumpToAssignment(_ index: Int) {
@@ -150,13 +150,13 @@ class ChatViewModel {
             return false
         }
         if !alreadyIntroduced {
-            messages.append(ChatMessage(sender: .kvante, content: .assignmentIntro(assignment)))
+            appendMessage(ChatMessage(sender: .kvante, content: .assignmentIntro(assignment)))
         }
     }
 
     func requestExplainDifferent() {
         guard let submissionId = currentSubmissionId else {
-            messages.append(ChatMessage(sender: .kvante, content: .text("Prøv først at løse opgaven, så kan jeg forklare på en anden måde.")))
+            appendMessage(ChatMessage(sender: .kvante, content: .text("Prøv først at løse opgaven, så kan jeg forklare på en anden måde.")))
             return
         }
         let loadingId = addLoading("Kvante tænker...")
@@ -197,7 +197,7 @@ class ChatViewModel {
         guard !text.isEmpty else { return }
         inputText = ""
 
-        messages.append(ChatMessage(sender: .student, content: .text(text)))
+        appendMessage(ChatMessage(sender: .student, content: .text(text)))
         let loadingId = addLoading("Kvante tænker...")
 
         Task { @MainActor in
@@ -226,7 +226,7 @@ class ChatViewModel {
 
     func requestHelp() {
         // Student message
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .student,
             content: .text("Hjælp mig med opgaven")
         ))
@@ -303,7 +303,7 @@ class ChatViewModel {
             ? []
             : [ActionChipModel(id: "next_step", label: "Næste trin →", icon: "arrow.right", isPrimary: false)]
 
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .kvante,
             content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count,
                                   gridState, shortDivisionState, longMultState, arrayGridState),
@@ -319,7 +319,7 @@ class ChatViewModel {
 
     func scanAnswer(_ imageData: Data) {
         // Student message with scanned image
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .student,
             content: .scannedImage(imageData, scanId: nil)
         ))
@@ -393,7 +393,7 @@ class ChatViewModel {
 
                         if isMultiplicationAssignment {
                             // No completed long-multiplication grid yet — just praise.
-                            messages.append(ChatMessage(
+                            appendMessage(ChatMessage(
                                 sender: .kvante,
                                 content: .text(explanation),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
@@ -415,13 +415,13 @@ class ChatViewModel {
                                 visual: dummyVisual,
                                 audioCue: ""
                             )
-                            messages.append(ChatMessage(
+                            appendMessage(ChatMessage(
                                 sender: .kvante,
                                 content: .exampleStep(step, 1, 1, completedState, nil, nil, nil),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
                             ))
                         } else {
-                            messages.append(ChatMessage(
+                            appendMessage(ChatMessage(
                                 sender: .kvante,
                                 content: .text(explanation),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
@@ -494,7 +494,7 @@ class ChatViewModel {
         let answer = extractAnswer(from: fullText)
 
         // Student confirms
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .student,
             content: .text("Mit svar: \(fullText)")
         ))
@@ -579,7 +579,7 @@ class ChatViewModel {
         if isCorrect {
             let attempts = attemptCounts[currentAssignment.id, default: 1]
             let tier: CelebrationTier = attempts >= 2 ? .persevered : .routine
-            messages.append(ChatMessage(
+            appendMessage(ChatMessage(
                 sender: .kvante,
                 content: .celebration(tier),
                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
@@ -635,7 +635,7 @@ class ChatViewModel {
 
         // Student message
         let chipLabel = messages.last?.actions.first(where: { $0.id == actionId })?.label ?? actionId
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .student,
             content: .text(chipLabel)
         ))
@@ -664,7 +664,7 @@ class ChatViewModel {
     }
 
     private func tryAgain() {
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .kvante,
             content: .text("Godt, prøv igen! Scan dit nye svar med + knappen når du er klar 🤖")
         ))
@@ -748,15 +748,20 @@ class ChatViewModel {
     private func addLoading(_ text: String) -> UUID {
         isLoading = true
         let msg = ChatMessage(sender: .kvante, content: .loading(text))
-        messages.append(msg)
+        appendMessage(msg)
         return msg.id
     }
 
     private func replaceLoading(_ id: UUID, with message: ChatMessage) {
         if let index = messages.firstIndex(where: { $0.id == id }) {
-            messages[index] = message
+            var replacement = message
+            if replacement.assignmentId == nil {
+                replacement.assignmentId = currentAssignment.id
+            }
+            messages[index] = replacement
+            syncUnsavedMessages()
         } else {
-            messages.append(message)
+            appendMessage(message)
         }
         isLoading = false
     }
