@@ -260,6 +260,7 @@ class ChatViewModel {
         var gridState: GridState? = nil
         var shortDivisionState: ShortDivisionState? = nil
         var longMultState: LongMultiplicationState? = nil
+        var arrayGridState: ArrayGridState? = nil
         for i in 0...currentExampleStepIndex {
             let s = pendingExampleSteps[i]
             guard let v = s.visual else { continue }
@@ -278,6 +279,11 @@ class ChatViewModel {
                     longMultState = LongMultiplicationState.from(visual: v)
                 }
                 longMultState?.apply(visual: v)
+            } else if v.type == "single_digit_array" {
+                if v.action == "setup" {
+                    arrayGridState = ArrayGridState.from(visual: v)
+                }
+                arrayGridState?.apply(visual: v)
             }
         }
 
@@ -288,7 +294,7 @@ class ChatViewModel {
         messages.append(ChatMessage(
             sender: .kvante,
             content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count,
-                                  gridState, shortDivisionState, longMultState),
+                                  gridState, shortDivisionState, longMultState, arrayGridState),
             actions: chips
         ))
 
@@ -399,7 +405,7 @@ class ChatViewModel {
                             )
                             messages.append(ChatMessage(
                                 sender: .kvante,
-                                content: .exampleStep(step, 1, 1, completedState, nil, nil),
+                                content: .exampleStep(step, 1, 1, completedState, nil, nil, nil),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
                             ))
                         } else {

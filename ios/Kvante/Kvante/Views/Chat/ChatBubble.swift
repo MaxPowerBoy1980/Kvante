@@ -77,11 +77,12 @@ struct ChatBubble: View {
             answerResultBubble(result)
         case .example(let example):
             exampleBubble(example)
-        case .exampleStep(let step, let num, let total, let gridState, let shortDivisionState, let longMultState):
+        case .exampleStep(let step, let num, let total, let gridState, let shortDivisionState, let longMultState, let arrayGridState):
             exampleStepBubble(step, stepNumber: num, total: total,
                               gridState: gridState,
                               shortDivisionState: shortDivisionState,
-                              longMultiplicationState: longMultState)
+                              longMultiplicationState: longMultState,
+                              arrayGridState: arrayGridState)
         case .tip(let text):
             tipBubble(text)
         case .scannedImage(let data):
@@ -259,7 +260,8 @@ struct ChatBubble: View {
     private func exampleStepBubble(_ step: AnimationStep, stepNumber: Int, total: Int,
                                    gridState: GridState? = nil,
                                    shortDivisionState: ShortDivisionState? = nil,
-                                   longMultiplicationState: LongMultiplicationState? = nil) -> some View {
+                                   longMultiplicationState: LongMultiplicationState? = nil,
+                                   arrayGridState: ArrayGridState? = nil) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             // Step header
             HStack(spacing: 8) {
@@ -289,7 +291,8 @@ struct ChatBubble: View {
                     cumulativeGrouped: 0,
                     cumulativeGridState: gridState,
                     cumulativeShortDivisionState: shortDivisionState,
-                    cumulativeLongMultiplicationState: longMultiplicationState
+                    cumulativeLongMultiplicationState: longMultiplicationState,
+                    cumulativeArrayGridState: arrayGridState
                 )
                 .frame(maxWidth: .infinity)
             }

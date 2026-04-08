@@ -126,7 +126,8 @@ struct StepRow: View {
                     cumulativeGrouped: player.cumulativeGrouped,
                     cumulativeGridState: player.cumulativeGridState,
                     cumulativeShortDivisionState: player.cumulativeShortDivisionState,
-                    cumulativeLongMultiplicationState: player.cumulativeLongMultiplicationState
+                    cumulativeLongMultiplicationState: player.cumulativeLongMultiplicationState,
+                    cumulativeArrayGridState: player.cumulativeArrayGridState
                 )
                 .frame(maxWidth: .infinity)
                 .padding(.leading, 34)

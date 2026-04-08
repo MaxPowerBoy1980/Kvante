@@ -12,13 +12,15 @@ struct VisualComponentView: View {
     let cumulativeGridState: GridState?
     let cumulativeShortDivisionState: ShortDivisionState?
     let cumulativeLongMultiplicationState: LongMultiplicationState?
+    let cumulativeArrayGridState: ArrayGridState?
 
     init(visual: VisualInstruction, animate: Bool,
          cumulativeObjects: Int = 0, cumulativeCrossedOut: Int = 0,
          cumulativeRows: Int = 2, cumulativeGrouped: Int = 0,
          cumulativeGridState: GridState? = nil,
          cumulativeShortDivisionState: ShortDivisionState? = nil,
-         cumulativeLongMultiplicationState: LongMultiplicationState? = nil) {
+         cumulativeLongMultiplicationState: LongMultiplicationState? = nil,
+         cumulativeArrayGridState: ArrayGridState? = nil) {
         self.visual = visual
         self.animate = animate
         self.cumulativeObjects = cumulativeObjects
@@ -28,6 +30,7 @@ struct VisualComponentView: View {
         self.cumulativeGridState = cumulativeGridState
         self.cumulativeShortDivisionState = cumulativeShortDivisionState
         self.cumulativeLongMultiplicationState = cumulativeLongMultiplicationState
+        self.cumulativeArrayGridState = cumulativeArrayGridState
     }
 
     var body: some View {
@@ -72,6 +75,13 @@ struct VisualComponentView: View {
             } else {
                 LongMultiplicationView(visual: visual, animate: animate,
                                        state: LongMultiplicationState.from(visual: visual))
+            }
+        case "single_digit_array":
+            if let state = cumulativeArrayGridState {
+                ArrayGridCleanView(visual: visual, animate: animate, state: state)
+            } else {
+                ArrayGridCleanView(visual: visual, animate: animate,
+                                   state: ArrayGridState.from(visual: visual))
             }
         default:
             // Fallback: unknown visual type — show nothing (text is shown by parent)
