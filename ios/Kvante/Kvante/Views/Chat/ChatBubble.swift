@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChatBubble: View {
     let message: ChatMessage
+    let apiClient: APIClient
     let onChip: (ActionChipModel) -> Void
     var onConfirmAnswer: ((String) -> Void)?
 
@@ -85,8 +86,8 @@ struct ChatBubble: View {
                               arrayGridState: arrayGridState)
         case .tip(let text):
             tipBubble(text)
-        case .scannedImage(let data):
-            scannedImageBubble(data)
+        case .scannedImage(let data, let scanId):
+            scannedImageBubble(data, scanId: scanId)
         case .loading(let text):
             loadingBubble(text)
         case .celebration(let tier):
@@ -336,18 +337,8 @@ struct ChatBubble: View {
 
     // MARK: - Scanned Image
 
-    private func scannedImageBubble(_ data: Data) -> some View {
-        Group {
-            if let uiImage = UIImage(data: data) {
-                VStack(alignment: .trailing, spacing: 4) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 220, maxHeight: 180)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-            }
-        }
+    private func scannedImageBubble(_ data: Data?, scanId: String?) -> some View {
+        ScannedImageView(data: data, scanId: scanId, apiClient: apiClient)
     }
 
     // MARK: - Loading

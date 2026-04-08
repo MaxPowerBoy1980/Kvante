@@ -193,6 +193,39 @@ def create_weekly_session(body: WeeklyRequest, db: DBSession = Depends(get_db)):
     }
 
 
+@router.get("/sessions/{session_id}")
+def get_session(session_id: str, db: DBSession = Depends(get_db)):
+    """Return a session and its assignments — used by iOS to re-enter an
+    existing session and reload its chat history."""
+    session = db.query(Session).filter(Session.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    assignments = (
+        db.query(Assignment)
+        .filter(Assignment.session_id == session_id)
+        .order_by(Assignment.position)
+        .all()
+    )
+
+    return {
+        "session_id": session.id,
+        "assignments": [
+            {
+                "id": a.id,
+                "problem_id": a.problem_id,
+                "local_id": a.local_id,
+                "text": a.text,
+                "type": a.type,
+                "topic": a.topic,
+                "difficulty_estimate": a.difficulty_estimate,
+                "position": a.position,
+            }
+            for a in assignments
+        ],
+    }
+
+
 @router.get("/students/{student_id}/sessions", response_model=SessionHistoryResponse)
 def get_session_history(student_id: str, db: DBSession = Depends(get_db)):
     """Return session history for a student, most recent first."""

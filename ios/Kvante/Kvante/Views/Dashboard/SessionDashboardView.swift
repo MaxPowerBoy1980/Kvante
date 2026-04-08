@@ -3,6 +3,8 @@ import SwiftUI
 struct SessionDashboardView: View {
     let session: SessionSummary
     let onBack: () -> Void
+    var onContinue: (() -> Void)? = nil
+    var isLoading: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -77,6 +79,28 @@ struct SessionDashboardView: View {
                     Text(session.displayDate)
                         .font(.caption)
                         .foregroundStyle(KvanteTheme.Colors.textMuted)
+
+                    // Continue button — only shown if session is not yet completed
+                    if let onContinue, !session.isCompleted {
+                        Button(action: onContinue) {
+                            HStack(spacing: 8) {
+                                if isLoading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Image(systemName: "arrow.right.circle.fill")
+                                }
+                                Text(isLoading ? "Henter…" : "Fortsæt session")
+                                    .font(KvanteTheme.Fonts.buttonLabel)
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 14)
+                        }
+                        .buttonStyle(KvanteTheme.TactileButtonStyle.primary)
+                        .disabled(isLoading)
+                        .padding(.top, 16)
+                    }
                 }
                 .padding(.horizontal, 24)
             }

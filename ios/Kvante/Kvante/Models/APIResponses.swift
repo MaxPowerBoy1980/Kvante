@@ -177,6 +177,113 @@ struct PracticeSessionResponse: Codable {
     }
 }
 
+// MARK: - Scans
+
+struct ScanUploadResponse: Codable {
+    let scanId: String
+
+    enum CodingKeys: String, CodingKey {
+        case scanId = "scan_id"
+    }
+}
+
+// MARK: - Chat Persistence
+
+/// Typed leaf value for ChatMessage content dicts. Spec'et content schemas
+/// bruger kun String, Int og Bool på leaf-niveau — ingen nested objekter eller
+/// arrays. Derfor denne kompakte enum i stedet for en generisk AnyCodable.
+enum ContentValue: Codable, Equatable {
+    case string(String)
+    case int(Int)
+    case bool(Bool)
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if let s = try? c.decode(String.self) { self = .string(s); return }
+        if let b = try? c.decode(Bool.self)   { self = .bool(b);   return }
+        if let i = try? c.decode(Int.self)    { self = .int(i);    return }
+        throw DecodingError.typeMismatch(
+            ContentValue.self,
+            .init(codingPath: decoder.codingPath,
+                  debugDescription: "Unsupported content value type")
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try c.encode(s)
+        case .int(let i):    try c.encode(i)
+        case .bool(let b):   try c.encode(b)
+        }
+    }
+
+    // Convenience accessors
+    var stringValue: String? { if case .string(let s) = self { return s } else { return nil } }
+    var intValue: Int? { if case .int(let i) = self { return i } else { return nil } }
+    var boolValue: Bool? { if case .bool(let b) = self { return b } else { return nil } }
+}
+
+struct ChatMessageCreate: Codable {
+    let sender: String           // "kvante" | "student"
+    let contentType: String
+    let content: [String: ContentValue]
+    let assignmentId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case sender
+        case contentType = "content_type"
+        case content
+        case assignmentId = "assignment_id"
+    }
+}
+
+struct ChatMessageOut: Codable {
+    let id: String
+    let sessionId: String
+    let assignmentId: String?
+    let sender: String
+    let contentType: String
+    let content: [String: ContentValue]
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, sender, content
+        case sessionId = "session_id"
+        case assignmentId = "assignment_id"
+        case contentType = "content_type"
+        case createdAt = "created_at"
+    }
+}
+
+struct SaveMessagesRequest: Codable {
+    let sessionId: String
+    let messages: [ChatMessageCreate]
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case messages
+    }
+}
+
+struct SaveMessagesResponse: Codable {
+    let savedCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case savedCount = "saved_count"
+    }
+}
+
+struct LoadMessagesResponse: Codable {
+    let sessionId: String
+    let messages: [ChatMessageOut]
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case messages
+    }
+}
+
 // MARK: - Student Registration
 
 struct StudentRegistrationResponse: Codable {

@@ -103,6 +103,14 @@ class Submission(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
+class Scan(Base):
+    __tablename__ = "scans"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    image_path: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 

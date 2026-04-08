@@ -7,8 +7,13 @@ class ChatViewModel {
 
     var messages: [ChatMessage] = []
     var isLoading = false
+    var isLoadingHistory = true
     var showScanner = false
     var inputText = ""
+
+    private var syncedMessageIds: Set<UUID> = []
+    private var isSyncing = false
+    private var pendingSync = false
 
     // MARK: - Context
 
@@ -68,7 +73,14 @@ class ChatViewModel {
         self.allAssignments = assignments
         self.sessionId = sessionId
         self.apiClient = apiClient
-        sendWelcome()
+
+        Task { @MainActor in
+            await loadExistingMessages()
+            if messages.isEmpty {
+                sendWelcome()
+            }
+            isLoadingHistory = false
+        }
     }
 
     // MARK: - Welcome
@@ -78,13 +90,13 @@ class ChatViewModel {
             sender: .kvante,
             content: .assignmentIntro(currentAssignment)
         )
-        messages.append(intro)
+        appendMessage(intro)
 
         let welcome = ChatMessage(
             sender: .kvante,
             content: .text("Hej! Klar til at kigge på denne opgave? Løs den med blyant og papir, og scan dit svar når du er klar. Tryk + hvis du har brug for hjælp 🤖")
         )
-        messages.append(welcome)
+        appendMessage(welcome)
     }
 
     // MARK: - Multi-assignment Navigation
@@ -97,7 +109,7 @@ class ChatViewModel {
                 sender: .kvante,
                 content: .celebration(.setComplete)
             )
-            messages.append(celebration)
+            appendMessage(celebration)
             onSetComplete?()
             return
         }
@@ -115,13 +127,13 @@ class ChatViewModel {
             sender: .kvante,
             content: .assignmentIntro(currentAssignment)
         )
-        messages.append(intro)
+        appendMessage(intro)
 
         let prompt = ChatMessage(
             sender: .kvante,
             content: .text("Her er din næste opgave. Brug + knappen for at scanne dit svar eller bede om hjælp.")
         )
-        messages.append(prompt)
+        appendMessage(prompt)
     }
 
     func jumpToAssignment(_ index: Int) {
@@ -138,13 +150,13 @@ class ChatViewModel {
             return false
         }
         if !alreadyIntroduced {
-            messages.append(ChatMessage(sender: .kvante, content: .assignmentIntro(assignment)))
+            appendMessage(ChatMessage(sender: .kvante, content: .assignmentIntro(assignment)))
         }
     }
 
     func requestExplainDifferent() {
         guard let submissionId = currentSubmissionId else {
-            messages.append(ChatMessage(sender: .kvante, content: .text("Prøv først at løse opgaven, så kan jeg forklare på en anden måde.")))
+            appendMessage(ChatMessage(sender: .kvante, content: .text("Prøv først at løse opgaven, så kan jeg forklare på en anden måde.")))
             return
         }
         let loadingId = addLoading("Kvante tænker...")
@@ -185,7 +197,7 @@ class ChatViewModel {
         guard !text.isEmpty else { return }
         inputText = ""
 
-        messages.append(ChatMessage(sender: .student, content: .text(text)))
+        appendMessage(ChatMessage(sender: .student, content: .text(text)))
         let loadingId = addLoading("Kvante tænker...")
 
         Task { @MainActor in
@@ -214,7 +226,7 @@ class ChatViewModel {
 
     func requestHelp() {
         // Student message
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .student,
             content: .text("Hjælp mig med opgaven")
         ))
@@ -233,10 +245,12 @@ class ChatViewModel {
                 pendingExampleSteps = example.steps
                 currentExampleStepIndex = 0
 
-                // Show intro message
+                // Show intro message (denne er nu vores persisterede ankerbesked —
+                // de efterfølgende exampleStep-animationer er ephemerale og vises
+                // kun under den aktive session)
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
-                    content: .text("Her er et eksempel med andre tal: \(example.exampleProblem)")
+                    content: .text("💡 Her er et eksempel med andre tal: \(example.exampleProblem)")
                 ))
 
                 // Show first step
@@ -291,7 +305,7 @@ class ChatViewModel {
             ? []
             : [ActionChipModel(id: "next_step", label: "Næste trin →", icon: "arrow.right", isPrimary: false)]
 
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .kvante,
             content: .exampleStep(step, currentExampleStepIndex + 1, pendingExampleSteps.count,
                                   gridState, shortDivisionState, longMultState, arrayGridState),
@@ -306,11 +320,35 @@ class ChatViewModel {
     private var pendingOcrFullText: String = ""
 
     func scanAnswer(_ imageData: Data) {
-        // Student message with scanned image
-        messages.append(ChatMessage(
+        // Student message with scanned image — UUID bevares for senere mutation
+        let scanMessageId = UUID()
+        appendMessage(ChatMessage(
+            id: scanMessageId,
             sender: .student,
-            content: .scannedImage(imageData)
+            content: .scannedImage(imageData, scanId: nil)
         ))
+
+        // Parallel upload til backend så billedet kan genfetches ved reload
+        Task { @MainActor in
+            do {
+                let response = try await self.apiClient.uploadScan(imageData: imageData)
+                if let idx = self.messages.firstIndex(where: { $0.id == scanMessageId }) {
+                    let old = self.messages[idx]
+                    self.messages[idx] = ChatMessage(
+                        id: scanMessageId,                              // ← samme UUID
+                        sender: old.sender,
+                        content: .scannedImage(imageData, scanId: response.scanId),
+                        timestamp: old.timestamp,
+                        actions: old.actions,
+                        assignmentId: old.assignmentId
+                    )
+                    self.syncUnsavedMessages()
+                }
+            } catch {
+                // Upload fejlede — beskeden beholder scanId: nil og persisteres aldrig
+                print("[ChatViewModel] scan upload failed: \(error)")
+            }
+        }
 
         let loadingId = addLoading("Kvante tyder dit svar...")
 
@@ -381,7 +419,7 @@ class ChatViewModel {
 
                         if isMultiplicationAssignment {
                             // No completed long-multiplication grid yet — just praise.
-                            messages.append(ChatMessage(
+                            appendMessage(ChatMessage(
                                 sender: .kvante,
                                 content: .text(explanation),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
@@ -403,13 +441,13 @@ class ChatViewModel {
                                 visual: dummyVisual,
                                 audioCue: ""
                             )
-                            messages.append(ChatMessage(
+                            appendMessage(ChatMessage(
                                 sender: .kvante,
                                 content: .exampleStep(step, 1, 1, completedState, nil, nil, nil),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
                             ))
                         } else {
-                            messages.append(ChatMessage(
+                            appendMessage(ChatMessage(
                                 sender: .kvante,
                                 content: .text(explanation),
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
@@ -482,7 +520,7 @@ class ChatViewModel {
         let answer = extractAnswer(from: fullText)
 
         // Student confirms
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .student,
             content: .text("Mit svar: \(fullText)")
         ))
@@ -567,7 +605,7 @@ class ChatViewModel {
         if isCorrect {
             let attempts = attemptCounts[currentAssignment.id, default: 1]
             let tier: CelebrationTier = attempts >= 2 ? .persevered : .routine
-            messages.append(ChatMessage(
+            appendMessage(ChatMessage(
                 sender: .kvante,
                 content: .celebration(tier),
                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
@@ -623,7 +661,7 @@ class ChatViewModel {
 
         // Student message
         let chipLabel = messages.last?.actions.first(where: { $0.id == actionId })?.label ?? actionId
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .student,
             content: .text(chipLabel)
         ))
@@ -652,10 +690,82 @@ class ChatViewModel {
     }
 
     private func tryAgain() {
-        messages.append(ChatMessage(
+        appendMessage(ChatMessage(
             sender: .kvante,
             content: .text("Godt, prøv igen! Scan dit nye svar med + knappen når du er klar 🤖")
         ))
+    }
+
+    // MARK: - Persistence
+
+    /// Append en besked til messages[] og tag automatisk currentAssignmentId
+    /// hvis beskeden ikke selv har et. Alle eksisterende messages.append-kald
+    /// skal gå gennem denne metode (Task 14).
+    private func appendMessage(_ msg: ChatMessage) {
+        var tagged = msg
+        if tagged.assignmentId == nil {
+            tagged.assignmentId = currentAssignment.id
+        }
+        messages.append(tagged)
+        syncUnsavedMessages()
+    }
+
+    /// Kald dette når en eksisterende besked muterer i-place (fx scanId sat
+    /// efter upload er færdig). syncUnsavedMessages tager sig af at plukke de
+    /// muterede beskeder op næste gang.
+    private func syncUnsavedMessages() {
+        if isSyncing {
+            pendingSync = true
+            return
+        }
+
+        // Find unsynced messages og deres DTO-repræsentationer
+        let unsynced = messages.filter { !syncedMessageIds.contains($0.id) }
+        var pairs: [(id: UUID, dto: ChatMessageCreate)] = []
+        for msg in unsynced {
+            if let dto = msg.toCreateDTO() {
+                pairs.append((msg.id, dto))
+            }
+        }
+
+        if pairs.isEmpty {
+            return  // ingen ændringer — messages med nil DTO forbliver uden for sættet
+        }
+
+        let toSave = pairs.map { $0.dto }
+        let idsBeingSent = pairs.map { $0.id }
+        isSyncing = true
+
+        Task { @MainActor in
+            defer {
+                self.isSyncing = false
+                if self.pendingSync {
+                    self.pendingSync = false
+                    self.syncUnsavedMessages()
+                }
+            }
+            do {
+                try await self.apiClient.saveMessages(sessionId: self.sessionId, messages: toSave)
+                self.syncedMessageIds.formUnion(idsBeingSent)
+            } catch {
+                // Sættet rykker ikke; næste append eller mutation retrier
+                print("[ChatViewModel] saveMessages failed: \(error)")
+            }
+        }
+    }
+
+    /// Load eksisterende historik fra backend. Kaldes én gang i init.
+    private func loadExistingMessages() async {
+        do {
+            let dtos = try await apiClient.loadMessages(sessionId: sessionId)
+            let byId = Dictionary(uniqueKeysWithValues: allAssignments.map { ($0.id, $0) })
+            let loaded = dtos.compactMap { ChatMessage.fromLoadedDTO($0, assignments: byId) }
+            self.messages = loaded
+            self.syncedMessageIds = Set(loaded.map { $0.id })
+        } catch {
+            print("[ChatViewModel] loadMessages failed: \(error)")
+            // Fail silently — messages forbliver tom, sendWelcome kaldes bagefter
+        }
     }
 
     // MARK: - Loading Helpers
@@ -664,15 +774,20 @@ class ChatViewModel {
     private func addLoading(_ text: String) -> UUID {
         isLoading = true
         let msg = ChatMessage(sender: .kvante, content: .loading(text))
-        messages.append(msg)
+        appendMessage(msg)
         return msg.id
     }
 
     private func replaceLoading(_ id: UUID, with message: ChatMessage) {
         if let index = messages.firstIndex(where: { $0.id == id }) {
-            messages[index] = message
+            var replacement = message
+            if replacement.assignmentId == nil {
+                replacement.assignmentId = currentAssignment.id
+            }
+            messages[index] = replacement
+            syncUnsavedMessages()
         } else {
-            messages.append(message)
+            appendMessage(message)
         }
         isLoading = false
     }

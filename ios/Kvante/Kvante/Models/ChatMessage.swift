@@ -14,8 +14,8 @@ enum CelebrationTier {
 enum ChatMessageContent {
     case text(String)
     case example(ExampleResponse)
-    case exampleStep(AnimationStep, Int, Int, GridState?, ShortDivisionState?, LongMultiplicationState?, ArrayGridState?)  // step, stepNumber, totalSteps, gridState, shortDivisionState, longMultiplicationState, arrayGridState
-    case scannedImage(Data)
+    case exampleStep(AnimationStep, Int, Int, GridState?, ShortDivisionState?, LongMultiplicationState?, ArrayGridState?)  // step, stepNumber, totalSteps, states
+    case scannedImage(Data?, scanId: String?)
     case feedback(FeedbackResponse)
     case ocrConfirm(OcrConfirmation)
     case answerResult(AnswerResult)
@@ -36,16 +36,33 @@ struct AnswerResult {
     let correctAnswer: String
     let isCorrect: Bool
     let message: String
-    var source: String = ""    // "Apple OCR" or "Gemini Vision"
-    var ocrDebug: String = ""  // What Apple OCR read: "17 + 52 = 69"
+    var source: String = ""
+    var ocrDebug: String = ""
 }
 
 struct ChatMessage: Identifiable {
-    let id = UUID()
+    let id: UUID
     let sender: ChatSender
     let content: ChatMessageContent
-    let timestamp = Date()
-    var actions: [ActionChipModel] = []
+    let timestamp: Date
+    var actions: [ActionChipModel]
+    var assignmentId: String?
+
+    init(
+        id: UUID = UUID(),
+        sender: ChatSender,
+        content: ChatMessageContent,
+        timestamp: Date = Date(),
+        actions: [ActionChipModel] = [],
+        assignmentId: String? = nil
+    ) {
+        self.id = id
+        self.sender = sender
+        self.content = content
+        self.timestamp = timestamp
+        self.actions = actions
+        self.assignmentId = assignmentId
+    }
 }
 
 struct ActionChipModel: Identifiable {

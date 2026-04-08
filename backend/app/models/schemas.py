@@ -108,6 +108,12 @@ class ErrorResponse(BaseModel):
     detail: str = ""
 
 
+# --- Scans ---
+
+class ScanUploadResponse(BaseModel):
+    scan_id: str
+
+
 # --- Chat Persistence ---
 
 class ChatMessageCreate(BaseModel):
