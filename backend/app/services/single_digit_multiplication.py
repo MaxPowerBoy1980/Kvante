@@ -59,3 +59,47 @@ class SingleDigitMultiplicationService:
 
         # Skulle aldrig nås (2-9 × 2-9 = 64 par, kun 2 udelukkes)
         raise RuntimeError(f"No example pair found for ({a}, {b})")
+
+    @staticmethod
+    def generate_text(steps: list[dict]) -> list[dict]:
+        """Generér dansk narration. Returnerer [{text, audio_cue}, ...].
+
+        Mappes 1:1 til steps:
+        - setup → "Lad os finde {a} × {b}. Vi bygger {a} rækker med {b} i hver."
+        - row, index 0 → "{b}"
+        - row, index > 0 → "+ {b} = {cumulative}"
+        - reveal → "{a} × {b} = {result}"
+        """
+        # Setup-step bærer dimensionerne — vi har brug for dem til reveal.
+        setup = steps[0]
+        a = setup["rows"]
+        b = setup["cols"]
+
+        texts: list[dict] = []
+        for s in steps:
+            kind = s["step"]
+            if kind == "setup":
+                texts.append({
+                    "text": (
+                        f"Lad os finde {a} × {b}. "
+                        f"Vi bygger {a} rækker med {b} i hver."
+                    ),
+                    "audio_cue": f"{a} gange {b}",
+                })
+            elif kind == "row":
+                if s["row_index"] == 0:
+                    text = f"{b}"
+                else:
+                    text = f"+ {b} = {s['cumulative']}"
+                texts.append({
+                    "text": text,
+                    "audio_cue": f"{s['cumulative']}",
+                })
+            elif kind == "reveal":
+                result = s["result"]
+                texts.append({
+                    "text": f"{a} × {b} = {result}",
+                    "audio_cue": f"Svaret er {result}",
+                })
+
+        return texts

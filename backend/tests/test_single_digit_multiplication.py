@@ -106,3 +106,72 @@ class TestPickExampleNumbers:
         # Med 200 tries og 5×5 ekskluderet skal vi se både lt og gt orienteringer
         assert "lt" in results, f"never saw a < b; results={results}"
         assert "gt" in results, f"never saw a > b; results={results}"
+
+
+class TestGenerateText:
+    def _texts_for(self, a: int, b: int):
+        steps = SingleDigitMultiplicationService.compute_steps(a, b)
+        return SingleDigitMultiplicationService.generate_text(steps), steps
+
+    def test_setup_text_mentions_dimensions(self):
+        """Setup-bobble nævner '6 × 8', '6 rækker' og '8 i hver'."""
+        texts, _ = self._texts_for(6, 8)
+        setup_text = texts[0]["text"]
+        assert "6 × 8" in setup_text
+        assert "6 rækker" in setup_text
+        assert "8 i hver" in setup_text
+
+    def test_setup_audio_cue(self):
+        texts, _ = self._texts_for(6, 8)
+        assert texts[0]["audio_cue"] == "6 gange 8"
+
+    def test_first_row_no_plus(self):
+        """Første row siger bare '8' (ikke '+ 8 = 8')."""
+        texts, _ = self._texts_for(6, 8)
+        # texts[0]=setup, texts[1]=row 0
+        assert texts[1]["text"] == "8"
+
+    def test_subsequent_row_uses_plus_pattern(self):
+        """Efter første row: '+ 8 = 16', '+ 8 = 24', ..."""
+        texts, _ = self._texts_for(6, 8)
+        assert texts[2]["text"] == "+ 8 = 16"
+        assert texts[3]["text"] == "+ 8 = 24"
+        assert texts[4]["text"] == "+ 8 = 32"
+        assert texts[5]["text"] == "+ 8 = 40"
+        assert texts[6]["text"] == "+ 8 = 48"
+
+    def test_row_audio_cue_is_cumulative(self):
+        """Audio cue er bare det aktuelle running-total tal."""
+        texts, _ = self._texts_for(6, 8)
+        assert texts[1]["audio_cue"] == "8"
+        assert texts[2]["audio_cue"] == "16"
+        assert texts[6]["audio_cue"] == "48"
+
+    def test_reveal_text(self):
+        """Reveal er '{a} × {b} = {result}'."""
+        texts, _ = self._texts_for(6, 8)
+        # texts[7]=reveal (index 0 setup + 6 rows + 1 reveal = 8 entries, last index=7)
+        assert texts[-1]["text"] == "6 × 8 = 48"
+        assert texts[-1]["audio_cue"] == "Svaret er 48"
+
+    def test_text_count_matches_step_count(self):
+        """Hver step får én text-entry."""
+        for a, b in [(2, 2), (5, 5), (7, 9), (9, 9)]:
+            texts, steps = self._texts_for(a, b)
+            assert len(texts) == len(steps), f"mismatch for {a}×{b}"
+
+    def test_asymmetric_3x8_uses_correct_addend(self):
+        """3 × 8 har row_value=8, så addends er '+ 8 = 16', '+ 8 = 24'."""
+        texts, _ = self._texts_for(3, 8)
+        assert texts[1]["text"] == "8"
+        assert texts[2]["text"] == "+ 8 = 16"
+        assert texts[3]["text"] == "+ 8 = 24"
+        assert texts[-1]["text"] == "3 × 8 = 24"
+
+    def test_asymmetric_8x3_uses_correct_addend(self):
+        """8 × 3 har row_value=3, så addends er '+ 3 = 6', '+ 3 = 9', ..."""
+        texts, _ = self._texts_for(8, 3)
+        assert texts[1]["text"] == "3"
+        assert texts[2]["text"] == "+ 3 = 6"
+        assert texts[3]["text"] == "+ 3 = 9"
+        assert texts[-1]["text"] == "8 × 3 = 24"
