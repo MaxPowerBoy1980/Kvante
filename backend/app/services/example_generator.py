@@ -84,6 +84,23 @@ def _parse_multiplication_operands(assignment_text: str) -> tuple[int, int] | No
     return int(match.group(1)), int(match.group(2))
 
 
+def should_use_single_digit_multiplication(assignment_type: str,
+                                           assignment_text: str,
+                                           assignment_topic: str = "") -> bool:
+    """Route multiplication where both operands are 2-9, no decimals.
+
+    Text er autoritativ — hvis vi ikke kan parse en N × M expression
+    returnerer vi False, ligesom should_use_long_multiplication.
+    """
+    if DECIMAL_PATTERN.search(assignment_text):
+        return False
+    operands = _parse_multiplication_operands(assignment_text)
+    if operands is None:
+        return False
+    a, b = operands
+    return 2 <= a <= 9 and 2 <= b <= 9
+
+
 def should_use_long_multiplication(assignment_type: str, assignment_text: str,
                                    assignment_topic: str = "") -> bool:
     """Route multiplication where larger ≤ 999, smaller ≤ 99, at least one

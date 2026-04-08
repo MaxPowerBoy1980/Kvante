@@ -175,3 +175,36 @@ class TestGenerateText:
         assert texts[2]["text"] == "+ 3 = 6"
         assert texts[3]["text"] == "+ 3 = 9"
         assert texts[-1]["text"] == "8 × 3 = 24"
+
+
+class TestRouting:
+    def test_should_use_positive(self):
+        from app.services.example_generator import should_use_single_digit_multiplication
+        assert should_use_single_digit_multiplication("multiplication", "7 × 9") is True
+        assert should_use_single_digit_multiplication("multiplication", "3 · 4") is True
+        assert should_use_single_digit_multiplication("multiplication", "5*5") is True
+        # Min/max boundaries
+        assert should_use_single_digit_multiplication("multiplication", "2 × 2") is True
+        assert should_use_single_digit_multiplication("multiplication", "9 × 9") is True
+
+    def test_should_use_rejects_one(self):
+        from app.services.example_generator import should_use_single_digit_multiplication
+        assert should_use_single_digit_multiplication("multiplication", "1 × 5") is False
+        assert should_use_single_digit_multiplication("multiplication", "5 × 1") is False
+
+    def test_should_use_rejects_above_nine(self):
+        from app.services.example_generator import should_use_single_digit_multiplication
+        assert should_use_single_digit_multiplication("multiplication", "10 × 3") is False
+        assert should_use_single_digit_multiplication("multiplication", "7 × 19") is False
+        assert should_use_single_digit_multiplication("multiplication", "100 × 9") is False
+
+    def test_should_use_rejects_decimals(self):
+        from app.services.example_generator import should_use_single_digit_multiplication
+        assert should_use_single_digit_multiplication("multiplication", "2,5 × 3") is False
+
+    def test_should_use_rejects_non_multiplication(self):
+        from app.services.example_generator import should_use_single_digit_multiplication
+        assert should_use_single_digit_multiplication("multiplication", "7 + 9") is False
+        assert should_use_single_digit_multiplication("multiplication", "Hvad er klokken?") is False
+        # Tagged but no parseable expression — text is authoritative
+        assert should_use_single_digit_multiplication("multiplication", "Tre gange syv") is False
