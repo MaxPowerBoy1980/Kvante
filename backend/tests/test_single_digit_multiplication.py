@@ -67,3 +67,42 @@ class TestComputeSteps:
             SingleDigitMultiplicationService.compute_steps(10, 5)
         with pytest.raises(AssertionError, match="b must be 2-9"):
             SingleDigitMultiplicationService.compute_steps(5, 10)
+
+
+class TestPickExampleNumbers:
+    def test_avoids_exact_duplicate(self):
+        """Skal aldrig returnere præcis (5, 7) når input er (5, 7)."""
+        for _ in range(100):
+            ex_a, ex_b = SingleDigitMultiplicationService.pick_example_numbers(5, 7)
+            assert (ex_a, ex_b) != (5, 7)
+
+    def test_avoids_commutative_duplicate(self):
+        """Skal aldrig returnere (7, 5) når input er (5, 7) — commutative dup."""
+        for _ in range(100):
+            ex_a, ex_b = SingleDigitMultiplicationService.pick_example_numbers(5, 7)
+            assert (ex_a, ex_b) != (7, 5)
+
+    def test_avoids_both_orderings_when_input_is_symmetric(self):
+        """5 × 5 input → eksempel må være alt undtagen 5 × 5."""
+        for _ in range(100):
+            ex_a, ex_b = SingleDigitMultiplicationService.pick_example_numbers(5, 5)
+            assert (ex_a, ex_b) != (5, 5)
+
+    def test_returns_in_2_to_9_range(self):
+        """Begge tal skal være i [2, 9]."""
+        for _ in range(200):
+            ex_a, ex_b = SingleDigitMultiplicationService.pick_example_numbers(3, 4)
+            assert 2 <= ex_a <= 9
+            assert 2 <= ex_b <= 9
+
+    def test_does_not_normalize(self):
+        """Returnerer ikke en sorteret tuple — orden kan variere."""
+        # Med 200 tries skal vi se mindst ét tilfælde hvor a < b OG ét hvor a > b
+        # når vi giver et input der ikke begrænser orienteringen.
+        results = set()
+        for _ in range(200):
+            ex_a, ex_b = SingleDigitMultiplicationService.pick_example_numbers(5, 5)
+            results.add(("lt" if ex_a < ex_b else "gt" if ex_a > ex_b else "eq"))
+        # Med 200 tries og 5×5 ekskluderet skal vi se både lt og gt orienteringer
+        assert "lt" in results, f"never saw a < b; results={results}"
+        assert "gt" in results, f"never saw a > b; results={results}"
