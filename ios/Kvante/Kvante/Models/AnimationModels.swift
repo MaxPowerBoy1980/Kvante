@@ -108,10 +108,10 @@ struct AnimationStep: Identifiable, Codable {
     let step: Int
     let phase: String
     let text: String
-    let visual: VisualInstruction
+    let visual: VisualInstruction?
     let audioCue: String
 
-    init(step: Int, phase: String, text: String, visual: VisualInstruction, audioCue: String) {
+    init(step: Int, phase: String, text: String, visual: VisualInstruction?, audioCue: String) {
         self.step = step
         self.phase = phase
         self.text = text
@@ -129,7 +129,7 @@ struct AnimationStep: Identifiable, Codable {
         step = try container.decode(Int.self, forKey: .step)
         phase = try container.decode(String.self, forKey: .phase)
         text = try container.decode(String.self, forKey: .text)
-        visual = try container.decode(VisualInstruction.self, forKey: .visual)
+        visual = try container.decodeIfPresent(VisualInstruction.self, forKey: .visual)
         audioCue = try container.decodeIfPresent(String.self, forKey: .audioCue) ?? ""
     }
 }

@@ -278,19 +278,21 @@ struct ChatBubble: View {
                 .font(.body)
                 .foregroundStyle(KvanteTheme.Colors.ink)
 
-            // Visual component
-            VisualComponentView(
-                visual: step.visual,
-                animate: true,
-                cumulativeObjects: 0,
-                cumulativeCrossedOut: 0,
-                cumulativeRows: 2,
-                cumulativeGrouped: 0,
-                cumulativeGridState: gridState,
-                cumulativeShortDivisionState: shortDivisionState,
-                cumulativeLongMultiplicationState: longMultiplicationState
-            )
-            .frame(maxWidth: .infinity)
+            // Visual component (skipped for text-only steps)
+            if let visual = step.visual {
+                VisualComponentView(
+                    visual: visual,
+                    animate: true,
+                    cumulativeObjects: 0,
+                    cumulativeCrossedOut: 0,
+                    cumulativeRows: 2,
+                    cumulativeGrouped: 0,
+                    cumulativeGridState: gridState,
+                    cumulativeShortDivisionState: shortDivisionState,
+                    cumulativeLongMultiplicationState: longMultiplicationState
+                )
+                .frame(maxWidth: .infinity)
+            }
         }
         .padding(14)
         .background(KvanteTheme.Colors.kvanteBubble, in: kvanteBubbleShape)

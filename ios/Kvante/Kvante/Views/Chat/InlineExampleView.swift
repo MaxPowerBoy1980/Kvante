@@ -115,10 +115,10 @@ struct StepRow: View {
             }
             .buttonStyle(.plain)
 
-            // Expanded: show visual
-            if isExpanded {
+            // Expanded: show visual (skipped for text-only steps)
+            if isExpanded, let visual = step.visual {
                 VisualComponentView(
-                    visual: step.visual,
+                    visual: visual,
                     animate: true,
                     cumulativeObjects: player.cumulativeObjects,
                     cumulativeCrossedOut: player.cumulativeCrossedOut,

@@ -84,14 +84,15 @@ class AnimationPlayer {
     }
 
     private func pauseDuration(for step: AnimationStep) -> Double {
-        switch step.visual.type {
+        guard let visual = step.visual else { return 2.5 }
+        switch visual.type {
         case "equation": return 1.5
         case "object_collection":
-            let count = step.visual.intParam("count") ?? 0
+            let count = visual.intParam("count") ?? 0
             return count > 10 ? 3.5 : 2.5
         case "array_grid": return 3.5
         case "number_line":
-            let jumps = step.visual.intParam("jumps") ?? 1
+            let jumps = visual.intParam("jumps") ?? 1
             return 2.0 + Double(jumps) * 0.5
         case "stacked_arithmetic": return 2.5
         case "short_division": return 2.5
@@ -102,7 +103,7 @@ class AnimationPlayer {
     // MARK: - Cumulative state
 
     private func updateCumulativeState(for step: AnimationStep) {
-        let v = step.visual
+        guard let v = step.visual else { return }
         switch (v.type, v.action) {
         case ("object_collection", "draw"), ("object_collection", "add"):
             cumulativeObjects += v.intParam("count") ?? 0

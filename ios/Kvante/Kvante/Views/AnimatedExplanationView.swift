@@ -132,19 +132,21 @@ struct StepCardView: View {
                 }
             }
 
-            // Visual component
-            VisualComponentView(
-                visual: step.visual,
-                animate: animate,
-                cumulativeObjects: cumulativeObjects,
-                cumulativeCrossedOut: cumulativeCrossedOut,
-                cumulativeRows: cumulativeRows,
-                cumulativeGrouped: cumulativeGrouped,
-                cumulativeGridState: cumulativeGridState,
-                cumulativeShortDivisionState: cumulativeShortDivisionState,
-                cumulativeLongMultiplicationState: cumulativeLongMultiplicationState
-            )
-            .frame(maxWidth: .infinity)
+            // Visual component (skipped for text-only steps)
+            if let visual = step.visual {
+                VisualComponentView(
+                    visual: visual,
+                    animate: animate,
+                    cumulativeObjects: cumulativeObjects,
+                    cumulativeCrossedOut: cumulativeCrossedOut,
+                    cumulativeRows: cumulativeRows,
+                    cumulativeGrouped: cumulativeGrouped,
+                    cumulativeGridState: cumulativeGridState,
+                    cumulativeShortDivisionState: cumulativeShortDivisionState,
+                    cumulativeLongMultiplicationState: cumulativeLongMultiplicationState
+                )
+                .frame(maxWidth: .infinity)
+            }
         }
         .padding(12)
         .background(

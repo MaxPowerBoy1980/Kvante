@@ -262,21 +262,22 @@ class ChatViewModel {
         var longMultState: LongMultiplicationState? = nil
         for i in 0...currentExampleStepIndex {
             let s = pendingExampleSteps[i]
-            if s.visual.type == "stacked_arithmetic" {
-                if s.visual.action == "setup" {
-                    gridState = GridState.from(visual: s.visual)
+            guard let v = s.visual else { continue }
+            if v.type == "stacked_arithmetic" {
+                if v.action == "setup" {
+                    gridState = GridState.from(visual: v)
                 }
-                gridState?.apply(visual: s.visual)
-            } else if s.visual.type == "short_division" {
-                if s.visual.action == "setup" {
-                    shortDivisionState = ShortDivisionState.from(visual: s.visual)
+                gridState?.apply(visual: v)
+            } else if v.type == "short_division" {
+                if v.action == "setup" {
+                    shortDivisionState = ShortDivisionState.from(visual: v)
                 }
-                shortDivisionState?.apply(visual: s.visual)
-            } else if s.visual.type == "long_multiplication" {
-                if s.visual.action == "setup" {
-                    longMultState = LongMultiplicationState.from(visual: s.visual)
+                shortDivisionState?.apply(visual: v)
+            } else if v.type == "long_multiplication" {
+                if v.action == "setup" {
+                    longMultState = LongMultiplicationState.from(visual: v)
                 }
-                longMultState?.apply(visual: s.visual)
+                longMultState?.apply(visual: v)
             }
         }
 
