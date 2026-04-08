@@ -245,10 +245,12 @@ class ChatViewModel {
                 pendingExampleSteps = example.steps
                 currentExampleStepIndex = 0
 
-                // Show intro message
+                // Show intro message (denne er nu vores persisterede ankerbesked —
+                // de efterfølgende exampleStep-animationer er ephemerale og vises
+                // kun under den aktive session)
                 replaceLoading(loadingId, with: ChatMessage(
                     sender: .kvante,
-                    content: .text("Her er et eksempel med andre tal: \(example.exampleProblem)")
+                    content: .text("💡 Her er et eksempel med andre tal: \(example.exampleProblem)")
                 ))
 
                 // Show first step
