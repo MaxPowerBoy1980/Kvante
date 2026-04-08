@@ -9,79 +9,14 @@ struct ChatView: View {
             // Chat header
             chatHeader
 
-            // Progress pill
-            if viewModel.allAssignments.count > 1 {
-                ProgressPillView(
-                    currentIndex: viewModel.currentAssignmentIndex,
-                    totalCount: viewModel.totalAssignments,
-                    completedIds: viewModel.completedAssignmentIds,
-                    assignments: viewModel.allAssignments,
-                    onTapAssignment: { index in
-                        viewModel.jumpToAssignment(index)
-                    }
-                )
-            }
-
-            // Sticky assignment bar
-            HStack(spacing: 8) {
-                Text(viewModel.currentAssignment.text)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(KvanteTheme.Colors.ink)
-                    .lineLimit(1)
+            if viewModel.isLoadingHistory {
                 Spacer()
-                Text("Opgave \(viewModel.currentAssignment.localId)")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(KvanteTheme.Colors.textMuted)
+                ProgressView()
+                    .scaleEffect(1.4)
+                Spacer()
+            } else {
+                chatContent
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(KvanteTheme.Colors.cream)
-            .overlay(
-                Rectangle()
-                    .fill(KvanteTheme.Colors.inkSubtle)
-                    .frame(height: 1),
-                alignment: .bottom
-            )
-
-            // Messages
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 16) {
-                        ForEach(viewModel.messages) { message in
-                            ChatBubble(
-                                message: message,
-                                apiClient: viewModel.apiClient,
-                                onChip: { chip in
-                                    viewModel.handleChip(chip)
-                                },
-                                onConfirmAnswer: { answer in
-                                    viewModel.confirmAnswer(answer)
-                                }
-                            )
-                            .id(message.id)
-                        }
-                    }
-                    .padding(.vertical, 16)
-                }
-                .background(KvanteTheme.Colors.cream)
-                .onChange(of: viewModel.messages.count) { _, _ in
-                    if let last = viewModel.messages.last {
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
-                    }
-                }
-            }
-
-            // Input bar
-            ChatInputBar(
-                text: $viewModel.inputText,
-                onSend: { viewModel.sendMessage() },
-                onCamera: { viewModel.showScanner = true },
-                onHelp: { viewModel.requestHelp() },
-                onExplainDifferent: { viewModel.requestExplainDifferent() },
-                onSkip: { viewModel.advanceToNextAssignment() }
-            )
         }
         .background(KvanteTheme.Colors.cream)
         .toolbar(.hidden, for: .navigationBar)
@@ -96,6 +31,83 @@ struct ChatView: View {
                 }
             )
         }
+    }
+
+    @ViewBuilder
+    private var chatContent: some View {
+        // Progress pill
+        if viewModel.allAssignments.count > 1 {
+            ProgressPillView(
+                currentIndex: viewModel.currentAssignmentIndex,
+                totalCount: viewModel.totalAssignments,
+                completedIds: viewModel.completedAssignmentIds,
+                assignments: viewModel.allAssignments,
+                onTapAssignment: { index in
+                    viewModel.jumpToAssignment(index)
+                }
+            )
+        }
+
+        // Sticky assignment bar
+        HStack(spacing: 8) {
+            Text(viewModel.currentAssignment.text)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KvanteTheme.Colors.ink)
+                .lineLimit(1)
+            Spacer()
+            Text("Opgave \(viewModel.currentAssignment.localId)")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(KvanteTheme.Colors.textMuted)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(KvanteTheme.Colors.cream)
+        .overlay(
+            Rectangle()
+                .fill(KvanteTheme.Colors.inkSubtle)
+                .frame(height: 1),
+            alignment: .bottom
+        )
+
+        // Messages
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach(viewModel.messages) { message in
+                        ChatBubble(
+                            message: message,
+                            apiClient: viewModel.apiClient,
+                            onChip: { chip in
+                                viewModel.handleChip(chip)
+                            },
+                            onConfirmAnswer: { answer in
+                                viewModel.confirmAnswer(answer)
+                            }
+                        )
+                        .id(message.id)
+                    }
+                }
+                .padding(.vertical, 16)
+            }
+            .background(KvanteTheme.Colors.cream)
+            .onChange(of: viewModel.messages.count) { _, _ in
+                if let last = viewModel.messages.last {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
+                }
+            }
+        }
+
+        // Input bar
+        ChatInputBar(
+            text: $viewModel.inputText,
+            onSend: { viewModel.sendMessage() },
+            onCamera: { viewModel.showScanner = true },
+            onHelp: { viewModel.requestHelp() },
+            onExplainDifferent: { viewModel.requestExplainDifferent() },
+            onSkip: { viewModel.advanceToNextAssignment() }
+        )
     }
 
     // MARK: - Chat Header
