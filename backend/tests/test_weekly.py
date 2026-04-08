@@ -1,4 +1,4 @@
-from app.models.db import MathProblem
+from app.models.db import Assignment, MathProblem, Session
 
 
 def _seed_problems(db, count=10):
@@ -70,4 +70,29 @@ def test_complete_session(client, test_db):
 
 def test_complete_session_not_found(client, test_db):
     response = client.post("/sessions/nonexistent/complete")
+    assert response.status_code == 404
+
+
+def test_get_session_returns_assignments(client, test_db):
+    _seed_problems(test_db)
+    create = client.post("/sessions/weekly", json={
+        "student_id": "default",
+        "grade_level": 4,
+        "count": 4,
+    })
+    session_id = create.json()["session_id"]
+
+    response = client.get(f"/sessions/{session_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["session_id"] == session_id
+    assert len(data["assignments"]) == 4
+    # Each assignment has the fields iOS PracticeAssignment expects
+    a = data["assignments"][0]
+    for key in ("id", "local_id", "text", "type", "topic", "difficulty_estimate"):
+        assert key in a
+
+
+def test_get_session_not_found(client, test_db):
+    response = client.get("/sessions/nonexistent")
     assert response.status_code == 404

@@ -335,6 +335,17 @@ actor APIClient {
         return try decoder.decode(SessionHistoryResponse.self, from: data)
     }
 
+    /// Fetch an existing session and its assignments — used to re-enter a
+    /// session from the history list and reload its persisted chat.
+    func getSession(sessionId: String) async throws -> PracticeSessionResponse {
+        let url = baseURL.appendingPathComponent("sessions/\(sessionId)")
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(PracticeSessionResponse.self, from: data)
+    }
+
     func completeSession(sessionId: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("sessions/\(sessionId)/complete"))
         request.httpMethod = "POST"

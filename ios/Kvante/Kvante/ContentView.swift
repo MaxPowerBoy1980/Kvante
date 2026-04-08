@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var practiceSession: PracticeSessionResponse?
     @State private var sessionHistory: [SessionSummary] = []
     @State private var selectedSession: SessionSummary?
+    @State private var isResumingSession = false
 
     private var profile: StudentProfile? { profiles.first }
 
@@ -48,7 +49,9 @@ struct ContentView: View {
                 } else if let session = selectedSession {
                     SessionDashboardView(
                         session: session,
-                        onBack: { selectedSession = nil }
+                        onBack: { selectedSession = nil },
+                        onContinue: { resumeSession(session) },
+                        isLoading: isResumingSession
                     )
                 } else if let topic = selectedTopic {
                     DifficultyPickerView(topic: topic) { difficulty in
@@ -152,6 +155,21 @@ struct ContentView: View {
         let studentId = p.backendStudentId ?? "default"
         if let history = try? await client.getSessionHistory(studentId: studentId) {
             sessionHistory = history.sessions
+        }
+    }
+
+    private func resumeSession(_ summary: SessionSummary) {
+        guard let client = apiClient else { return }
+        isResumingSession = true
+        Task {
+            do {
+                let session = try await client.getSession(sessionId: summary.sessionId)
+                practiceSession = session
+                selectedSession = nil
+            } catch {
+                errorMessage = "Kunne ikke åbne session: \(error.localizedDescription)"
+            }
+            isResumingSession = false
         }
     }
 }
