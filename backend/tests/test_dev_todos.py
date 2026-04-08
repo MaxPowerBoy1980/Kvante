@@ -116,6 +116,7 @@ def test_latest_endpoint_empty(client):
     """GET /dev/todos/latest on empty returns 404."""
     resp = client.get("/dev/todos/latest")
     assert resp.status_code == 404
+    assert resp.json()["detail"] == "Ingen TODOs"
 
 
 def test_latest_endpoint_returns_newest(client):
