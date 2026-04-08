@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     log_dir: str = "/Users/oleserver/Library/Logs/Kvante"  # absolute path; ~ not expanded
     dev_screenshots_dir: str = "/Users/oleserver/Library/Application Support/Kvante/dev-screenshots"
     dev_screenshots_keep: int = 20
+    dev_todos_dir: str = "/Users/oleserver/Library/Application Support/Kvante/dev-todos"
 
     model_config = {"env_prefix": "KVANTE_", "env_file": ".env"}
 
