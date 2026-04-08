@@ -146,6 +146,11 @@ class ExampleGeneratorService:
                 assignment_text=assignment_text,
                 language=language,
             )
+        if should_use_single_digit_multiplication(assignment_type, assignment_text, assignment_topic):
+            return self.generate_single_digit_multiplication_example(
+                assignment_text=assignment_text,
+                language=language,
+            )
         if should_use_long_multiplication(assignment_type, assignment_text, assignment_topic):
             return self.generate_long_multiplication_example(
                 assignment_text=assignment_text,
@@ -573,6 +578,74 @@ class ExampleGeneratorService:
 
         return {
             "example_problem": f"Regn ud: {ex_mc} × {ex_mp}",
+            "pedagogy": "concrete-first",
+            "steps": anim_steps,
+            "note": "",
+        }
+
+    def generate_single_digit_multiplication_example(self, assignment_text: str,
+                                                      language: str = "da") -> dict:
+        """Generate a single-digit multiplication example — fully deterministic."""
+        from app.services.single_digit_multiplication import SingleDigitMultiplicationService
+
+        logger.info("Generating single-digit multiplication example for: '%s'",
+                    assignment_text)
+        start = time.time()
+
+        operands = _parse_multiplication_operands(assignment_text)
+        if operands is None:
+            raise ValueError(
+                f"Could not parse multiplication operands from: {assignment_text!r}"
+            )
+
+        student_a, student_b = operands
+        ex_a, ex_b = SingleDigitMultiplicationService.pick_example_numbers(
+            student_a, student_b
+        )
+        steps = SingleDigitMultiplicationService.compute_steps(ex_a, ex_b)
+        texts = SingleDigitMultiplicationService.generate_text(steps)
+
+        anim_steps = []
+        for i, (s, text_obj) in enumerate(zip(steps, texts)):
+            action = s["step"]
+            visual = {"type": "single_digit_array", "action": action}
+
+            if action == "setup":
+                visual["rows"] = s["rows"]
+                visual["cols"] = s["cols"]
+            elif action == "row":
+                visual["row_index"] = s["row_index"]
+                visual["row_value"] = s["row_value"]
+                visual["cumulative"] = s["cumulative"]
+            elif action == "reveal":
+                visual["result"] = s["result"]
+
+            anim_steps.append({
+                "step": i + 1,
+                "phase": "concrete",
+                "text": text_obj["text"],
+                "visual": visual,
+                "audio_cue": text_obj.get("audio_cue", ""),
+            })
+
+        # try_yours: tekst-only, INGEN visual instruction
+        anim_steps.append({
+            "step": len(anim_steps) + 1,
+            "phase": "concrete",
+            "text": (
+                f"Nu er det din tur — kan du regne {student_a} × {student_b}? "
+                f"Skriv svaret på papir og scan."
+            ),
+            "visual": None,
+            "audio_cue": f"Prøv selv med {student_a} gange {student_b}",
+        })
+
+        elapsed = time.time() - start
+        logger.info("Generated single-digit multiplication example in %.3fs: %s × %s",
+                    elapsed, ex_a, ex_b)
+
+        return {
+            "example_problem": f"Regn ud: {ex_a} × {ex_b}",
             "pedagogy": "concrete-first",
             "steps": anim_steps,
             "note": "",

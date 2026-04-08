@@ -208,3 +208,103 @@ class TestRouting:
         assert should_use_single_digit_multiplication("multiplication", "Hvad er klokken?") is False
         # Tagged but no parseable expression — text is authoritative
         assert should_use_single_digit_multiplication("multiplication", "Tre gange syv") is False
+
+
+class TestGenerateExampleEndToEnd:
+    def _make_service(self):
+        # Skip __init__ — det instantiérer en AI client der kræver API keys.
+        # generate_single_digit_multiplication_example bruger ikke AI client.
+        from app.services.example_generator import ExampleGeneratorService
+        return ExampleGeneratorService.__new__(ExampleGeneratorService)
+
+    def test_full_response_shape(self):
+        """Returnér ExampleResponse-shape med korrekt visual type."""
+        svc = self._make_service()
+        result = svc.generate_single_digit_multiplication_example(
+            assignment_text="6 × 8", language="da"
+        )
+
+        # Schema-ish checks
+        assert "example_problem" in result
+        assert "steps" in result
+        assert "pedagogy" in result
+        assert result["pedagogy"] == "concrete-first"
+        assert result["example_problem"].startswith("Regn ud:")
+        assert "×" in result["example_problem"]
+
+    def test_example_uses_different_numbers(self):
+        """Eksempel-tal må aldrig matche elevens — heller ikke commutative dup."""
+        svc = self._make_service()
+        for _ in range(20):
+            result = svc.generate_single_digit_multiplication_example(
+                assignment_text="6 × 8", language="da"
+            )
+            ex = result["example_problem"]
+            # Ingen "6 × 8" eller "8 × 6" som hele expression
+            assert "6 × 8" not in ex
+            assert "8 × 6" not in ex
+
+    def test_setup_step_has_correct_visual(self):
+        """Første step (efter setup) bruger single_digit_array type."""
+        svc = self._make_service()
+        result = svc.generate_single_digit_multiplication_example(
+            assignment_text="6 × 8", language="da"
+        )
+
+        first_step = result["steps"][0]
+        assert first_step["visual"]["type"] == "single_digit_array"
+        assert first_step["visual"]["action"] == "setup"
+        assert "rows" in first_step["visual"]
+        assert "cols" in first_step["visual"]
+
+    def test_try_yours_step_has_no_visual(self):
+        """Sidste step (try-yours) har visual=None."""
+        svc = self._make_service()
+        result = svc.generate_single_digit_multiplication_example(
+            assignment_text="6 × 8", language="da"
+        )
+
+        last = result["steps"][-1]
+        assert last["visual"] is None
+        assert "6 × 8" in last["text"]  # refererer til elevens egne tal
+
+    def test_step_chain_includes_setup_rows_reveal_tryyours(self):
+        """Step-sekvensen indeholder alle 4 typer plus try-yours."""
+        svc = self._make_service()
+        result = svc.generate_single_digit_multiplication_example(
+            assignment_text="6 × 8", language="da"
+        )
+
+        actions = [s.get("visual", {}).get("action") if s["visual"] else None
+                   for s in result["steps"]]
+        assert "setup" in actions
+        assert "row" in actions
+        assert "reveal" in actions
+        assert None in actions  # try-yours
+
+    def test_routing_priority_single_digit_before_long_mult(self):
+        """generate_example dispatcher routes 7 × 9 til single_digit, ikke long_mult."""
+        svc = self._make_service()
+        result = svc.generate_example(
+            assignment_type="multiplication",
+            assignment_topic="multiplication",
+            assignment_text="7 × 9",
+            language="da",
+        )
+        # Visual type på første step skal være single_digit_array
+        first_visual = result["steps"][0]["visual"]
+        assert first_visual is not None
+        assert first_visual["type"] == "single_digit_array"
+
+    def test_routing_priority_long_mult_still_fires_for_two_digit(self):
+        """7 × 19 skal stadig route til long_multiplication, ikke single_digit."""
+        svc = self._make_service()
+        result = svc.generate_example(
+            assignment_type="multiplication",
+            assignment_topic="multiplication",
+            assignment_text="7 × 19",
+            language="da",
+        )
+        first_visual = result["steps"][0]["visual"]
+        assert first_visual is not None
+        assert first_visual["type"] == "long_multiplication"
