@@ -53,3 +53,21 @@ def test_upload_scan_creates_db_row(client, test_db):
     assert scan is not None
     assert scan.image_path.endswith(f"scan_{scan_id}.jpg")
     assert "scans/" in scan.image_path
+
+
+def test_get_scan_image_returns_bytes(client, test_db):
+    upload = client.post(
+        "/scans/upload",
+        files={"image": ("scan.jpg", io.BytesIO(_tiny_jpeg_bytes()), "image/jpeg")},
+    )
+    scan_id = upload.json()["scan_id"]
+
+    response = client.get(f"/scans/{scan_id}/image")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == _tiny_jpeg_bytes()
+
+
+def test_get_scan_image_404_for_missing(client, test_db):
+    response = client.get("/scans/nonexistent-id/image")
+    assert response.status_code == 404
