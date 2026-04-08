@@ -215,3 +215,30 @@ def test_delete_nonexistent(client):
     resp = client.delete("/dev/todos/nonexistent1")
     assert resp.status_code == 404
     assert resp.json()["detail"] == "TODO ikke fundet"
+
+
+def test_no_auto_retention(client, todos_tmp_dir):
+    """Verify NO retention — all TODOs persist until manually deleted.
+
+    dev_screenshots/ has keep-N retention; dev_todos/ explicitly does not.
+    We create more items than dev_screenshots_keep (20) to catch any
+    accidental retention logic that might have been copy-pasted.
+    """
+    import time
+    # Create 25 TODOs
+    for i in range(25):
+        resp = client.post("/dev/todos", data={"note": f"todo {i}"})
+        assert resp.status_code == 200
+        time.sleep(0.001)
+
+    # Verify all 25 .json files exist on disk (not just in API response)
+    json_files = list(todos_tmp_dir.glob("*.json"))
+    assert len(json_files) == 25, f"Expected 25 .json files on disk, got {len(json_files)}"
+
+    # Create one more to trigger any would-be retention
+    resp = client.post("/dev/todos", data={"note": "todo 26"})
+    assert resp.status_code == 200
+
+    # Verify 26 .json files — NO retention kicked in
+    json_files = list(todos_tmp_dir.glob("*.json"))
+    assert len(json_files) == 26, f"Expected 26 .json files on disk after 26th POST, got {len(json_files)}"

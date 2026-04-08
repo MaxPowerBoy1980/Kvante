@@ -1,8 +1,11 @@
-"""Dev-only screenshot submission from iOS app to backend.
+"""Dev-only screenshot observation-path for the iOS Kvante-capture-knap.
 
-iOS shake-gesture captures the current screen and POSTs it here. The
-developer (or Claude in a dev session) can then GET the latest screenshot
-to inspect it visually.
+The iOS capture-sheet POSTs screenshots here when the user toggles the
+sheet to "Observation" mode (TODO toggle OFF). The developer (or Claude
+in a dev session) can then GET the latest screenshot to inspect it
+visually via /dev/screenshots/latest.
+
+See also: /dev/todos for the TODO inbox (note-first flow with opt-in image).
 
 NOT for production use — no auth, no rate limiting. LAN-only by virtue of
 the backend itself only being reachable on the local network.
