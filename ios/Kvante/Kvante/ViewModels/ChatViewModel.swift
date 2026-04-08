@@ -318,11 +318,35 @@ class ChatViewModel {
     private var pendingOcrFullText: String = ""
 
     func scanAnswer(_ imageData: Data) {
-        // Student message with scanned image
+        // Student message with scanned image — UUID bevares for senere mutation
+        let scanMessageId = UUID()
         appendMessage(ChatMessage(
+            id: scanMessageId,
             sender: .student,
             content: .scannedImage(imageData, scanId: nil)
         ))
+
+        // Parallel upload til backend så billedet kan genfetches ved reload
+        Task { @MainActor in
+            do {
+                let response = try await self.apiClient.uploadScan(imageData: imageData)
+                if let idx = self.messages.firstIndex(where: { $0.id == scanMessageId }) {
+                    let old = self.messages[idx]
+                    self.messages[idx] = ChatMessage(
+                        id: scanMessageId,                              // ← samme UUID
+                        sender: old.sender,
+                        content: .scannedImage(imageData, scanId: response.scanId),
+                        timestamp: old.timestamp,
+                        actions: old.actions,
+                        assignmentId: old.assignmentId
+                    )
+                    self.syncUnsavedMessages()
+                }
+            } catch {
+                // Upload fejlede — beskeden beholder scanId: nil og persisteres aldrig
+                print("[ChatViewModel] scan upload failed: \(error)")
+            }
+        }
 
         let loadingId = addLoading("Kvante tyder dit svar...")
 
