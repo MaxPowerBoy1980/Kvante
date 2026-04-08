@@ -309,7 +309,7 @@ class ChatViewModel {
         // Student message with scanned image
         messages.append(ChatMessage(
             sender: .student,
-            content: .scannedImage(imageData)
+            content: .scannedImage(imageData, scanId: nil)
         ))
 
         let loadingId = addLoading("Kvante tyder dit svar...")

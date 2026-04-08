@@ -85,8 +85,8 @@ struct ChatBubble: View {
                               arrayGridState: arrayGridState)
         case .tip(let text):
             tipBubble(text)
-        case .scannedImage(let data):
-            scannedImageBubble(data)
+        case .scannedImage(let data, let scanId):
+            scannedImageBubble(data, scanId: scanId)
         case .loading(let text):
             loadingBubble(text)
         case .celebration(let tier):
@@ -336,9 +336,9 @@ struct ChatBubble: View {
 
     // MARK: - Scanned Image
 
-    private func scannedImageBubble(_ data: Data) -> some View {
+    private func scannedImageBubble(_ data: Data?, scanId: String?) -> some View {
         Group {
-            if let uiImage = UIImage(data: data) {
+            if let data, let uiImage = UIImage(data: data) {
                 VStack(alignment: .trailing, spacing: 4) {
                     Image(uiImage: uiImage)
                         .resizable()
@@ -346,6 +346,13 @@ struct ChatBubble: View {
                         .frame(maxWidth: 220, maxHeight: 180)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
+            } else if scanId != nil {
+                ProgressView()
+                    .frame(width: 220, height: 180)
+            } else {
+                Text("📷 Billedet kunne ikke hentes")
+                    .font(.caption)
+                    .foregroundStyle(KvanteTheme.Colors.textMuted)
             }
         }
     }
