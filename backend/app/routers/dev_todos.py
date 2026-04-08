@@ -96,3 +96,53 @@ def _find_by_id(todo_id: str) -> Optional[TodoMeta]:
         if meta.id == todo_id:
             return meta
     return None
+
+
+@router.post("", response_model=TodoMeta)
+async def create_todo(
+    note: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+):
+    """Create a new TODO. Note is required; image is optional.
+
+    Returns TodoMeta for the newly created TODO.
+    """
+    stripped_note = (note or "").strip()
+    if not stripped_note:
+        raise HTTPException(status_code=400, detail="Note er påkrævet")
+    if len(stripped_note) > MAX_NOTE_LENGTH:
+        raise HTTPException(status_code=400, detail="Note for lang")
+
+    image_bytes: Optional[bytes] = None
+    if image is not None:
+        image_bytes = await image.read()
+        if len(image_bytes) > settings.max_upload_size:
+            raise HTTPException(
+                status_code=400,
+                detail="Billedet overskrider maksimal størrelse",
+            )
+
+    todo_id = uuid.uuid4().hex[:12]
+    timestamp = time.time()
+    base_filename = f"{int(timestamp)}_{todo_id}"
+
+    meta = TodoMeta(
+        id=todo_id,
+        timestamp=timestamp,
+        note=stripped_note,
+        has_image=(image_bytes is not None),
+        base_filename=base_filename,
+    )
+
+    storage = _storage_dir()
+    (storage / f"{base_filename}.json").write_text(json.dumps(meta.model_dump()))
+    if image_bytes is not None:
+        (storage / f"{base_filename}.png").write_bytes(image_bytes)
+
+    logger.info(
+        "TODO created: %s (has_image=%s, note=%r)",
+        base_filename,
+        meta.has_image,
+        stripped_note[:80],
+    )
+    return meta
