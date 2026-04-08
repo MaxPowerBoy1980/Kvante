@@ -86,7 +86,7 @@ struct ContentView: View {
                             selectedSession = session
                         }
                     )
-                    .task { await loadSessionHistory() }
+                    .task(id: serverDiscovery.serverURL) { await loadSessionHistory() }
                 }
             }
             }
