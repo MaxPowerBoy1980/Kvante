@@ -187,3 +187,27 @@ async def get_todo_image(todo_id: str):
     if not image_file.exists():
         raise HTTPException(status_code=404, detail="Billede mangler på disk")
     return FileResponse(image_file, media_type="image/png")
+
+
+@router.delete("/{todo_id}", status_code=204)
+async def delete_todo(todo_id: str):
+    """Delete a specific TODO and its associated image (if any).
+
+    Returns 204 No Content on success, 404 if the id is unknown.
+    """
+    meta = _find_by_id(todo_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="TODO ikke fundet")
+
+    meta_file = _meta_path(meta.base_filename)
+    image_file = _image_path(meta.base_filename)
+
+    try:
+        meta_file.unlink(missing_ok=True)
+        image_file.unlink(missing_ok=True)
+    except OSError as e:
+        logger.warning("Failed to delete TODO files for %s: %s", todo_id, e)
+        raise HTTPException(status_code=500, detail="Kunne ikke slette TODO")
+
+    logger.info("TODO deleted: %s", todo_id)
+    return Response(status_code=204)

@@ -179,3 +179,39 @@ def test_get_image_404_for_unknown_id(client):
     resp = client.get("/dev/todos/nonexistent1/image")
     assert resp.status_code == 404
     assert resp.json()["detail"] == "TODO ikke fundet"
+
+
+def test_delete_removes_both_files(client, todos_tmp_dir):
+    """DELETE /dev/todos/{id} removes both .json and .png."""
+    upload = client.post(
+        "/dev/todos",
+        data={"note": "delete me"},
+        files={"image": ("shot.png", _png(), "image/png")},
+    )
+    todo_id = upload.json()["id"]
+    assert len(list(todos_tmp_dir.glob("*.json"))) == 1
+    assert len(list(todos_tmp_dir.glob("*.png"))) == 1
+
+    resp = client.delete(f"/dev/todos/{todo_id}")
+    assert resp.status_code == 204
+    assert resp.content == b""  # no body for 204
+
+    assert len(list(todos_tmp_dir.glob("*.json"))) == 0
+    assert len(list(todos_tmp_dir.glob("*.png"))) == 0
+
+
+def test_delete_note_only(client, todos_tmp_dir):
+    """DELETE /dev/todos/{id} works for note-only TODOs (no .png to delete)."""
+    upload = client.post("/dev/todos", data={"note": "no image"})
+    todo_id = upload.json()["id"]
+
+    resp = client.delete(f"/dev/todos/{todo_id}")
+    assert resp.status_code == 204
+    assert len(list(todos_tmp_dir.glob("*.json"))) == 0
+
+
+def test_delete_nonexistent(client):
+    """DELETE /dev/todos/{id} returns 404 for unknown id."""
+    resp = client.delete("/dev/todos/nonexistent1")
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "TODO ikke fundet"
