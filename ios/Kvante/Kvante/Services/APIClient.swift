@@ -131,6 +131,61 @@ actor APIClient {
         return try decoder.decode(SubmissionResponse.self, from: data)
     }
 
+    // MARK: - Scan Upload
+
+    func uploadScan(imageData: Data) async throws -> ScanUploadResponse {
+        let url = baseURL.appendingPathComponent("scans/upload")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"image\"; filename=\"scan.jpg\"\r\n")
+        body.append("Content-Type: image/jpeg\r\n\r\n")
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n")
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(ScanUploadResponse.self, from: data)
+    }
+
+    func scanImageURL(scanId: String) -> URL {
+        baseURL.appendingPathComponent("scans/\(scanId)/image")
+    }
+
+    // MARK: - Chat Persistence
+
+    func saveMessages(sessionId: String, messages: [ChatMessageCreate]) async throws {
+        let url = baseURL.appendingPathComponent("chat/messages/save")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let payload = SaveMessagesRequest(sessionId: sessionId, messages: messages)
+        let encoder = JSONEncoder()
+        request.httpBody = try encoder.encode(payload)
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        _ = try decoder.decode(SaveMessagesResponse.self, from: data)
+    }
+
+    func loadMessages(sessionId: String) async throws -> [ChatMessageOut] {
+        let url = baseURL.appendingPathComponent("chat/messages/\(sessionId)")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "GET"
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        let payload = try decoder.decode(LoadMessagesResponse.self, from: data)
+        return payload.messages
+    }
+
     // MARK: - Feedback
 
     func getFeedback(submissionId: String, language: String = "da") async throws -> FeedbackResponse {
