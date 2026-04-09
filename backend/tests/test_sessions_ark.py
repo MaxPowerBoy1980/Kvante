@@ -79,3 +79,26 @@ def test_completed_count_accepts_complete_status(client, test_db):
         f"Expected completed_count=1 but got {session_data['completed_count']}. "
         "The counter must accept 'complete' status (set by submissions.py)."
     )
+
+
+def test_practice_session_has_name(client, test_db):
+    """Practice sessions should have a generated name, not empty string."""
+    _seed_problem(test_db, topic="addition", difficulty=2)
+    response = client.post("/sessions/practice", json={
+        "student_id": "default",
+        "topic": "addition",
+        "difficulty": 2,
+        "count": 1,
+    })
+    assert response.status_code == 200
+    data = response.json()
+
+    # Fetch the session to check name in the database
+    session_id = data["session_id"]
+    get_response = client.get(f"/students/default/sessions")
+    session_data = next(
+        s for s in get_response.json()["sessions"]
+        if s["session_id"] == session_id
+    )
+    assert session_data["name"], "Practice session name should not be empty"
+    assert "addition" in session_data["name"].lower() or "Addition" in session_data["name"]
