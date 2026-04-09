@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, field_validator
 
 
 # --- Page Scan ---
@@ -169,3 +171,34 @@ class SessionSummary(BaseModel):
 
 class SessionHistoryResponse(BaseModel):
     sessions: list[SessionSummary]
+
+
+# --- Ark Overlay (Pakke 2a) ---
+
+class ArkAssignment(BaseModel):
+    id: str
+    local_id: str
+    text: str
+    type: str
+    topic: str
+    difficulty_estimate: int
+    position: int
+
+    ark_status: Literal["not_started", "in_progress", "done"]
+    latest_scan_id: str | None = None
+    latest_ai_feedback_summary: str | None = None
+    teacher_comment: str | None = None
+
+    @field_validator("teacher_comment", mode="before")
+    @classmethod
+    def normalize_empty_to_none(cls, v: str | None) -> str | None:
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
+
+
+class SessionDetailResponse(BaseModel):
+    session_id: str
+    session_name: str
+    current_assignment_index: int
+    assignments: list[ArkAssignment]
