@@ -26,11 +26,11 @@ struct AssignmentCardView: View {
                             .foregroundStyle(.yellow)
                     }
                     HStack(spacing: 3) {
-                        ForEach(1...5, id: \.self) { i in
+                        let clamped = min(assignment.difficultyEstimate, 3)
+                        ForEach(0..<clamped, id: \.self) { _ in
                             Circle()
-                                .fill(i <= assignment.difficultyEstimate
-                                    ? Color.white : Color.white.opacity(0.3))
-                                .frame(width: 8, height: 8)
+                                .fill(Color.white)
+                                .frame(width: 7, height: 7)
                         }
                     }
                 }

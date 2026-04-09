@@ -4,11 +4,10 @@ struct DifficultyPickerView: View {
     let topic: TopicInfo
     let onSelect: (Int) -> Void
 
-    private let difficultyInfo: [(level: Int, label: String, description: String, emoji: String)] = [
-        (1, "Let", "Til dig der lige er begyndt", "🌱"),
-        (2, "Mellem", "Du har styr på det grundlæggende", "🌿"),
-        (3, "Svær", "For dig der vil udfordres", "🌳"),
-        (4, "Ekspert", "Til de helt store udfordringer", "🏆"),
+    private let levels: [(level: Int, label: String, description: String, dotCount: Int, color: Color)] = [
+        (1, "Let", "Til dig der øver", 1, KvanteTheme.Colors.difficultyEasy),
+        (2, "Normal", "Dit niveau", 2, KvanteTheme.Colors.difficultyNormal),
+        (3, "Svær", "Udfordring", 3, KvanteTheme.Colors.difficultyHard),
     ]
 
     var body: some View {
@@ -25,12 +24,24 @@ struct DifficultyPickerView: View {
 
             // Difficulty cards
             VStack(spacing: 12) {
-                ForEach(difficultyInfo, id: \.level) { info in
+                ForEach(levels, id: \.level) { info in
                     let available = topic.difficulties.contains(info.level)
                     Button { onSelect(info.level) } label: {
                         HStack(spacing: 14) {
-                            Text(info.emoji)
-                                .font(.title)
+                            // Dot icon in colored box
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(info.color.opacity(0.1))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    HStack(spacing: 3) {
+                                        ForEach(0..<info.dotCount, id: \.self) { _ in
+                                            Circle()
+                                                .fill(info.color)
+                                                .frame(width: info.dotCount == 1 ? 10 : (info.dotCount == 2 ? 8 : 7),
+                                                       height: info.dotCount == 1 ? 10 : (info.dotCount == 2 ? 8 : 7))
+                                        }
+                                    }
+                                )
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(info.label)
