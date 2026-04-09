@@ -10,7 +10,25 @@ struct NewHomeView: View {
     let sessionHistory: [SessionSummary]
     let onTapSession: (SessionSummary) -> Void
 
-    @State private var notebookSolvedCount: Int = 0
+    private var notebookSolvedCount: Int {
+        sessionHistory.reduce(0) { $0 + $1.completedCount }
+    }
+
+    private var notebookWeekCount: Int {
+        let calendar = Calendar(identifier: .iso8601)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        var weeks = Set<String>()
+        for s in sessionHistory {
+            if let date = formatter.date(from: s.createdAt) {
+                let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+                if let y = comps.yearForWeekOfYear, let w = comps.weekOfYear {
+                    weeks.insert("\(y)-W\(w)")
+                }
+            }
+        }
+        return weeks.count
+    }
 
     /// Most recent weekly session for mini-ark preview
     private var currentWeekly: SessionSummary? {
@@ -212,6 +230,17 @@ struct NewHomeView: View {
                     Text("\(profile.name) & Kvante — \(notebookSolvedCount) opgaver løst")
                         .font(.system(size: 12))
                         .foregroundStyle(KvanteTheme.Colors.textSecondary)
+
+                    if notebookSolvedCount > 0 {
+                        HStack(spacing: 12) {
+                            Text("\(notebookWeekCount) uger")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(KvanteTheme.Colors.teal)
+                            Text("\(notebookSolvedCount) løst")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(KvanteTheme.Colors.success)
+                        }
+                    }
                 }
 
                 Spacer()
@@ -234,9 +263,6 @@ struct NewHomeView: View {
         .disabled(serverDiscovery.serverURL == nil)
         .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
         .accessibilityLabel("Din matematikbog. \(notebookSolvedCount) opgaver løst")
-        .onAppear {
-            notebookSolvedCount = sessionHistory.reduce(0) { $0 + $1.completedCount }
-        }
     }
 
     // MARK: - Mini Ark Helpers

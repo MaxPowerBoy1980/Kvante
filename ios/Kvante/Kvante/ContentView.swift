@@ -28,6 +28,7 @@ struct ContentView: View {
     @State private var sessionPath: [SessionRoute] = []
     @State private var activeSession: SessionViewModel?
     @State private var activeChatViewModel: ChatViewModel?
+    @State private var activeNotebookViewModel: NotebookViewModel?
 
     private var profile: StudentProfile? { profiles.first }
 
@@ -119,7 +120,11 @@ struct ContentView: View {
                 case .notebook:
                     if let client = apiClient, let p = profile {
                         let studentId = p.backendStudentId ?? "default"
-                        let vm = NotebookViewModel(apiClient: client, studentId: studentId)
+                        let vm = activeNotebookViewModel ?? {
+                            let newVM = NotebookViewModel(apiClient: client, studentId: studentId)
+                            Task { @MainActor in activeNotebookViewModel = newVM }
+                            return newVM
+                        }()
                         NotebookView(
                             viewModel: vm,
                             apiClient: client,
@@ -134,6 +139,7 @@ struct ContentView: View {
             if newValue.isEmpty {
                 activeSession = nil
                 activeChatViewModel = nil
+                activeNotebookViewModel = nil
                 // Refresh session history when returning to home
                 Task { await loadSessionHistory() }
             }

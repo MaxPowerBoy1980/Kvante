@@ -88,11 +88,13 @@ struct NotebookView: View {
                 Text("Omslag")
                     .font(.system(size: 12))
                     .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.4))
+                    .accessibilityLabel("Side 1 af \(totalPages)")
             } else {
                 let week = viewModel.weeks[currentPage - 1]
                 Text("Uge \(week.weekNumber) af \(viewModel.weeks.count)")
                     .font(.system(size: 12))
                     .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.4))
+                    .accessibilityLabel("Side \(currentPage + 1) af \(totalPages)")
             }
         }
     }

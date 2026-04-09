@@ -52,8 +52,6 @@ struct NotebookWeekView: View {
                 .padding(.bottom, 40)
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Uge \(week.weekNumber). \(week.solvedCount) af \(week.totalCount) opgaver l\u{00F8}st.")
         .task {
             let result = await viewModel.assignments(for: week)
             weeklyAssignments = result.weekly
@@ -63,6 +61,7 @@ struct NotebookWeekView: View {
         .sheet(item: $selectedAssignment) { assignment in
             AssignmentDetailSheet(assignment: assignment, apiClient: apiClient)
                 .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -165,18 +164,35 @@ struct FacitCard: View {
         switch assignment.arkStatus {
         case "done":
             if let studentAnswer = assignment.studentAnswer,
-               let correctAnswer = assignment.correctAnswer,
-               studentAnswer != correctAnswer {
-                // Incorrect
-                Text("\u{2717} \(studentAnswer)")
+               let correctAnswer = assignment.correctAnswer {
+                if studentAnswer == correctAnswer {
+                    // Correct
+                    Text("✓ \(studentAnswer)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(KvanteTheme.Colors.success, in: Capsule())
+                } else {
+                    // Incorrect
+                    Text("✗ \(studentAnswer)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(KvanteTheme.Colors.primary, in: Capsule())
+                }
+            } else if let studentAnswer = assignment.studentAnswer {
+                // Has answer but no correct_answer in DB — can't verify, show orange
+                Text(studentAnswer)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(KvanteTheme.Colors.primary, in: Capsule())
-            } else if let answer = assignment.studentAnswer ?? assignment.correctAnswer {
-                // Correct
-                Text("\u{2713} \(answer)")
+            } else if let correctAnswer = assignment.correctAnswer {
+                // Done but no student answer recorded — show correct answer as green
+                Text("✓ \(correctAnswer)")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
@@ -184,7 +200,7 @@ struct FacitCard: View {
                     .background(KvanteTheme.Colors.success, in: Capsule())
             }
         default:
-            Text("\u{2014}")
+            Text("—")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8)
@@ -197,13 +213,16 @@ struct FacitCard: View {
         switch assignment.arkStatus {
         case "done":
             if let studentAnswer = assignment.studentAnswer,
-               let correctAnswer = assignment.correctAnswer,
-               studentAnswer != correctAnswer {
-                return "Opgave: \(assignment.text). Dit svar: \(studentAnswer). Forkert. Rigtigt svar: \(correctAnswer)."
-            } else if let answer = assignment.studentAnswer {
-                return "Opgave: \(assignment.text). Dit svar: \(answer). Rigtigt."
+               let correctAnswer = assignment.correctAnswer {
+                if studentAnswer == correctAnswer {
+                    return "Opgave: \(assignment.text). Dit svar: \(studentAnswer). Rigtigt."
+                } else {
+                    return "Opgave: \(assignment.text). Dit svar: \(studentAnswer). Forkert. Rigtigt svar: \(correctAnswer)."
+                }
+            } else if let studentAnswer = assignment.studentAnswer {
+                return "Opgave: \(assignment.text). Dit svar: \(studentAnswer)."
             }
-            return "Opgave: \(assignment.text)."
+            return "Opgave: \(assignment.text). Løst."
         default:
             return "Opgave: \(assignment.text). Ikke besvaret."
         }

@@ -32,8 +32,6 @@ struct NotebookAssignment: Identifiable {
 final class NotebookViewModel {
     var weeks: [NotebookWeek] = []
     var totalSolved: Int = 0
-    var totalCorrect: Int = 0
-    var totalIncorrect: Int = 0
     var totalWeeks: Int { weeks.count }
     var isLoading = false
 
