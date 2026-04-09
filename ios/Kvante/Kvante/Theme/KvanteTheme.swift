@@ -64,6 +64,17 @@ enum KvanteTheme {
         // Wrong answer
         static let wrong = Color(hex: "E85D26")
 
+        // Kvante character
+        static let kvanteFace = Color(hex: "B8D8D0")  // Light teal body
+        static let kvanteDotBlue = Color(hex: "2A5A8A")  // Bryst-panel dots
+        static let coral = Color(hex: "E8507A")  // Lightning zigzag / celebration
+        static let antennePink = Color(hex: "E8507A")  // Antenna pom-pom (same as coral)
+
+        // Difficulty level colors
+        static let difficultyEasy = teal
+        static let difficultyNormal = primary
+        static let difficultyHard = Color(hex: "6c5ce7")  // Purple
+
         // Legacy aliases for compatibility
         static let backgroundStart = cream
         static var background: LinearGradient {
@@ -107,6 +118,15 @@ enum KvanteTheme {
         static let inputRadius: CGFloat = 16
         static let smallRadius: CGFloat = 12
         static let buttonShadowHeight: CGFloat = 4
+    }
+
+    // MARK: - Celebration Timing
+
+    enum Celebration {
+        static let chatFlashDuration: Double = 0.3
+        static let headerDelay: Double = 0.6
+        static let dotPulseDuration: Double = 0.4
+        static let setCompleteZigzagDuration: Double = 0.8
     }
 
     // MARK: - Button Styles
