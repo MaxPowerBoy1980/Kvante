@@ -17,21 +17,19 @@ class ChatViewModel {
 
     // MARK: - Context
 
-    // Multi-assignment state
-    private(set) var allAssignments: [ParsedAssignment]
-    var currentAssignmentIndex: Int = 0
-    var completedAssignmentIds: Set<String> = []
+    // Session state — owned by SessionViewModel, shared with AssignmentSheetView
+    let session: SessionViewModel
     var attemptCounts: [String: Int] = [:]
 
-    var currentAssignment: ParsedAssignment {
-        allAssignments[currentAssignmentIndex]
-    }
+    // Convenience accessors that delegate to session
+    var allAssignments: [ParsedAssignment] { session.assignments }
+    var currentAssignmentIndex: Int { session.currentAssignmentIndex }
+    var currentAssignment: ParsedAssignment { session.currentAssignment }
+    var totalAssignments: Int { session.totalAssignments }
+    var completedCount: Int { session.completedCount }
+    var isSetComplete: Bool { session.isSetComplete }
 
-    var totalAssignments: Int { allAssignments.count }
-    var completedCount: Int { completedAssignmentIds.count }
-    var isSetComplete: Bool { completedAssignmentIds.count == allAssignments.count }
-
-    let sessionId: String
+    var sessionId: String { session.sessionId }
     let apiClient: APIClient
 
     // Track submission for follow-ups
@@ -52,15 +50,10 @@ class ChatViewModel {
         let text = currentAssignment.text
         let topic = currentAssignment.topic
         if topic == "multiplication" { return true }
-        // Match × (U+00D7) or middle dot. Skip ASCII '*' since it's also used
-        // as a bullet/wildcard in non-math text — multiplication tasks always
-        // use × in our seed data and parsed pages.
-        return text.contains("×") || text.contains("·")
+        return text.contains("\u{00D7}") || text.contains("\u{00B7}")
     }
 
     /// Whether the current assignment's handwritten work needs Vision OCR.
-    /// Apple OCR can't read columnar layouts (stacked addition/subtraction
-    /// or long multiplication with mente notation).
     private var needsVisionOCR: Bool {
         isStackedArithmetic || isMultiplicationAssignment
     }
@@ -69,9 +62,8 @@ class ChatViewModel {
 
     // MARK: - Init
 
-    init(assignments: [ParsedAssignment], sessionId: String, apiClient: APIClient) {
-        self.allAssignments = assignments
-        self.sessionId = sessionId
+    init(session: SessionViewModel, apiClient: APIClient) {
+        self.session = session
         self.apiClient = apiClient
 
         Task { @MainActor in
@@ -102,7 +94,7 @@ class ChatViewModel {
     // MARK: - Multi-assignment Navigation
 
     func advanceToNextAssignment() {
-        completedAssignmentIds.insert(currentAssignment.id)
+        session.markCompleted(currentAssignment.id, feedback: nil)
 
         if isSetComplete {
             let celebration = ChatMessage(
@@ -116,7 +108,7 @@ class ChatViewModel {
 
         // Move to next unfinished assignment
         if currentAssignmentIndex < allAssignments.count - 1 {
-            currentAssignmentIndex += 1
+            session.goToAssignment(currentAssignmentIndex + 1)
         }
 
         // Reset submission tracking for new assignment
@@ -138,7 +130,7 @@ class ChatViewModel {
 
     func jumpToAssignment(_ index: Int) {
         guard index >= 0 && index < allAssignments.count else { return }
-        currentAssignmentIndex = index
+        session.goToAssignment(index)
         currentSubmissionId = nil
 
         // If not yet introduced, introduce it
@@ -344,6 +336,8 @@ class ChatViewModel {
                     )
                     self.syncUnsavedMessages()
                 }
+                // Record scan on session for ark thumbnail
+                self.session.recordScan(response.scanId, forAssignment: self.session.currentAssignment.id)
             } catch {
                 // Upload fejlede — beskeden beholder scanId: nil og persisteres aldrig
                 print("[ChatViewModel] scan upload failed: \(error)")
@@ -603,6 +597,9 @@ class ChatViewModel {
 
         // Add celebration for correct answers
         if isCorrect {
+            // Update session state for ark overlay
+            session.markCompleted(currentAssignment.id, feedback: studentAnswer)
+
             let attempts = attemptCounts[currentAssignment.id, default: 1]
             let tier: CelebrationTier = attempts >= 2 ? .persevered : .routine
             appendMessage(ChatMessage(
