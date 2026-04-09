@@ -600,7 +600,7 @@ class ChatViewModel {
         // Add celebration for correct answers
         if isCorrect {
             // Update session state for ark overlay
-            session.markCompleted(currentAssignment.id, feedback: studentAnswer)
+            session.markCompleted(currentAssignment.id, feedback: "\(currentAssignment.text) = \(studentAnswer)")
 
             let attempts = attemptCounts[currentAssignment.id, default: 1]
             let tier: CelebrationTier = attempts >= 2 ? .persevered : .routine
