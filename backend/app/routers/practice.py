@@ -9,8 +9,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession
 
 from app.database import get_db
-from app.models.db import Assignment, MathProblem, Session
-from app.models.schemas import SessionHistoryResponse, SessionSummary, WeeklyRequest
+from app.models.db import Assignment, ChatMessage, MathProblem, Session, Submission
+from app.models.schemas import (
+    ArkAssignment,
+    SessionDetailResponse,
+    SessionHistoryResponse,
+    SessionSummary,
+    WeeklyRequest,
+)
 
 router = APIRouter(tags=["practice"])
 
@@ -208,10 +214,41 @@ def create_weekly_session(body: WeeklyRequest, db: DBSession = Depends(get_db)):
     }
 
 
-@router.get("/sessions/{session_id}")
+def _truncate_feedback(text: str | None, max_len: int = 140) -> str | None:
+    """Truncate feedback text to ~max_len chars at sentence boundary."""
+    if not text:
+        return text
+    if len(text) <= max_len:
+        return text
+    # Find last sentence-ending punctuation within max_len
+    truncated = text[:max_len]
+    for sep in (". ", "! ", "? "):
+        last = truncated.rfind(sep)
+        if last > 0:
+            return text[: last + 1] + "..."
+    # No sentence boundary found — truncate at word boundary
+    last_space = truncated.rfind(" ")
+    if last_space > 0:
+        return text[:last_space] + "..."
+    return text[:max_len] + "..."
+
+
+def _compute_ark_status(assignment: Assignment, submissions: list[Submission]) -> str:
+    """Compute ark_status from assignment status and submissions."""
+    if assignment.status in ("complete", "completed"):
+        return "done"
+    if submissions:
+        return "in_progress"
+    return "not_started"
+
+
+@router.get("/sessions/{session_id}", response_model=SessionDetailResponse)
 def get_session(session_id: str, db: DBSession = Depends(get_db)):
-    """Return a session and its assignments — used by iOS to re-enter an
-    existing session and reload its chat history."""
+    """Return a session and its assignments with ark-overlay fields.
+
+    Used by iOS to enter/re-enter a session. Returns per-assignment status,
+    latest scan thumbnail ID, AI feedback summary, and teacher comments.
+    """
     session = db.query(Session).filter(Session.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -223,22 +260,72 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
         .all()
     )
 
-    return {
-        "session_id": session.id,
-        "assignments": [
-            {
-                "id": a.id,
-                "problem_id": a.problem_id,
-                "local_id": a.local_id,
-                "text": a.text,
-                "type": a.type,
-                "topic": a.topic,
-                "difficulty_estimate": a.difficulty_estimate,
-                "position": a.position,
-            }
-            for a in assignments
-        ],
-    }
+    # Batch-load all submissions and scan chat messages for this session
+    all_submissions = (
+        db.query(Submission)
+        .filter(Submission.session_id == session_id)
+        .order_by(Submission.created_at)
+        .all()
+    )
+    submissions_by_assignment: dict[str, list[Submission]] = defaultdict(list)
+    for sub in all_submissions:
+        submissions_by_assignment[sub.assignment_id].append(sub)
+
+    # Find latest scanned_image chat messages per assignment
+    scan_messages = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.session_id == session_id,
+            ChatMessage.content_type == "scanned_image",
+        )
+        .order_by(ChatMessage.created_at)
+        .all()
+    )
+    latest_scan_by_assignment: dict[str, str | None] = {}
+    for msg in scan_messages:
+        if msg.assignment_id and isinstance(msg.content, dict):
+            scan_id = msg.content.get("scan_id")
+            if scan_id:
+                latest_scan_by_assignment[msg.assignment_id] = scan_id
+
+    # Compute current_assignment_index (first non-done assignment)
+    current_index = len(assignments)  # default: all done
+    for i, a in enumerate(assignments):
+        if a.status not in ("complete", "completed"):
+            current_index = i
+            break
+
+    ark_assignments = []
+    for a in assignments:
+        subs = submissions_by_assignment.get(a.id, [])
+        # Latest feedback from the most recent submission
+        latest_feedback = None
+        if subs:
+            latest_sub = subs[-1]
+            latest_feedback = _truncate_feedback(latest_sub.feedback_text)
+
+        ark_assignments.append(
+            ArkAssignment(
+                id=a.id,
+                local_id=a.local_id,
+                text=a.text,
+                type=a.type,
+                topic=a.topic,
+                difficulty_estimate=a.difficulty_estimate,
+                position=a.position,
+                ark_status=_compute_ark_status(a, subs),
+                latest_scan_id=latest_scan_by_assignment.get(a.id),
+                latest_ai_feedback_summary=latest_feedback,
+                teacher_comment=None,  # Always null in Pakke 2a
+            )
+        )
+
+    return SessionDetailResponse(
+        session_id=session.id,
+        session_name=session.name or "",
+        current_assignment_index=current_index,
+        assignments=ark_assignments,
+    )
 
 
 @router.get("/students/{student_id}/sessions", response_model=SessionHistoryResponse)
