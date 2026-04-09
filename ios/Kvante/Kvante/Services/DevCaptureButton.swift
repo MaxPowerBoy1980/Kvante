@@ -101,10 +101,10 @@ private struct DevCaptureButtonModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .overlay(alignment: .bottomTrailing) {
+            .overlay(alignment: .topTrailing) {
                 DevKvanteFloatingButton(action: triggerCapture)
                     .padding(.trailing, 16)
-                    .padding(.bottom, 16)
+                    .padding(.top, 60)
                     .allowsHitTesting(!sheetPresented)
             }
             .sheet(isPresented: $sheetPresented) {
