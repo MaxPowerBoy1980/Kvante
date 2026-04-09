@@ -96,3 +96,42 @@ def test_session_detail_answer_fields_null_without_submission(client, test_db):
     a = resp.json()["assignments"][0]
     assert a["correct_answer"] == "80"
     assert a["student_answer"] is None
+
+
+def _seed_many_sessions(db, count=25):
+    """Create multiple sessions for limit testing."""
+    student = db.query(Student).filter(Student.id == "default").first()
+    for i in range(count):
+        session = Session(
+            id=f"limit-test-{i}",
+            student_id=student.id,
+            name=f"Session {i}",
+            mode="weekly",
+            status="completed",
+        )
+        db.add(session)
+    db.commit()
+
+
+def test_session_history_default_limit_20(client, test_db):
+    """Default limit should return at most 20 sessions."""
+    _seed_many_sessions(test_db, 25)
+    resp = client.get("/students/default/sessions")
+    assert resp.status_code == 200
+    assert len(resp.json()["sessions"]) == 20
+
+
+def test_session_history_limit_zero_returns_all(client, test_db):
+    """limit=0 should return all sessions."""
+    _seed_many_sessions(test_db, 25)
+    resp = client.get("/students/default/sessions?limit=0")
+    assert resp.status_code == 200
+    assert len(resp.json()["sessions"]) == 25
+
+
+def test_session_history_custom_limit(client, test_db):
+    """Custom limit should be respected."""
+    _seed_many_sessions(test_db, 25)
+    resp = client.get("/students/default/sessions?limit=5")
+    assert resp.status_code == 200
+    assert len(resp.json()["sessions"]) == 5

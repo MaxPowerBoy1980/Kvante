@@ -342,15 +342,24 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
 
 
 @router.get("/students/{student_id}/sessions", response_model=SessionHistoryResponse)
-def get_session_history(student_id: str, db: DBSession = Depends(get_db)):
-    """Return session history for a student, most recent first."""
-    sessions = (
+def get_session_history(
+    student_id: str,
+    limit: int = 20,
+    db: DBSession = Depends(get_db),
+):
+    """Return session history for a student, most recent first.
+
+    Args:
+        limit: Max sessions to return. 0 = all sessions (used by notebook).
+    """
+    query = (
         db.query(Session)
         .filter(Session.student_id == student_id)
         .order_by(Session.created_at.desc())
-        .limit(20)
-        .all()
     )
+    if limit > 0:
+        query = query.limit(limit)
+    sessions = query.all()
 
     summaries = []
     for s in sessions:
