@@ -9,177 +9,198 @@ struct NewHomeView: View {
     let sessionHistory: [SessionSummary]
     let onTapSession: (SessionSummary) -> Void
 
+    /// Most recent weekly session for mini-ark preview
+    private var currentWeekly: SessionSummary? {
+        sessionHistory.first { !$0.isCompleted } ?? sessionHistory.first
+    }
+
     var body: some View {
         ZStack {
             KvanteTheme.Colors.cream.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                Spacer()
-
-                // Kvante avatar
-                ZStack {
-                    RoundedRectangle(cornerRadius: KvanteTheme.Shapes.avatarRadius * 2)
-                        .fill(KvanteTheme.Colors.kvanteAvatar)
-                        .frame(width: 80, height: 80)
-                    Text("🤖")
-                        .font(.system(size: 44))
-                }
-                .padding(.bottom, 20)
-
-                // Greeting
-                Text("Hej, \(profile.name)! 👋")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundStyle(KvanteTheme.Colors.ink)
-
-                Text("Klar til at blive endnu skarpere til matematik i dag?")
-                    .font(.subheadline)
-                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                    .padding(.top, 8)
-
-                Spacer()
-
-                // Two cards side by side
-                HStack(spacing: 16) {
-                    // Ugematematik card
-                    homeCard(
-                        iconName: "book.closed",
-                        iconColor: KvanteTheme.Colors.primary,
-                        title: "Ugematematik",
-                        subtitle: "Dine opgaver venter",
-                        buttonLabel: "Start opgaver",
-                        buttonStyle: KvanteTheme.TactileButtonStyle.primary,
-                        action: onWeekly,
-                        disabled: serverDiscovery.serverURL == nil
-                    )
-
-                    // Øvelser card
-                    homeCard(
-                        iconName: "dumbbell",
-                        iconColor: KvanteTheme.Colors.teal,
-                        title: "Øvelser",
-                        subtitle: "Træn de emner du har sværest ved",
-                        buttonLabel: "Vælg øvelse",
-                        buttonStyle: KvanteTheme.TactileButtonStyle.secondary,
-                        action: onPractice,
-                        disabled: serverDiscovery.serverURL == nil
-                    )
-                }
-                .padding(.horizontal, 24)
-
-                // Server status
-                if serverDiscovery.serverURL == nil {
-                    Text(serverDiscovery.isSearching
-                        ? "Leder efter serveren..."
-                        : "Ingen server fundet")
-                        .font(.caption)
-                        .foregroundStyle(KvanteTheme.Colors.textMuted)
-                        .padding(.top, 12)
-                }
-
-                // Session history
-                if !sessionHistory.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Seneste")
-                            .font(.subheadline.weight(.semibold))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Welcome
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Hej, \(profile.name)!")
+                            .font(.system(size: 26, weight: .bold))
                             .foregroundStyle(KvanteTheme.Colors.ink)
-                            .padding(.horizontal, 24)
-                            .padding(.top, 16)
 
-                        ForEach(sessionHistory.prefix(5)) { session in
-                            Button { onTapSession(session) } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: session.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .font(.body)
-                                        .foregroundStyle(session.isCompleted ? KvanteTheme.Colors.success : KvanteTheme.Colors.textMuted)
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(session.name)
-                                            .font(.subheadline.weight(.medium))
-                                            .foregroundStyle(KvanteTheme.Colors.ink)
-                                        Text("\(session.completedCount)/\(session.assignmentCount) opgaver · \(session.displayDate)")
-                                            .font(.caption)
-                                            .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                                    }
-
-                                    Spacer()
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundStyle(KvanteTheme.Colors.textMuted)
-                                }
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(.plain)
+                        if let weekly = currentWeekly {
+                            let remaining = weekly.assignmentCount - weekly.completedCount
+                            Text("\(weekly.name) — du har \(remaining) opgave\(remaining == 1 ? "" : "r") tilbage")
+                                .font(.system(size: 15))
+                                .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                        } else {
+                            Text("Klar til at blive skarpere til matematik?")
+                                .font(.system(size: 15))
+                                .foregroundStyle(KvanteTheme.Colors.textSecondary)
                         }
                     }
-                }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
 
-                Spacer()
+                    // Primary CTA: Weekly math
+                    weeklyCard
+                        .padding(.horizontal, 24)
+
+                    // Secondary: Practice
+                    practiceCard
+                        .padding(.horizontal, 24)
+
+                    // Server status
+                    if serverDiscovery.serverURL == nil {
+                        Text(serverDiscovery.isSearching
+                            ? "Leder efter serveren..."
+                            : "Ingen server fundet")
+                            .font(.caption)
+                            .foregroundStyle(KvanteTheme.Colors.textMuted)
+                            .padding(.horizontal, 24)
+                    }
+
+                    Spacer(minLength: 40)
+                }
             }
         }
     }
 
-    // MARK: - Home Card
+    // MARK: - Weekly Card
 
-    private func homeCard(
-        iconName: String,
-        iconColor: Color,
-        title: String,
-        subtitle: String,
-        buttonLabel: String,
-        buttonStyle: KvanteTheme.TactileButtonStyle,
-        action: @escaping () -> Void,
-        disabled: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Icon box
-            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.iconBoxRadius)
-                .fill(iconColor.opacity(0.1))
-                .frame(width: 48, height: 48)
-                .overlay(
-                    Image(systemName: iconName)
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(iconColor)
-                )
+    private var weeklyCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Ugens matematik")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(KvanteTheme.Colors.ink)
 
-            // Title + subtitle
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(KvanteTheme.Colors.ink)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.6))
-                    .fixedSize(horizontal: false, vertical: true)
+            if let weekly = currentWeekly {
+                Text("Næste: \(weekly.name)")
+                    .font(.system(size: 13))
+                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
+
+                // Mini-ark preview
+                HStack(spacing: 8) {
+                    ForEach(0..<weekly.assignmentCount, id: \.self) { i in
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(miniArkColor(index: i, completed: weekly.completedCount))
+                            .frame(height: 40)
+                            .frame(maxWidth: .infinity)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(miniArkBorder(index: i, completed: weekly.completedCount), lineWidth: miniArkBorderWidth(index: i, completed: weekly.completedCount))
+                            )
+                            .overlay(miniArkLabel(index: i, completed: weekly.completedCount))
+                    }
+                }
             }
 
-            Spacer()
-
-            // CTA button
-            Button(action: action) {
-                Text(buttonLabel)
+            Button(action: {
+                if let weekly = currentWeekly {
+                    onTapSession(weekly)
+                } else {
+                    onWeekly()
+                }
+            }) {
+                Text(currentWeekly != nil ? "Fortsæt" : "Start ugens opgaver")
                     .font(KvanteTheme.Fonts.buttonLabel)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 14)
             }
-            .buttonStyle(buttonStyle)
-            .disabled(disabled)
-            .opacity(disabled ? 0.5 : 1)
+            .buttonStyle(KvanteTheme.TactileButtonStyle.primary)
+            .disabled(serverDiscovery.serverURL == nil)
+            .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .frame(height: 200)
+        .padding(20)
         .background(
             RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
-                .fill(KvanteTheme.Colors.card)
+                .fill(Color.white)
                 .overlay(
                     RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
-                        .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 2)
+                        .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1.5)
                 )
+                .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
         )
+    }
+
+    // MARK: - Practice Card
+
+    private var practiceCard: some View {
+        Button(action: onPractice) {
+            HStack(spacing: 14) {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(KvanteTheme.Colors.teal.opacity(0.1))
+                    .frame(width: 42, height: 42)
+                    .overlay(
+                        Image(systemName: "dumbbell")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(KvanteTheme.Colors.teal)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ekstra øvelser")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(KvanteTheme.Colors.ink)
+                    Text("Træn det du har sværest ved")
+                        .font(.system(size: 12))
+                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(KvanteTheme.Colors.textMuted)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                    .fill(Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                            .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1.5)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(serverDiscovery.serverURL == nil)
+        .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
+    }
+
+    // MARK: - Mini Ark Helpers
+
+    private func miniArkColor(index: Int, completed: Int) -> Color {
+        if index < completed {
+            return KvanteTheme.Colors.success.opacity(0.1)
+        } else if index == completed {
+            return KvanteTheme.Colors.primary.opacity(0.1)
+        }
+        return KvanteTheme.Colors.ink.opacity(0.03)
+    }
+
+    private func miniArkBorder(index: Int, completed: Int) -> Color {
+        if index < completed {
+            return KvanteTheme.Colors.success.opacity(0.3)
+        } else if index == completed {
+            return KvanteTheme.Colors.primary.opacity(0.4)
+        }
+        return KvanteTheme.Colors.ink.opacity(0.12)
+    }
+
+    private func miniArkBorderWidth(index: Int, completed: Int) -> CGFloat {
+        if index == completed { return 2 }
+        return 1.5
+    }
+
+    @ViewBuilder
+    private func miniArkLabel(index: Int, completed: Int) -> some View {
+        if index < completed {
+            Text("✓")
+                .font(.system(size: 10))
+                .foregroundStyle(KvanteTheme.Colors.success)
+        } else if index == completed {
+            Text("\(index + 1)")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(KvanteTheme.Colors.primary)
+        }
     }
 }
