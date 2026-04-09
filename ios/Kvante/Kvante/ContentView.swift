@@ -102,7 +102,7 @@ struct ContentView: View {
         .onAppear {
             serverDiscovery.startSearching()
         }
-        .devScreenshotSubmit(apiClient: apiClient)
+        .devCaptureButton(apiClient: apiClient)
     }
 
     private func startPracticeSession(topic: String, difficulty: Int) {

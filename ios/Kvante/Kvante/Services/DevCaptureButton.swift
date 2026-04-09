@@ -1,13 +1,15 @@
-// DevScreenshotSubmit.swift
+// DevCaptureButton.swift
 //
-// Debug-only feature: capture a screenshot and send it (with an optional
-// note) to the backend's /dev/screenshots endpoint. Claude can then fetch
-// the latest screenshot during a dev session to inspect what the user is
-// seeing.
+// Debug-only feature: a global floating Kvante-styled capture button.
+// Tap opens a note-first capture sheet where the user can write a TODO,
+// optionally attach a screenshot of the underlying screen, and annotate
+// it with Apple Pencil. Replaces the old shake-to-submit screenshot flow.
 //
-// Two triggers:
-// 1. Tap the floating camera button in the bottom-right corner
-// 2. Shake the iPad (alternative/fallback gesture)
+// Note-first semantics: the screenshot is captured in the background when
+// the button is tapped, held in memory, and only attached to a submission
+// if the user explicitly taps "Tag billede" in the sheet. This keeps pure
+// note-capture friction-free while still making the underlying screen
+// available.
 //
 // All code in this file is gated by #if DEBUG and stripped from release
 // builds.
@@ -16,28 +18,11 @@
 import SwiftUI
 import UIKit
 
-// MARK: - Shake detection
-//
-// SwiftUI doesn't expose motion events directly, so we extend UIWindow
-// to post a notification on shake. The view modifier listens for it.
-
-extension Notification.Name {
-    static let kvanteDeviceDidShake = Notification.Name("kvanteDeviceDidShake")
-}
-
-extension UIWindow {
-    open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-        super.motionEnded(motion, with: event)
-        if motion == .motionShake {
-            NotificationCenter.default.post(name: .kvanteDeviceDidShake, object: nil)
-        }
-    }
-}
-
-// MARK: - Screenshot capture
+// MARK: - Screenshot capture (unchanged helper)
 
 enum ScreenshotCapture {
     /// Render the current key window into a UIImage.
+    /// Returns nil if no key window is available (unlikely in practice).
     static func captureKeyWindow() -> UIImage? {
         guard let window = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
@@ -52,163 +37,99 @@ enum ScreenshotCapture {
     }
 }
 
-// MARK: - Submit sheet
+// MARK: - Floating Kvante FAB
 
-struct DevScreenshotSubmitSheet: View {
-    let image: UIImage
-    let apiClient: APIClient?
-    let onDismiss: () -> Void
-
-    @State private var note: String = ""
-    @State private var isSubmitting = false
-    @State private var errorMessage: String?
-    @State private var didSucceed = false
+private struct DevKvanteFloatingButton: View {
+    let action: () -> Void
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxHeight: 320)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
+        Button(action: action) {
+            ZStack(alignment: .topLeading) {
+                // Base circle — Kvante orange/coral
+                Circle()
+                    .fill(Color(red: 0.85, green: 0.48, blue: 0.35))
+                    .frame(width: 44, height: 44)
+                    .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Note til Claude (valgfri)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("fx: knappen er for lille her", text: $note, axis: .vertical)
-                        .lineLimit(2...4)
-                        .textFieldStyle(.roundedBorder)
+                // Stylized eyes (two black dots)
+                HStack(spacing: 6) {
+                    Circle().fill(Color.black).frame(width: 5, height: 5)
+                    Circle().fill(Color.black).frame(width: 5, height: 5)
                 }
+                .offset(x: 12, y: 18)
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                // Coral pom-pom antenna
+                Path { path in
+                    path.move(to: CGPoint(x: 22, y: 2))
+                    path.addLine(to: CGPoint(x: 22, y: -4))
                 }
+                .stroke(Color(red: 0.93, green: 0.4, blue: 0.55), lineWidth: 2)
+                .offset(x: 0, y: 0)
 
-                if didSucceed {
-                    Text("Sendt ✓")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                }
+                Circle()
+                    .fill(Color(red: 0.93, green: 0.4, blue: 0.55))
+                    .frame(width: 6, height: 6)
+                    .offset(x: 19, y: -8)
 
-                Spacer()
+                // DEV badge
+                Text("DEV")
+                    .font(.system(size: 7, weight: .heavy, design: .monospaced))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(Color.black.opacity(0.75))
+                    .cornerRadius(2)
+                    .offset(x: -2, y: 28)
             }
-            .padding()
-            .navigationTitle("Send screenshot")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuller", action: onDismiss)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { Task { await submit() } }
-                        .disabled(isSubmitting || apiClient == nil)
-                }
-            }
-            .interactiveDismissDisabled(isSubmitting)
+            .frame(width: 44, height: 44)
         }
-    }
-
-    private func submit() async {
-        guard let apiClient else {
-            errorMessage = "Ingen forbindelse til serveren"
-            return
-        }
-        guard let pngData = image.pngData() else {
-            errorMessage = "Kunne ikke kode billedet"
-            return
-        }
-        isSubmitting = true
-        errorMessage = nil
-        do {
-            try await apiClient.submitDevScreenshot(imageData: pngData, note: note)
-            didSucceed = true
-            // Auto-dismiss after a brief confirmation
-            try? await Task.sleep(nanoseconds: 600_000_000)
-            onDismiss()
-        } catch {
-            errorMessage = error.localizedDescription
-            isSubmitting = false
-        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Dev capture")
     }
 }
 
 // MARK: - View modifier
 
-// MARK: - Floating button overlay
-
-private struct DevScreenshotFloatingButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "camera.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(
-                    Circle()
-                        .fill(Color.orange.opacity(0.85))
-                        .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Send debug screenshot")
-    }
-}
-
-// MARK: - Combined modifier (shake + floating button)
-
-private struct DevScreenshotSubmitModifier: ViewModifier {
+private struct DevCaptureButtonModifier: ViewModifier {
     let apiClient: APIClient?
-    @State private var captured: UIImage?
+
+    // pendingScreenshot is captured BEFORE the sheet is presented
+    // (at FAB tap time), held in memory, and only attached to a submission
+    // if the user explicitly taps "Tag billede" in the sheet.
+    @State private var pendingScreenshot: UIImage?
+    @State private var sheetPresented = false
 
     func body(content: Content) -> some View {
         content
-            .onReceive(NotificationCenter.default.publisher(for: .kvanteDeviceDidShake)) { _ in
-                triggerCapture()
-            }
             .overlay(alignment: .bottomTrailing) {
-                DevScreenshotFloatingButton(action: triggerCapture)
+                DevKvanteFloatingButton(action: triggerCapture)
                     .padding(.trailing, 16)
                     .padding(.bottom, 16)
-                    .allowsHitTesting(captured == nil)
+                    .allowsHitTesting(!sheetPresented)
             }
-            .sheet(item: Binding(
-                get: { captured.map { ImageWrapper(image: $0) } },
-                set: { if $0 == nil { captured = nil } }
-            )) { wrapper in
-                DevScreenshotSubmitSheet(
-                    image: wrapper.image,
+            .sheet(isPresented: $sheetPresented) {
+                DevCaptureSheet(
+                    pendingScreenshot: pendingScreenshot,
                     apiClient: apiClient,
-                    onDismiss: { captured = nil }
+                    onDismiss: {
+                        sheetPresented = false
+                        pendingScreenshot = nil
+                    }
                 )
             }
     }
 
     private func triggerCapture() {
-        guard captured == nil else { return }
-        captured = ScreenshotCapture.captureKeyWindow()
+        pendingScreenshot = ScreenshotCapture.captureKeyWindow()
+        sheetPresented = true
     }
 }
 
-private struct ImageWrapper: Identifiable {
-    let id = UUID()
-    let image: UIImage
-}
-
 extension View {
-    /// Attach the dev screenshot submit feature (floating button + shake
-    /// gesture). Debug-only; becomes a no-op in release builds.
-    func devScreenshotSubmit(apiClient: APIClient?) -> some View {
-        modifier(DevScreenshotSubmitModifier(apiClient: apiClient))
+    /// Attach the dev capture feature (floating Kvante button + sheet).
+    /// Debug-only; becomes a no-op in release builds.
+    func devCaptureButton(apiClient: APIClient?) -> some View {
+        modifier(DevCaptureButtonModifier(apiClient: apiClient))
     }
 }
 
@@ -218,7 +139,7 @@ import SwiftUI
 
 extension View {
     /// Release builds: no-op so callers don't need their own #if DEBUG.
-    func devScreenshotSubmit(apiClient: Any?) -> some View {
+    func devCaptureButton(apiClient: Any?) -> some View {
         self
     }
 }
