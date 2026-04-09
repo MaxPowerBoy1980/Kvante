@@ -60,3 +60,11 @@ def test_get_streak_new_student(test_db, student_id):
     assert result.current_streak == 0
     assert result.longest_streak == 0
     assert result.last_active_date is None
+
+
+def test_get_streak_endpoint(client, student_id):
+    response = client.get(f"/students/{student_id}/streak")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["current_streak"] == 0
+    assert data["longest_streak"] == 0

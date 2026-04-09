@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.db import Assignment, Session, Submission
 from app.models.schemas import ErrorResponse, SubmissionResponse
 from app.services.answer_reader import read_student_answer, compare_answer
+from app.services.streak_service import update_streak
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -122,6 +123,9 @@ async def submit_work(
     submission.analysis = analysis
     assignment.status = "complete" if is_correct else "in_progress"
     db.commit()
+
+    if is_correct:
+        update_streak(db, session.student_id)
 
     return SubmissionResponse(
         submission_id=submission.id,
