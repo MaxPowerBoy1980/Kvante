@@ -3,6 +3,7 @@
 ## Gennemført
 
 ### 2026-04-09
+- [x] **SF Symbols brainstorm** — Afsluttet hurtigt: SF Symbols beholdes for utility-ikoner. Kvante-specifikke elementer (cirkel-progres-prikker, lyn-zigzag) bliver SwiftUI `Path`/`Shape`, ikke symboler. Ingen custom illustration nødvendig.
 - [x] **Pakke 2a: Ark-overlay (navigations-refactor)** — Ny ark-skærm mellem Home og Chat. Alle session-entries (weekly, practice, fortsæt) lander på arket først med 2-kolonne grid over opgaver, scan-thumbnails af løsninger, status-farvekodning (done/inProgress/notStarted), feedback-teaser + "i"-ikon feedback-preview-sheet. Ny `@Observable SessionViewModel` delt mellem ark og chat — ChatViewModel tyndet, delegerer assignment-state. `NavigationStack(path:)` med `SessionRoute`-enum (.ark, .chat). "Mit ark"-knap i chat-header. Backend: `GET /sessions/{id}` udvidet med `ark_status`, `latest_scan_id`, `latest_ai_feedback_summary`, `teacher_comment` (null i 2a), `session_name`, `current_assignment_index` — 15 pytest tests. Bug fixes bundlet: "complete/completed" status-mismatch + practice session tomme names. iOS nye filer: `SessionViewModel`, `ScanImageCache` (NSCache + ImageIO downsampling), `AssignmentSheetView` (papir-tekstur Canvas), `ArkCell`, `FeedbackPreviewSheet`. Slettet: `ProgressPillView`, `SessionDashboardView`, `PracticeSessionView`. Branch: `feature/pakke-2a-ark-overlay`. Spec: `docs/superpowers/specs/2026-04-09-pakke-2a-ark-overlay-design.md`. Plan: `docs/superpowers/plans/2026-04-09-pakke-2a-ark-overlay.md`.
 - [x] **Dev-tooling: Global Kvante-capture-knap** — Erstatter shake-to-submit med note-first capture-sheet. Global Kvante-styled FAB (bottom-right, DEV-badge), PencilKit full-screen annotation, to separate storage-paths (`dev-todos/` uden retention, `dev-screenshots/` uændret). Backend Phase A (merget direkte til main 2026-04-08/09): nye `/dev/todos`-endpoints (POST/GET list/latest/{id}/{id}/image/DELETE 204) med pytest-TDD per endpoint + no-retention verification-test. iOS Phase B (`feature/dev-tooling-capture` → main): `APIClient.submitDevTodo`, `DevCaptureButton` (Kvante FAB + DEV-badge), `DevCaptureSheet` (auto-focused TextField, TODO-toggle router mellem `/dev/todos` og `/dev/screenshots`, opt-in "Tag billede"), `DevAnnotationEditor` (PencilKit med `CanvasRepresentable`, flatten med `originalImage.size` koordinat-konsistens) — alt `#if DEBUG`-gated, verificeret via Release build. Phase B udnyttede at Xcode-projektet bruger `PBXFileSystemSynchronizedRootGroup` så fil-renames og nye filer ikke kræver pbxproj-ændringer. Spec: `docs/superpowers/specs/2026-04-08-dev-tooling-global-kvante-capture-design.md`. Plan: `docs/superpowers/plans/2026-04-08-dev-tooling-capture.md`.
 
@@ -29,22 +30,19 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 
 **Pakke 1 (Session persistence) er gennemført 2026-04-08**, **Dev-tooling capture-knap er gennemført 2026-04-09**, og **Pakke 2a (Ark-overlay) er gennemført 2026-04-09** — se "Gennemført"-sektionen øverst.
 
-### 1. SF Symbols brainstorm (lille, standalone)
-Beslutning om cirkel-progres-prikker, lyn-zigzag, streak-flamme og utility-ikoner: SF Symbols vs. custom illustration. Output: én-sides beslutningsdokument per ikon-type. Kan køre parallelt med 2a. Sandsynligt resultat: blanding (SF Symbols for utility, custom for Kvante-specifik personlighed).
-
-### 2. Pakke 2b — Cirkel-progres + streak-backend + celebration
+### 1. Pakke 2b — Cirkel-progres + streak-backend + celebration
 Cirkel-progres-komponenten baseret på Kvantes plush-bryst-panel. Prikker fyldes ved korrekte svar med scale pulse, haptik, lyd-cue og koral lyn-zigzag-flash. Lyn bliver celebration-signaturen; flueben kun i teknisk scan-feedback. Streak-tabel (`UserStreak { last_active_date, current_streak }`), pr. opgave, ikke pr. tid. Komponenten skal være klar til montering i pakke 3.
 
-### 3. Pakke 3 — Home redesign + "i dag"-helten + bonus-mode + difficulty-ikoner
+### 2. Pakke 3 — Home redesign + "i dag"-helten + bonus-mode + difficulty-ikoner
 Ny home med tre-tilstands "i dag"-boks (intet i dag / i gang / færdig). Streak-flamme øverst til højre. Seneste-listen fjernes. Kvantes udtryk skifter mellem neutral / lidt smil / store øjne. **Difficulty-ikoner-redesign foldet ind** — de nuværende plante-ikoner udskiftes som del af pakke 3's visuelle sprog, ikke som separat item. Bog-knappens plads reserveres i layoutet, men selve knappen tilføjes først som del af pakke 5 (undgår "død knap"-tilstand).
 
-### 4. Pakke 5 — Bog-arkivet ("Din matematikbog")
+### 3. Pakke 5 — Bog-arkivet ("Din matematikbog")
 **Flyttet op foran pakke 4** fordi den er helt dependency-fri (pakke 1 leverede al data) og lavere-risiko (read-only view, ingen nye backend-koncepter, ingen nye AI-flows). God "pause" efter to UI-tunge pakker før pakke 4's AI-kompleksitet. Side-for-side hæfte, hver session = én side, grupperet pr. uge. Kvante på omslaget. Swipe venstre/højre. Pakke 5 tilføjer også bog-knappen til pakke 3's reserverede layout-plads.
 
-### 5. Pakke 4 — Bulk-scan hele arket + AI fejlanalyse
+### 4. Pakke 4 — Bulk-scan hele arket + AI fejlanalyse
 `POST /sessions/{id}/bulk-submit` med hele A4-arket. Gemini Vision udtrækker regnestykker + svar, matcher mod sessionens opgaver, validerer. Batch-update af ark-overlay (✓/✗/?). Samlet feedback-kort i chatten. **AI fejlanalyse foldet ind** — pakke 4's spec dækker eksplicit "tap rød opgave → detaljeret fejlanalyse" (ikke svag "prøv igen"). Udfordringer i spec: long mult over flere linjer, OCR-fejl, delvise ark, re-scan, kruseduller.
 
-### 6. Single-digit polish-bundle
+### 5. Single-digit polish-bundle
 Samlet pass gennem single-digit multiplikations-koden:
 - **Fix Vision OCR routing:** `should_use_vision_ocr_for_submission(assignment_text)` returnerer kun True når mindst én operand ≥ 10. "via Vision"-label baseret på faktisk path, ikke hardcoded. (Ophøjet fra Kendte bugs)
 - **Fix feedback-tekst:** prompt skal kende forskel på single-digit og long mult. "Du kendte 7 × 8 fra 8-tabellen — 56, helt rigtigt" i stedet for "du gangede ciffer for ciffer med delprodukter". (Ophøjet fra Kendte bugs)
@@ -52,15 +50,15 @@ Samlet pass gennem single-digit multiplikations-koden:
 
 Bundling undgår at røre single-digit-koden tre gange. Bør ordnes før pakke 4's bulk-scan rammer single-digit-submissions.
 
-### 7. Long mult polish-bundle
+### 6. Long mult polish-bundle
 Samlet pass gennem long mult-koden:
 - **Sequential narration-animation:** brainstorm først (retning B: sætning-for-sætning animation i samme boble, eller retning D: fjern tekst, lad grid + audio bære). Start med brainstorm af hvad "ro og klarhed" betyder for 9-13-årig.
 - **Completed LongMultiplicationState efter submission:** static factory `LongMultiplicationState.completed(a:b:)`, multiplikations-success branch bruger `exampleStep` med completed state i stedet for ren tekst. Bringer multiplication op på parity med addition/subtraction.
 
-### 8. Tabel-øvelser (ny feature)
+### 7. Tabel-øvelser (ny feature)
 Separat øvelsesmode hvor eleven træner gangetabellerne systematisk som selvstændig aktivitet, ikke del af opgave-løsning. Kræver egen brainstorm: mode (quick-fire / audio / visuel), adaptivitet, scoring, UI-placering. Fundamentet under al multiplikation.
 
-### 9. Lang division visual
+### 8. Lang division visual
 Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som long-mult (`compute_steps` + `pick_example_numbers` + `generate_text`). Kræver egen brainstorm + spec. Sidste core math method der mangler visual.
 
 ---
