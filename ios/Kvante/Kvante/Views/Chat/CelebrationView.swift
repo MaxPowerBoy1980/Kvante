@@ -3,24 +3,16 @@ import SwiftUI
 struct CelebrationView: View {
     let tier: CelebrationTier
 
-    @State private var animateScale = false
+    @State private var animateFlash = false
 
     var body: some View {
         VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(KvanteTheme.Colors.success.opacity(0.1))
-                    .frame(width: iconSize, height: iconSize)
-                Image(systemName: "checkmark")
-                    .font(.system(size: iconSize * 0.4, weight: .bold))
-                    .foregroundStyle(KvanteTheme.Colors.success)
-            }
-            .scaleEffect(animateScale ? 1.0 : 0.5)
-            .opacity(animateScale ? 1.0 : 0)
+            // Lightning zigzag instead of checkmark
+            LightningCelebration(size: iconSize)
 
             Text(title)
                 .font(.system(size: fontSize, weight: .bold))
-                .foregroundStyle(KvanteTheme.Colors.success)
+                .foregroundStyle(KvanteTheme.Colors.coral)
 
             if !subtitle.isEmpty {
                 Text(subtitle)
@@ -33,16 +25,22 @@ struct CelebrationView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
-                .fill(KvanteTheme.Colors.success.opacity(0.1))
+                .fill(KvanteTheme.Colors.coral.opacity(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
-                        .stroke(KvanteTheme.Colors.success, lineWidth: 2)
+                        .stroke(KvanteTheme.Colors.coral.opacity(0.3), lineWidth: 1.5)
                 )
         )
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
-                animateScale = true
+            // Haptic feedback
+            let generator = UIImpactFeedbackGenerator(style: tier == .setComplete ? .heavy : .medium)
+            generator.impactOccurred()
+
+            if tier == .setComplete {
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
             }
+
+            // Header animation is triggered separately via NotificationCenter (Task 9)
         }
     }
 
