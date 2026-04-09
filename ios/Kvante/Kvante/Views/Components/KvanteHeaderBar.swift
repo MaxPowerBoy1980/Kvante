@@ -7,7 +7,6 @@ extension Notification.Name {
 struct KvanteHeaderBar: View {
     var session: SessionViewModel?
     var onNavigateHome: (() -> Void)? = nil
-    var onNavigateToAssignment: (() -> Void)? = nil
     @State private var isExpanded = false
     @State private var celebratingDotIndex: Int? = nil
     @State private var expression: KvanteExpression = .neutral
@@ -15,6 +14,7 @@ struct KvanteHeaderBar: View {
     var body: some View {
         VStack(spacing: 0) {
             collapsedBar
+                .contentShape(Rectangle())
                 .onTapGesture { withAnimation(.spring(response: 0.3)) { isExpanded.toggle() } }
 
             if isExpanded {
@@ -37,8 +37,8 @@ struct KvanteHeaderBar: View {
 
     private var collapsedBar: some View {
         HStack(spacing: 12) {
-            KvanteFace(expression: expression, size: 34)
-                .padding(.leading, 4)
+            KvanteFace(expression: expression, size: 28)
+                .clipped()
 
             if let session {
                 ProgressDotsView(
@@ -61,25 +61,17 @@ struct KvanteHeaderBar: View {
             Spacer()
 
             StreakBadge(streak: session?.currentStreak ?? 0)
-
-            if isExpanded {
-                Button { withAnimation(.spring(response: 0.3)) { isExpanded = false } } label: {
-                    Image(systemName: "xmark")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(KvanteTheme.Colors.textMuted)
-                }
-            }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 6)
     }
 
     // MARK: - Expanded
 
     private var expandedPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             if let session {
-                // Session active — show progress + next assignment
+                // Session active — progress + streak
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         ProgressDotsView(
@@ -103,70 +95,33 @@ struct KvanteHeaderBar: View {
                     }
                 }
 
-                // Next assignment card — bigger and tappable
-                if !session.isSetComplete {
-                    let next = session.currentAssignment
-                    let idx = session.currentAssignmentIndex
-                    Button {
-                        withAnimation(.spring(response: 0.3)) { isExpanded = false }
-                        onNavigateToAssignment?()
-                    } label: {
-                        HStack(spacing: 14) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(KvanteTheme.Colors.primary.opacity(0.1))
-                                .frame(width: 40, height: 40)
-                                .overlay(
-                                    Text("\(idx + 1)")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(KvanteTheme.Colors.primary)
-                                )
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(next.text)
-                                    .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(KvanteTheme.Colors.ink)
-                                    .lineLimit(1)
-                                Text("Næste opgave")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                            }
-                            Spacer()
-                            Text("Løs →")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(KvanteTheme.Colors.teal)
-                        }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1.5)
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                // Home link
+                // Home button (icon)
                 if onNavigateHome != nil {
                     Button {
                         withAnimation(.spring(response: 0.3)) { isExpanded = false }
                         onNavigateHome?()
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 12, weight: .semibold))
+                            Image(systemName: "house.fill")
+                                .font(.system(size: 14))
                             Text("Hjem")
                                 .font(.system(size: 13, weight: .medium))
                         }
                         .foregroundStyle(KvanteTheme.Colors.ink)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(KvanteTheme.Colors.muted)
+                        )
                     }
                     .buttonStyle(.plain)
                 }
             } else {
-                // No session — show welcome message
+                // No session — welcome message
                 HStack(spacing: 12) {
-                    KvanteFace(expression: .happy, size: 48)
+                    KvanteFace(expression: .happy, size: 44)
+                        .clipped()
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Klar til matematik?")
                             .font(.system(size: 15, weight: .semibold))
@@ -179,7 +134,7 @@ struct KvanteHeaderBar: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 16)
+        .padding(.bottom, 14)
         .background(
             LinearGradient(
                 colors: [KvanteTheme.Colors.kvanteFace.opacity(0.08), .clear],
