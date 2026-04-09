@@ -36,11 +36,19 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $sessionPath) {
-            ZStack {
-                KvanteTheme.Colors.background.ignoresSafeArea()
+        VStack(spacing: 0) {
+            KvanteHeaderBar(
+                session: activeSession,
+                onNavigateHome: sessionPath.isEmpty ? nil : {
+                    sessionPath.removeAll()
+                }
+            )
 
-                Group {
+            NavigationStack(path: $sessionPath) {
+                ZStack {
+                    KvanteTheme.Colors.background.ignoresSafeArea()
+
+                    Group {
                     if isLoading {
                         LoadingView(message: loadingMessage)
                     } else if profile == nil {
@@ -109,14 +117,6 @@ struct ContentView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .top) {
-            KvanteHeaderBar(
-                session: activeSession,
-                onNavigateHome: sessionPath.isEmpty ? nil : {
-                    sessionPath.removeAll()
-                }
-            )
-        }
         .onChange(of: sessionPath) { _, newValue in
             if newValue.isEmpty {
                 activeSession = nil
@@ -137,6 +137,7 @@ struct ContentView: View {
             serverDiscovery.startSearching()
         }
         .devCaptureButton(apiClient: apiClient)
+        } // VStack (header + NavigationStack)
     }
 
     // MARK: - Session Entry Flows

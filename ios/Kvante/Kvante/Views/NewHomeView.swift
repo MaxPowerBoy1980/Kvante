@@ -38,7 +38,7 @@ struct NewHomeView: View {
                         }
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 24)
+                    .padding(.top, 16)
 
                     // Primary CTA: Weekly math
                     weeklyCard
