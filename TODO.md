@@ -67,11 +67,12 @@ Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som
 
 ## Kendte bugs
 
-- [ ] **OCR-præcision** — Claude Haiku læser nogle gange forkert (856 i stedet for 850). Undersøg prompt eller model-valg.
+- [ ] **OCR-præcision** — Claude Haiku læser nogle gange forkert (856 i stedet for 850). Brøker er særligt problematiske: "1/4" læses som "4". Undersøg prompt eller model-valg.
 - [ ] **Swift 6 concurrency warnings** — `append` kaldt fra baggrundstråd på @MainActor property. Warnings nu, fejl i fremtiden.
 - [ ] **Visuel/tekst-konsistens** — AI skriver "æbler" men appen tegner cirkler. Prompt instruerer nu "prikker" men kan stadig ske.
 - [ ] **Opgaveforklaring på engelsk** — Explain-endpoint returnerer nogle gange engelsk tekst.
 - [ ] **AnimationPlayer.recalculateCumulativeState glemmer cumulativeGridState** — Pre-existing bug opdaget under T9 code review 2026-04-08. `recalculateCumulativeState` nulstiller `cumulativeShortDivisionState`, `cumulativeLongMultiplicationState`, og (nu) `cumulativeArrayGridState`, men IKKE `cumulativeGridState`. Kan give stale stacked-arithmetic grid-state ved backward scroll. Ikke kritisk — genopretter sig ved næste `setup`-step.
+- [ ] **Brøk-forklaringer utydelige** — Trin 3 i brøk-eksempler er utydelig. Brøk-eksempler skal simplificeres. Trin 4 flasher 1/4 af cirklen rundt (animationsfejl). Opdaget via dev-capture 2026-04-09.
 - [x] **Practice sessions har tom `name` på backend** — Fikset i Pakke 2a (2026-04-09). Genererer nu `"Øvelser — Topic (Difficulty)"`.
 - [x] **`completed_count` altid 0 pga. status string-mismatch** — Fikset i Pakke 2a (2026-04-09). Counter accepterer nu begge `"complete"` og `"completed"`.
 
