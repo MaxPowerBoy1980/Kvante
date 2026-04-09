@@ -609,6 +609,16 @@ class ChatViewModel {
                 content: .celebration(tier),
                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
             ))
+            // Trigger header bar celebration after delay
+            let completedIndex = currentAssignmentIndex
+            NotificationCenter.default.post(
+                name: .kvanteCelebration,
+                object: nil,
+                userInfo: [
+                    "assignmentIndex": completedIndex,
+                    "isSetComplete": session.isSetComplete
+                ]
+            )
         }
     }
 
