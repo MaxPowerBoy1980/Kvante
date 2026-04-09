@@ -6,6 +6,7 @@ import SwiftData
 enum SessionRoute: Hashable {
     case ark
     case chat
+    case notebook
 }
 
 // MARK: - ContentView
@@ -81,6 +82,7 @@ struct ContentView: View {
                             serverDiscovery: serverDiscovery,
                             onPractice: { showPractice = true },
                             onWeekly: { startWeeklySession() },
+                            onNotebook: { sessionPath = [.notebook] },
                             sessionHistory: sessionHistory,
                             onTapSession: { summary in
                                 resumeSession(summary)
@@ -112,6 +114,17 @@ struct ContentView: View {
                             viewModel: vm,
                             onBack: { sessionPath.removeLast() },
                             onShowArk: { sessionPath.removeLast() }
+                        )
+                    }
+                case .notebook:
+                    if let client = apiClient, let p = profile {
+                        let studentId = p.backendStudentId ?? "default"
+                        let vm = NotebookViewModel(apiClient: client, studentId: studentId)
+                        NotebookView(
+                            viewModel: vm,
+                            apiClient: client,
+                            studentName: p.name,
+                            onBack: { sessionPath.removeAll() }
                         )
                     }
                 }

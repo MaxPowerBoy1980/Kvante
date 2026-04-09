@@ -6,8 +6,11 @@ struct NewHomeView: View {
     let serverDiscovery: ServerDiscovery
     let onPractice: () -> Void
     let onWeekly: () -> Void
+    let onNotebook: () -> Void
     let sessionHistory: [SessionSummary]
     let onTapSession: (SessionSummary) -> Void
+
+    @State private var notebookSolvedCount: Int = 0
 
     /// Most recent weekly session for mini-ark preview
     private var currentWeekly: SessionSummary? {
@@ -46,6 +49,10 @@ struct NewHomeView: View {
 
                     // Secondary: Practice
                     practiceCard
+                        .padding(.horizontal, 24)
+
+                    // Notebook
+                    notebookCard
                         .padding(.horizontal, 24)
 
                     // Server status
@@ -164,6 +171,72 @@ struct NewHomeView: View {
         .buttonStyle(.plain)
         .disabled(serverDiscovery.serverURL == nil)
         .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
+    }
+
+    // MARK: - Notebook Card
+
+    private var notebookCard: some View {
+        Button(action: onNotebook) {
+            HStack(spacing: 14) {
+                // Mini book cover
+                ZStack {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(KvanteTheme.Colors.cream)
+                        .frame(width: 42, height: 54)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1)
+                        )
+                    // Mini book spine
+                    HStack(spacing: 0) {
+                        LinearGradient(
+                            colors: [Color(red: 0.91, green: 0.87, blue: 0.82), KvanteTheme.Colors.cream],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: 5)
+                        Spacer()
+                    }
+                    .frame(width: 42, height: 54)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+
+                    // Mini Kvante
+                    KvanteFace(expression: .happy)
+                        .frame(width: 18, height: 18)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Din matematikbog")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(KvanteTheme.Colors.ink)
+                    Text("\(profile.name) & Kvante — \(notebookSolvedCount) opgaver løst")
+                        .font(.system(size: 12))
+                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(KvanteTheme.Colors.textMuted)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                    .fill(Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                            .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1.5)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(serverDiscovery.serverURL == nil)
+        .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
+        .accessibilityLabel("Din matematikbog. \(notebookSolvedCount) opgaver løst")
+        .onAppear {
+            notebookSolvedCount = sessionHistory.reduce(0) { $0 + $1.completedCount }
+        }
     }
 
     // MARK: - Mini Ark Helpers
