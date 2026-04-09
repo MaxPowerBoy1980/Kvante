@@ -94,7 +94,9 @@ class ChatViewModel {
     // MARK: - Multi-assignment Navigation
 
     func advanceToNextAssignment() {
-        session.markCompleted(currentAssignment.id, feedback: nil)
+        // Note: markCompleted is called from showAnswerResult when answer
+        // is correct — NOT here. advanceToNextAssignment is also triggered
+        // by the "skip" chip, so it must not mark as done unconditionally.
 
         if isSetComplete {
             let celebration = ChatMessage(

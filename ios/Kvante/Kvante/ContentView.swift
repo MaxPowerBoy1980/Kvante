@@ -92,6 +92,9 @@ struct ContentView: View {
                             onSelectAssignment: { index in
                                 session.goToAssignment(index)
                                 sessionPath.append(.chat)
+                            },
+                            onBack: {
+                                sessionPath.removeAll()
                             }
                         )
                     }

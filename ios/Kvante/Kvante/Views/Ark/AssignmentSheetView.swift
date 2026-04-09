@@ -14,6 +14,7 @@ struct AssignmentSheetView: View {
     let session: SessionViewModel
     let apiClient: APIClient
     let onSelectAssignment: (Int) -> Void
+    var onBack: (() -> Void)?
 
     @State private var presentedFeedback: ArkFeedbackItem?
 
@@ -95,7 +96,7 @@ struct AssignmentSheetView: View {
             // Back button
             HStack {
                 Button {
-                    // Pop back to home — handled by NavigationStack
+                    onBack?()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
