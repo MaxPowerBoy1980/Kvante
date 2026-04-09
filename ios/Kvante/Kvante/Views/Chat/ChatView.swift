@@ -3,6 +3,7 @@ import SwiftUI
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     var onBack: (() -> Void)?
+    var onShowArk: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,20 +36,7 @@ struct ChatView: View {
 
     @ViewBuilder
     private var chatContent: some View {
-        // Progress pill
-        if viewModel.allAssignments.count > 1 {
-            ProgressPillView(
-                currentIndex: viewModel.currentAssignmentIndex,
-                totalCount: viewModel.totalAssignments,
-                completedIds: viewModel.completedAssignmentIds,
-                assignments: viewModel.allAssignments,
-                onTapAssignment: { index in
-                    viewModel.jumpToAssignment(index)
-                }
-            )
-        }
-
-        // Sticky assignment bar
+        // Sticky assignment bar (ProgressPillView removed — replaced by ark)
         HStack(spacing: 8) {
             Text(viewModel.currentAssignment.text)
                 .font(.subheadline.weight(.semibold))
@@ -139,7 +127,7 @@ struct ChatView: View {
                         RoundedRectangle(cornerRadius: KvanteTheme.Shapes.avatarRadius)
                             .fill(KvanteTheme.Colors.kvanteAvatar)
                             .frame(width: 32, height: 32)
-                        Text("🤖")
+                        Text("\u{1F916}")
                             .font(.system(size: 16))
                     }
                     Text("Kvante")
@@ -155,6 +143,24 @@ struct ChatView: View {
                         .foregroundStyle(KvanteTheme.Colors.success)
                 }
             }
+
+            // "Mit ark" button (trailing) — NEW
+            HStack {
+                Spacer()
+                Button {
+                    onShowArk?()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "list.bullet.rectangle")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Mit ark")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
         }
         .padding(.vertical, 12)
         .background(
