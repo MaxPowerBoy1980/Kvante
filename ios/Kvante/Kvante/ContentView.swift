@@ -109,6 +109,9 @@ struct ContentView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .top) {
+            KvanteHeaderBar(session: activeSession)
+        }
         .onChange(of: sessionPath) { _, newValue in
             if newValue.isEmpty {
                 activeSession = nil
