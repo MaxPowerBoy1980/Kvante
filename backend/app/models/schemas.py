@@ -202,3 +202,12 @@ class SessionDetailResponse(BaseModel):
     session_name: str
     current_assignment_index: int
     assignments: list[ArkAssignment]
+    streak: "StreakResponse | None" = None
+
+
+# --- Streak (Pakke 2b PR2) ---
+
+class StreakResponse(BaseModel):
+    current_streak: int
+    longest_streak: int
+    last_active_date: str | None  # ISO date in student's locale, or None if never active

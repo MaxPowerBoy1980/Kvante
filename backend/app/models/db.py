@@ -121,3 +121,16 @@ class ChatMessage(Base):
     content_type: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class UserStreak(Base):
+    __tablename__ = "user_streaks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    student_id: Mapped[str] = mapped_column(
+        String, ForeignKey("students.id"), nullable=False, unique=True
+    )
+    current_streak: Mapped[int] = mapped_column(Integer, default=0)
+    last_active_ts: Mapped[float] = mapped_column(Integer, default=0)  # UTC Unix timestamp
+    longest_streak: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
