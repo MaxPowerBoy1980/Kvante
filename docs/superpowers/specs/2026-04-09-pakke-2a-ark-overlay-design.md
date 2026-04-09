@@ -53,6 +53,7 @@ ContentView (NavigationStack med SessionRoute-path)
 ```
 ContentView
  └─ @State activeSession: SessionViewModel?     ← lever gennem hele session-path
+ └─ @State activeChatViewModel: ChatViewModel?  ← lever OGSÅ på ContentView-niveau
  └─ @State sessionPath: [SessionRoute] = []
 
 SessionViewModel (@Observable, NY)               ← delt mellem Ark og Chat
@@ -69,7 +70,17 @@ ChatViewModel (tyndet)
  └─ confirmAnswer() → session.markCompleted(...)
 ```
 
-`SessionViewModel` oprettes af ContentView ved session-start og ødelægges når `sessionPath` tømmes helt tilbage til Home. ChatViewModel holder blot en reference — den ejer ikke assignments-listen mere.
+**Kritisk livscyklus-detalje**: Både `SessionViewModel` *og* `ChatViewModel` ejes af ContentView som `@State`. `ChatViewModel` oprettes sammen med sessionen og genbruges ved gentagne Ark→Chat-skift. Hvis ChatViewModel blev oprettet i `navigationDestination`-closuren, ville chat-historikken nulstilles ved hvert Ark→Chat→Ark→Chat-loop. Ved at løfte den til ContentView overlever messages, inputText og al AI-state hele session-perioden.
+
+Begge nulstilles når `sessionPath` tømmes helt (eleven går til Home):
+```swift
+.onChange(of: sessionPath) { _, new in
+  if new.isEmpty {
+    activeSession = nil
+    activeChatViewModel = nil
+  }
+}
+```
 
 ### Hvorfor `@Observable` klasse (ikke struct)
 
@@ -155,7 +166,7 @@ def compute_ark_status(a: Assignment, submissions: list[Submission]) -> str:
 
 **`latest_ai_feedback_summary`** — `Submission.feedback_text` fra den seneste submission på assignmentet. Trunkeres til ~140 tegn (afkort ved sætnings-grænse + "…") i *backenden*, ikke iOS. Cellen viser yderligere `lineLimit(1)` (~60 tegn) af denne streng som teaser — den fulde ~140-tegns summary vises i FeedbackPreviewSheet.
 
-**`teacher_comment`** — altid `null` i Pakke 2a. Slot'en eksisterer så iOS kan læse feltet uden optional-dancing når klasserums-mode kommer.
+**`teacher_comment`** — altid `null` i Pakke 2a. Slot'en eksisterer så iOS kan læse feltet uden optional-dancing når klasserums-mode kommer. **Normalisering**: backenden normaliserer evt. tomme strenge til `null` i Pydantic-serialiseringen (field_validator), så iOS aldrig modtager `""`. Dermed er iOS-sidan altid `if let teacherComment` uden ekstra `!isEmpty`-check.
 
 **`session_name`** — fra `Session.name`. Kræver at den kendte "practice sessions har tom name"-bug er fikset (se sektion 8).
 
@@ -303,18 +314,19 @@ final class ChatViewModel {
 }
 ```
 
-### Constructor-ændring
+### Constructor + livscyklus-ændring
 
-ChatViewModel kan ikke længere konstrueres uden en `SessionViewModel`. Alle callsteder i ContentView skal opdateres:
+ChatViewModel kan ikke længere konstrueres uden en `SessionViewModel`. Og den oprettes nu i ContentView's entry-flow-funktioner (startWeeklySession/resumeSession), IKKE i `navigationDestination`-closuren. Begge oprettes sammen og lever som `@State` på ContentView:
 
 ```swift
-// Før:
-let vm = ChatViewModel(apiClient: client, assignments: response.assignments)
-
-// Efter:
+// I startWeeklySession() / resumeSession():
 let session = SessionViewModel(from: response)
-let vm = ChatViewModel(session: session, apiClient: client)
+activeSession = session
+activeChatViewModel = ChatViewModel(session: session, apiClient: client)
+sessionPath = [.ark]
 ```
+
+Dette sikrer at chat-historik (messages, inputText, AI-state) overlever Ark→Chat→Ark→Chat-loops. ChatViewModel genbruges — den genskabes ikke ved hvert push til `.chat`-ruten.
 
 ---
 
@@ -353,15 +365,26 @@ AssignmentSheetView
                 onFeedbackTap: { presentedFeedback = assignment }
               )
             }
-.sheet(item: $presentedFeedback) { assignment in
+.sheet(item: $presentedFeedback) { item in
+  // presentedFeedback er en ArkFeedbackItem (Identifiable wrapper med assignment + index)
   FeedbackPreviewSheet(
-    assignment: assignment,
+    assignment: item.assignment,
     session: session,
     apiClient: apiClient,
-    onOpenChat: { dismiss(); selectAssignment(index) }
+    onOpenChat: {
+      presentedFeedback = nil
+      selectAssignment(item.index)
+    }
   )
   .presentationDetents([.medium, .large])
 }
+
+// Wrapper-model for sheet binding:
+// struct ArkFeedbackItem: Identifiable {
+//   let id: String   // assignment.id
+//   let assignment: ParsedAssignment
+//   let index: Int
+// }
 ```
 
 ### `ArkCell` — visuel spec
@@ -387,6 +410,14 @@ Baggrund per status (bruger `KvanteTheme.Colors`):
 - `.notStarted`: `cream`, border `inkSubtle` 1pt
 - `.inProgress`: `primary.opacity(0.08)`, border `primary` 2pt
 - `.done`: `success.opacity(0.08)`, border `success` 1.5pt
+
+**`isCurrent`-overlay** (uafhængig af status, kan kombineres med alle tre):
+Cellen der matcher `session.currentAssignmentIndex` får en ekstra visuel markering:
+- 2pt `primary`-border ring *udenfor* den eksisterende status-border (via `.overlay(RoundedRectangle(...).stroke(primary, lineWidth: 2))` med padding)
+- Subtle drop-shadow: `.shadow(color: primary.opacity(0.20), radius: 6, y: 2)`
+- Lille "▸"-indikator eller pulserende dot i øverste venstre hjørne af cellen
+
+Kombinationer: `.notStarted + isCurrent` = cream bg + primary ring + shadow. `.done + isCurrent` = grøn bg + primary ring. Visuelt er det altid klart hvilken celle der er "den aktuelle" uanset dens status.
 
 Visual-slot indhold:
 - `.done` med scanId: `ArkScanThumbnailView(scanId, .cell)` async load
@@ -474,7 +505,9 @@ Alternativ: et lille PNG-asset hvis procedural ikke matcher brugerens forventnin
 
 ### Animation
 
-NavigationStack default horizontal push til Ark. "Slide-down"-følelsen realiseres via staggered row-appear i grid'et (grid-rækker animerer ind top-til-bund med `.transition(.move(edge: .top))` og forskudte delays). Custom navigationTransition (iOS 18+) er **ikke** brugt — for kompliceret for gevinsten.
+NavigationStack default horizontal push til Ark. Custom navigationTransition (iOS 18+) er **ikke** brugt — for kompliceret for gevinsten.
+
+**Staggered row-appear**: Ønsket effekt er at grid-rækker animerer ind top-til-bund. Dette kræver explicit indeks-tracking i SwiftUI (`@State appeared: Set<Int>` + per-celle `.onAppear { Task.sleep }` + `.opacity`/`.offset`-transition). Det er **polish, ikke struktur** — implementeringsplanen markerer det som optional og kan droppes hvis det komplicerer uden visuel gevinst. Standard `.animation(.spring)` ved first-appear er en acceptabel fallback.
 
 ---
 
@@ -494,6 +527,7 @@ enum SessionRoute: Hashable {
 ```swift
 @State private var sessionPath: [SessionRoute] = []
 @State private var activeSession: SessionViewModel?
+@State private var activeChatViewModel: ChatViewModel?   // lever på ContentView-niveau
 ```
 
 ### NavigationStack-setup
@@ -521,9 +555,11 @@ NavigationStack(path: $sessionPath) {
           )
         }
       case .chat:
-        if let session = activeSession, let client = apiClient {
+        // ChatViewModel genbruges — IKKE oprettet her.
+        // Allerede konstrueret i startWeeklySession/resumeSession.
+        if let vm = activeChatViewModel {
           ChatView(
-            viewModel: ChatViewModel(session: session, apiClient: client),
+            viewModel: vm,
             onBack: { sessionPath.removeLast() }
           )
         }
@@ -532,9 +568,14 @@ NavigationStack(path: $sessionPath) {
   }
 }
 .onChange(of: sessionPath) { _, new in
-  if new.isEmpty { activeSession = nil }
+  if new.isEmpty {
+    activeSession = nil
+    activeChatViewModel = nil
+  }
 }
 ```
+
+**Kritisk**: `activeChatViewModel` oprettes SAMMEN med `activeSession` i `startWeeklySession()` / `resumeSession()`, IKKE i `navigationDestination`-closuren. Dette sikrer at chat-historikken overlever Ark→Chat→Ark→Chat-loops.
 
 ### Entry flows
 
@@ -545,8 +586,9 @@ private func startWeeklySession() {
     isLoading = true
     do {
       let response = try await apiClient.createWeeklySession(...)
-      // Convert response to SessionDetailResponse (existing type + new fields)
-      activeSession = SessionViewModel(from: response)
+      let session = SessionViewModel(from: response)
+      activeSession = session
+      activeChatViewModel = ChatViewModel(session: session, apiClient: apiClient!)
       sessionPath = [.ark]
     } catch {
       errorMessage = error.localizedDescription
@@ -556,7 +598,7 @@ private func startWeeklySession() {
 }
 ```
 
-**Ny practice session** (efter topic + difficulty picker): samme pattern.
+**Ny practice session** (efter topic + difficulty picker): samme pattern — opret begge models sammen.
 
 **Fortsæt session** (fra Seneste eller tidligere SessionDashboardView):
 ```swift
@@ -565,7 +607,9 @@ private func resumeSession(_ summary: SessionSummary) {
     isLoading = true
     do {
       let response = try await apiClient.getSession(sessionId: summary.sessionId)
-      activeSession = SessionViewModel(from: response)
+      let session = SessionViewModel(from: response)
+      activeSession = session
+      activeChatViewModel = ChatViewModel(session: session, apiClient: apiClient!)
       sessionPath = [.ark]
     } catch {
       errorMessage = "Kunne ikke åbne session: \(error.localizedDescription)"
@@ -574,6 +618,8 @@ private func resumeSession(_ summary: SessionSummary) {
   }
 }
 ```
+
+**Kritisk**: `activeChatViewModel` oprettes her (sammen med session), IKKE i `navigationDestination`. Det sikrer at chat-historik, messages, inputText og AI-state overlever gentagne Ark→Chat→Ark→Chat-navigationer.
 
 ### Back-button-semantik
 
@@ -617,13 +663,12 @@ Løsning: iOS downsampler ved modtagelse via ImageIO's `CGImageSourceCreateThumb
 
 ```swift
 @MainActor
-@Observable
 final class ScanImageCache {
   static let shared = ScanImageCache()
-  private var cache: [String: UIImage] = [:]
+  private let cache = NSCache<NSString, UIImage>()
 
   func image(for scanId: String, apiClient: APIClient) async -> UIImage? {
-    if let cached = cache[scanId] { return cached }
+    if let cached = cache.object(forKey: scanId as NSString) { return cached }
     do {
       let url = apiClient.baseURL.appendingPathComponent("scans/\(scanId)/image")
       let (data, _) = try await URLSession.shared.data(from: url)
@@ -634,7 +679,7 @@ final class ScanImageCache {
               kCGImageSourceShouldCacheImmediately: true,
             ] as CFDictionary) else { return nil }
       let image = UIImage(cgImage: thumb)
-      cache[scanId] = image
+      cache.setObject(image, forKey: scanId as NSString)
       return image
     } catch {
       return nil
@@ -643,7 +688,7 @@ final class ScanImageCache {
 }
 ```
 
-Singleton, lever så længe app'en kører. Scans er immutable, ingen invalidation nødvendig.
+Singleton med `NSCache` i stedet for `[String: UIImage]` — OS evict'er automatisk under memory pressure. Scans er immutable, ingen invalidation nødvendig. Ingen `@Observable` nødvendig da cache'en aldrig er en binding-source.
 
 ### `ArkScanThumbnailView` (eller udvidet `ScannedImageView`)
 
@@ -853,7 +898,16 @@ Efter backend-ændringer: deploy til Mac Mini via `./scripts/deploy.sh`, curl `/
 Ingen kritiske. Alle kardinale beslutninger er låst i denne spec. Mindre detaljer der kan afgøres under implementering:
 
 - Eksakt spacing og font-weights i ArkHeader og ArkCell (design-polish, ikke struktur)
-- Staggered row-appear animation: delay-timing per række (fx 50ms vs 80ms)
 - Paper-tekstur: Canvas vs PNG-asset — vælges ud fra hvad der ser bedst ud i simulator
-- ScanImageCache memory-limit: sættes først hvis det bliver et problem
 - Trunkerings-strategi for feedback-summary når den er lige på grænsen af 60 tegn (brækk på ord-grænse?)
+
+## 15. Review-log
+
+Bruger-review 2026-04-09 identificerede 6 punkter. Alle adresseret i rev 2:
+
+1. **[Kritisk, fikset]** ChatViewModel genskabes ved hvert Ark→Chat-skift → Løst ved at løfte `activeChatViewModel` til `@State` på ContentView-niveau, oprettes sammen med session, genbruges ved navigation.
+2. **[Kritisk, fikset]** `index` ikke i scope i `.sheet(item:)` closure → Løst med `ArkFeedbackItem` Identifiable wrapper der bærer `(assignment, index)`.
+3. **[Fikset]** ScanImageCache ubegrænset dict → Skiftet til `NSCache` med OS-managed eviction.
+4. **[Fikset]** isCurrent-cell manglede visuel spec → Tilføjet: primary border-ring + drop-shadow + pulserende dot, kombinérbar med alle tre status-farver.
+5. **[Fikset]** Staggered animation + LazyVGrid ikke trivielt → Markeret som polish/optional med acceptable fallback.
+6. **[Fikset]** teacher_comment tom-streng normalisering → Backenden normaliserer `""` til `null` i Pydantic field_validator. iOS behøver ikke `!isEmpty`-check.
