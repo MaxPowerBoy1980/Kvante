@@ -312,6 +312,20 @@ extension ParsedAssignment {
     }
 }
 
+// MARK: - Streak
+
+struct StreakInfo: Codable {
+    let currentStreak: Int
+    let longestStreak: Int
+    let lastActiveDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case currentStreak = "current_streak"
+        case longestStreak = "longest_streak"
+        case lastActiveDate = "last_active_date"
+    }
+}
+
 // MARK: - Ark Overlay (Pakke 2a)
 
 struct ArkAssignmentResponse: Codable {
@@ -344,9 +358,10 @@ struct SessionDetailResponse: Codable {
     let sessionName: String
     let currentAssignmentIndex: Int
     let assignments: [ArkAssignmentResponse]
+    let streak: StreakInfo?
 
     enum CodingKeys: String, CodingKey {
-        case assignments
+        case assignments, streak
         case sessionId = "session_id"
         case sessionName = "session_name"
         case currentAssignmentIndex = "current_assignment_index"

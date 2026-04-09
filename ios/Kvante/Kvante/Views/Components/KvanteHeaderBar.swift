@@ -58,7 +58,7 @@ struct KvanteHeaderBar: View {
 
             Spacer()
 
-            StreakBadge(streak: 0)  // Hardcoded until PR 2
+            StreakBadge(streak: session?.currentStreak ?? 0)
 
             if isExpanded {
                 Button { withAnimation(.spring(response: 0.3)) { isExpanded = false } } label: {
@@ -94,7 +94,7 @@ struct KvanteHeaderBar: View {
                     Spacer()
                     VStack(spacing: 2) {
                         Text("🔥").font(.title2)
-                        Text("0 dage")  // Hardcoded until PR 2
+                        Text("\(session.currentStreak) dage")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(KvanteTheme.Colors.ink)
                     }

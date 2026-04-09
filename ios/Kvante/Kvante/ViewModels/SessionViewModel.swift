@@ -31,6 +31,7 @@ final class SessionViewModel {
 
     // Mutable state
     var currentAssignmentIndex: Int
+    var currentStreak: Int
     var statusByAssignment: [String: ArkStatus]
     var latestScanId: [String: String]
     var feedbackSummary: [String: String]
@@ -93,6 +94,7 @@ final class SessionViewModel {
             )
         }
         self.currentAssignmentIndex = response.currentAssignmentIndex
+        self.currentStreak = response.streak?.currentStreak ?? 0
 
         var status: [String: ArkStatus] = [:]
         var scans: [String: String] = [:]

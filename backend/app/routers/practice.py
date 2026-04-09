@@ -17,6 +17,7 @@ from app.models.schemas import (
     SessionSummary,
     WeeklyRequest,
 )
+from app.services.streak_service import get_streak
 
 router = APIRouter(tags=["practice"])
 
@@ -320,11 +321,14 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
             )
         )
 
+    streak_data = get_streak(db, session.student_id)
+
     return SessionDetailResponse(
         session_id=session.id,
         session_name=session.name or "",
         current_assignment_index=current_index,
         assignments=ark_assignments,
+        streak=streak_data,
     )
 
 
