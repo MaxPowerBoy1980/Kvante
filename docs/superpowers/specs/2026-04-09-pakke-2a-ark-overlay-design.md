@@ -153,7 +153,7 @@ def compute_ark_status(a: Assignment, submissions: list[Submission]) -> str:
 
 **`latest_scan_id`** — query ChatMessages for den nyeste `content_type="scanned_image"` med `assignment_id = a.id`. `scan_id` ligger i ChatMessage's `content_value` JSON fra Pakke 1. Fallback til ældre `Submission.work_image_path` er *ikke* implementeret — kun Pakke 1+ submissions vises på arket.
 
-**`latest_ai_feedback_summary`** — `Submission.feedback_text` fra den seneste submission på assignmentet. Trunkeres til ~140 tegn (første sætning + "…") i *backenden*, ikke iOS.
+**`latest_ai_feedback_summary`** — `Submission.feedback_text` fra den seneste submission på assignmentet. Trunkeres til ~140 tegn (afkort ved sætnings-grænse + "…") i *backenden*, ikke iOS. Cellen viser yderligere `lineLimit(1)` (~60 tegn) af denne streng som teaser — den fulde ~140-tegns summary vises i FeedbackPreviewSheet.
 
 **`teacher_comment`** — altid `null` i Pakke 2a. Slot'en eksisterer så iOS kan læse feltet uden optional-dancing når klasserums-mode kommer.
 
@@ -326,9 +326,10 @@ let vm = ChatViewModel(session: session, apiClient: client)
 ios/Kvante/Kvante/Views/Ark/
 ├── AssignmentSheetView.swift
 ├── ArkCell.swift
-├── FeedbackPreviewSheet.swift
-└── ArkScanThumbnailView.swift  (eller genbrug af ScannedImageView med maxPixelSize)
+└── FeedbackPreviewSheet.swift
 ```
+
+Scan-thumbnails håndteres via den eksisterende `ScannedImageView` (udvides med `maxPixelSize`-parameter — se sektion 8). Ingen separat `ArkScanThumbnailView`-fil.
 
 ### View-hierarki
 
