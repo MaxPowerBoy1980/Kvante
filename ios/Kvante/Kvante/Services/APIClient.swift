@@ -383,6 +383,40 @@ actor APIClient {
         let (data, response) = try await session.data(for: request)
         try checkResponse(response, data: data)
     }
+
+    /// Upload a TODO (required note, optional image) to /dev/todos.
+    /// Used by the new Kvante-capture-knap for note-first TODO inbox.
+    func submitDevTodo(note: String, imageData: Data?) async throws {
+        let url = baseURL.appendingPathComponent("dev/todos")
+        var request = URLRequest(url: url, timeoutInterval: timeout)
+        request.httpMethod = "POST"
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+
+        // note field (required)
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"note\"\r\n\r\n")
+        body.append(note)
+        body.append("\r\n")
+
+        // image field (optional)
+        if let imageData {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"image\"; filename=\"shot.png\"\r\n")
+            body.append("Content-Type: image/png\r\n\r\n")
+            body.append(imageData)
+            body.append("\r\n")
+        }
+
+        body.append("--\(boundary)--\r\n")
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+    }
     #endif
 
     // MARK: - Error Handling
