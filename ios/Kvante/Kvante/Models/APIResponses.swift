@@ -312,6 +312,47 @@ extension ParsedAssignment {
     }
 }
 
+// MARK: - Ark Overlay (Pakke 2a)
+
+struct ArkAssignmentResponse: Codable {
+    let id: String
+    let localId: String
+    let text: String
+    let type: String
+    let topic: String
+    let difficultyEstimate: Int
+    let position: Int
+
+    let arkStatus: String
+    let latestScanId: String?
+    let latestAiFeedbackSummary: String?
+    let teacherComment: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, text, type, topic, position
+        case localId = "local_id"
+        case difficultyEstimate = "difficulty_estimate"
+        case arkStatus = "ark_status"
+        case latestScanId = "latest_scan_id"
+        case latestAiFeedbackSummary = "latest_ai_feedback_summary"
+        case teacherComment = "teacher_comment"
+    }
+}
+
+struct SessionDetailResponse: Codable {
+    let sessionId: String
+    let sessionName: String
+    let currentAssignmentIndex: Int
+    let assignments: [ArkAssignmentResponse]
+
+    enum CodingKeys: String, CodingKey {
+        case assignments
+        case sessionId = "session_id"
+        case sessionName = "session_name"
+        case currentAssignmentIndex = "current_assignment_index"
+    }
+}
+
 // MARK: - Weekly / Session History
 
 struct WeeklySessionResponse: Codable {
