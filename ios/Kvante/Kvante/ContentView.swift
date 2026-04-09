@@ -1,6 +1,15 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - SessionRoute
+
+enum SessionRoute: Hashable {
+    case ark
+    case chat
+}
+
+// MARK: - ContentView
+
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var profiles: [StudentProfile]
@@ -9,13 +18,15 @@ struct ContentView: View {
     @State private var loadingMessage = ""
     @State private var errorMessage: String?
 
-    // Navigation state
+    // Navigation state — pre-session
     @State private var showPractice = false
     @State private var selectedTopic: TopicInfo?
-    @State private var practiceSession: PracticeSessionResponse?
     @State private var sessionHistory: [SessionSummary] = []
-    @State private var selectedSession: SessionSummary?
-    @State private var isResumingSession = false
+
+    // Navigation state — session (NavigationStack path)
+    @State private var sessionPath: [SessionRoute] = []
+    @State private var activeSession: SessionViewModel?
+    @State private var activeChatViewModel: ChatViewModel?
 
     private var profile: StudentProfile? { profiles.first }
 
@@ -25,70 +36,82 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $sessionPath) {
             ZStack {
                 KvanteTheme.Colors.background.ignoresSafeArea()
 
-            Group {
-                if isLoading {
-                    LoadingView(message: loadingMessage)
-                } else if profile == nil {
-                    ChatOnboardingView(apiClient: apiClient) {}
-                } else if let session = practiceSession, let client = apiClient {
-                    PracticeSessionView(
-                        sessionId: session.sessionId,
-                        assignments: session.assignments,
-                        apiClient: client,
-                        onBack: {
-                            practiceSession = nil
-                            selectedTopic = nil
-                            showPractice = false
+                Group {
+                    if isLoading {
+                        LoadingView(message: loadingMessage)
+                    } else if profile == nil {
+                        ChatOnboardingView(apiClient: apiClient) {}
+                    } else if let topic = selectedTopic {
+                        DifficultyPickerView(topic: topic) { difficulty in
+                            startPracticeSession(topic: topic.topic, difficulty: difficulty)
                         }
-                    )
-                    .toolbar(.hidden, for: .navigationBar)
-                } else if let session = selectedSession {
-                    SessionDashboardView(
-                        session: session,
-                        onBack: { selectedSession = nil },
-                        onContinue: { resumeSession(session) },
-                        isLoading: isResumingSession
-                    )
-                } else if let topic = selectedTopic {
-                    DifficultyPickerView(topic: topic) { difficulty in
-                        startPracticeSession(topic: topic.topic, difficulty: difficulty)
-                    }
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button { selectedTopic = nil } label: {
-                                Label("Tilbage", systemImage: "chevron.left")
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button { selectedTopic = nil } label: {
+                                    Label("Tilbage", systemImage: "chevron.left")
+                                }
                             }
                         }
-                    }
-                } else if showPractice, let client = apiClient {
-                    TopicPickerView(apiClient: client) { topic in
-                        selectedTopic = topic
-                    }
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button { showPractice = false } label: {
-                                Label("Hjem", systemImage: "chevron.left")
+                    } else if showPractice, let client = apiClient {
+                        TopicPickerView(apiClient: client) { topic in
+                            selectedTopic = topic
+                        }
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button { showPractice = false } label: {
+                                    Label("Hjem", systemImage: "chevron.left")
+                                }
                             }
                         }
+                    } else if let p = profile {
+                        NewHomeView(
+                            profile: p,
+                            serverDiscovery: serverDiscovery,
+                            onPractice: { showPractice = true },
+                            onWeekly: { startWeeklySession() },
+                            sessionHistory: sessionHistory,
+                            onTapSession: { summary in
+                                resumeSession(summary)
+                            }
+                        )
+                        .task(id: serverDiscovery.serverURL) { await loadSessionHistory() }
                     }
-                } else if let p = profile {
-                    NewHomeView(
-                        profile: p,
-                        serverDiscovery: serverDiscovery,
-                        onPractice: { showPractice = true },
-                        onWeekly: { startWeeklySession() },
-                        sessionHistory: sessionHistory,
-                        onTapSession: { session in
-                            selectedSession = session
-                        }
-                    )
-                    .task(id: serverDiscovery.serverURL) { await loadSessionHistory() }
                 }
             }
+            .navigationDestination(for: SessionRoute.self) { route in
+                switch route {
+                case .ark:
+                    if let session = activeSession, let client = apiClient {
+                        AssignmentSheetView(
+                            session: session,
+                            apiClient: client,
+                            onSelectAssignment: { index in
+                                session.goToAssignment(index)
+                                sessionPath.append(.chat)
+                            }
+                        )
+                    }
+                case .chat:
+                    if let vm = activeChatViewModel {
+                        ChatView(
+                            viewModel: vm,
+                            onBack: { sessionPath.removeLast() },
+                            onShowArk: { sessionPath.removeLast() }
+                        )
+                    }
+                }
+            }
+        }
+        .onChange(of: sessionPath) { _, newValue in
+            if newValue.isEmpty {
+                activeSession = nil
+                activeChatViewModel = nil
+                // Refresh session history when returning to home
+                Task { await loadSessionHistory() }
             }
         }
         .alert("Fejl", isPresented: .init(
@@ -105,6 +128,8 @@ struct ContentView: View {
         .devCaptureButton(apiClient: apiClient)
     }
 
+    // MARK: - Session Entry Flows
+
     private func startPracticeSession(topic: String, difficulty: Int) {
         guard let client = apiClient, let p = profile else { return }
 
@@ -114,12 +139,19 @@ struct ContentView: View {
         Task {
             do {
                 let studentId = p.backendStudentId ?? "default"
-                let session = try await client.createPracticeSession(
+                let practiceResponse = try await client.createPracticeSession(
                     studentId: studentId,
                     topic: topic,
                     difficulty: difficulty
                 )
-                practiceSession = session
+                // Fetch the full session detail with ark fields
+                let response = try await client.getSession(sessionId: practiceResponse.sessionId)
+                let session = SessionViewModel(from: response)
+                activeSession = session
+                activeChatViewModel = ChatViewModel(session: session, apiClient: client)
+                selectedTopic = nil
+                showPractice = false
+                sessionPath = [.ark]
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -139,12 +171,33 @@ struct ContentView: View {
                     studentId: studentId,
                     gradeLevel: p.gradeLevel
                 )
-                practiceSession = PracticeSessionResponse(
-                    sessionId: weekly.sessionId,
-                    assignments: weekly.assignments
-                )
+                // Fetch the full session detail with ark fields
+                let response = try await client.getSession(sessionId: weekly.sessionId)
+                let session = SessionViewModel(from: response)
+                activeSession = session
+                activeChatViewModel = ChatViewModel(session: session, apiClient: client)
+                sessionPath = [.ark]
             } catch {
                 errorMessage = error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    private func resumeSession(_ summary: SessionSummary) {
+        guard let client = apiClient else { return }
+        isLoading = true
+        loadingMessage = "Henter session..."
+
+        Task {
+            do {
+                let response = try await client.getSession(sessionId: summary.sessionId)
+                let session = SessionViewModel(from: response)
+                activeSession = session
+                activeChatViewModel = ChatViewModel(session: session, apiClient: client)
+                sessionPath = [.ark]
+            } catch {
+                errorMessage = "Kunne ikke abne session: \(error.localizedDescription)"
             }
             isLoading = false
         }
@@ -157,25 +210,9 @@ struct ContentView: View {
             sessionHistory = history.sessions
         }
     }
-
-    private func resumeSession(_ summary: SessionSummary) {
-        guard let client = apiClient else { return }
-        isResumingSession = true
-        Task {
-            do {
-                let session = try await client.getSession(sessionId: summary.sessionId)
-                practiceSession = session
-                selectedSession = nil
-            } catch {
-                errorMessage = "Kunne ikke åbne session: \(error.localizedDescription)"
-            }
-            isResumingSession = false
-        }
-    }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: [Session.self, Assignment.self, Submission.self, StudentProfile.self],
-                        inMemory: true)
+        .modelContainer(for: [StudentProfile.self], inMemory: true)
 }
