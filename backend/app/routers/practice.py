@@ -241,7 +241,7 @@ def get_session_history(student_id: str, db: DBSession = Depends(get_db)):
     for s in sessions:
         all_assignments = db.query(Assignment).filter(Assignment.session_id == s.id).all()
         total = len(all_assignments)
-        completed = sum(1 for a in all_assignments if a.status == "completed")
+        completed = sum(1 for a in all_assignments if a.status in ("complete", "completed"))
         summaries.append(
             SessionSummary(
                 session_id=s.id,
