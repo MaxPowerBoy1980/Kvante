@@ -43,9 +43,24 @@ def create_practice_session(body: PracticeRequest, db: DBSession = Depends(get_d
 
     selected = random.sample(problems, min(body.count, len(problems)))
 
+    # Generate a descriptive name for the practice session
+    topic_labels = {
+        "addition": "Addition",
+        "subtraction": "Subtraktion",
+        "multiplication": "Multiplikation",
+        "division": "Division",
+        "geometry": "Geometri",
+        "fractions": "Brøker",
+    }
+    difficulty_labels = {1: "Let", 2: "Medium", 3: "Svær"}
+    topic_label = topic_labels.get(body.topic, body.topic.capitalize())
+    difficulty_label = difficulty_labels.get(body.difficulty, f"Niveau {body.difficulty}")
+    session_name = f"Øvelser — {topic_label} ({difficulty_label})"
+
     session = Session(
         student_id=body.student_id,
         mode="practice",
+        name=session_name,
         topic=body.topic,
         difficulty=body.difficulty,
         detected_language="da",
