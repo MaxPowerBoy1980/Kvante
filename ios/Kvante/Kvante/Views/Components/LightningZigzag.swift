@@ -26,7 +26,7 @@ struct LightningCelebration: View {
 
     var body: some View {
         LightningZigzag()
-            .fill(KvanteTheme.Colors.coral)
+            .fill(KvanteTheme.Colors.primary)
             .frame(width: size * 0.5, height: size)
             .opacity(flash ? 1.0 : 0)
             .scaleEffect(flash ? 1.0 : 0.5)

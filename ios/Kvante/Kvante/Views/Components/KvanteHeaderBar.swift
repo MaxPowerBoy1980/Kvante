@@ -6,6 +6,8 @@ extension Notification.Name {
 
 struct KvanteHeaderBar: View {
     var session: SessionViewModel?
+    var onNavigateHome: (() -> Void)? = nil
+    var onNavigateToAssignment: (() -> Void)? = nil
     @State private var isExpanded = false
     @State private var celebratingDotIndex: Int? = nil
     @State private var expression: KvanteExpression = .neutral
@@ -77,6 +79,7 @@ struct KvanteHeaderBar: View {
     private var expandedPanel: some View {
         VStack(alignment: .leading, spacing: 16) {
             if let session {
+                // Session active — show progress + next assignment
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         ProgressDotsView(
@@ -100,41 +103,78 @@ struct KvanteHeaderBar: View {
                     }
                 }
 
+                // Next assignment card — bigger and tappable
                 if !session.isSetComplete {
                     let next = session.currentAssignment
                     let idx = session.currentAssignmentIndex
-                    HStack(spacing: 12) {
-                        RoundedRectangle(cornerRadius: 7)
-                            .fill(KvanteTheme.Colors.primary.opacity(0.1))
-                            .frame(width: 30, height: 30)
-                            .overlay(
-                                Text("\(idx + 1)")
-                                    .font(.system(size: 14, weight: .bold))
-                                    .foregroundStyle(KvanteTheme.Colors.primary)
-                            )
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(next.text)
+                    Button {
+                        withAnimation(.spring(response: 0.3)) { isExpanded = false }
+                        onNavigateToAssignment?()
+                    } label: {
+                        HStack(spacing: 14) {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(KvanteTheme.Colors.primary.opacity(0.1))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Text("\(idx + 1)")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundStyle(KvanteTheme.Colors.primary)
+                                )
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(next.text)
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundStyle(KvanteTheme.Colors.ink)
+                                    .lineLimit(1)
+                                Text("Næste opgave")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                            }
+                            Spacer()
+                            Text("Løs →")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(KvanteTheme.Colors.ink)
-                                .lineLimit(1)
-                            Text("Næste opgave")
-                                .font(.system(size: 12))
-                                .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                                .foregroundStyle(KvanteTheme.Colors.teal)
                         }
-                        Spacer()
-                        Text("Løs →")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(KvanteTheme.Colors.teal)
+                        .padding(14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1.5)
+                                )
+                        )
                     }
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.white)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1.5)
-                            )
-                    )
+                    .buttonStyle(.plain)
+                }
+
+                // Home link
+                if onNavigateHome != nil {
+                    Button {
+                        withAnimation(.spring(response: 0.3)) { isExpanded = false }
+                        onNavigateHome?()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text("Hjem")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundStyle(KvanteTheme.Colors.ink)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                // No session — show welcome message
+                HStack(spacing: 12) {
+                    KvanteFace(expression: .happy, size: 48)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Klar til matematik?")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(KvanteTheme.Colors.ink)
+                        Text("Vælg ugens opgaver eller øvelser nedenfor")
+                            .font(.system(size: 13))
+                            .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                    }
                 }
             }
         }

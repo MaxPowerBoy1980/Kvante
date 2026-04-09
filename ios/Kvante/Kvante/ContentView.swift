@@ -110,7 +110,20 @@ struct ContentView: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            KvanteHeaderBar(session: activeSession)
+            KvanteHeaderBar(
+                session: activeSession,
+                onNavigateHome: sessionPath.isEmpty ? nil : {
+                    sessionPath.removeAll()
+                },
+                onNavigateToAssignment: activeSession != nil ? {
+                    if sessionPath.last != .chat {
+                        if !sessionPath.contains(.ark) {
+                            sessionPath = [.ark]
+                        }
+                        sessionPath.append(.chat)
+                    }
+                } : nil
+            )
         }
         .onChange(of: sessionPath) { _, newValue in
             if newValue.isEmpty {

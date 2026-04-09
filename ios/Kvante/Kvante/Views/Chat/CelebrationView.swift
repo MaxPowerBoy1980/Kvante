@@ -12,7 +12,7 @@ struct CelebrationView: View {
 
             Text(title)
                 .font(.system(size: fontSize, weight: .bold))
-                .foregroundStyle(KvanteTheme.Colors.coral)
+                .foregroundStyle(KvanteTheme.Colors.primary)
 
             if !subtitle.isEmpty {
                 Text(subtitle)
@@ -25,10 +25,10 @@ struct CelebrationView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
-                .fill(KvanteTheme.Colors.coral.opacity(0.08))
+                .fill(KvanteTheme.Colors.primary.opacity(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: KvanteTheme.Shapes.bubbleRadius)
-                        .stroke(KvanteTheme.Colors.coral.opacity(0.3), lineWidth: 1.5)
+                        .stroke(KvanteTheme.Colors.primary.opacity(0.3), lineWidth: 1.5)
                 )
         )
         .onAppear {
