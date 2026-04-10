@@ -236,6 +236,15 @@ struct ContentView: View {
 
     private func loadSessionHistory() async {
         guard let client = apiClient, let p = profile else { return }
+        // Ensure student is registered if backendStudentId is missing
+        if p.backendStudentId == nil {
+            if let response = try? await client.registerStudent(
+                name: p.name, gradeLevel: p.gradeLevel
+            ) {
+                p.backendStudentId = response.studentId
+                try? modelContext.save()
+            }
+        }
         let studentId = p.backendStudentId ?? "default"
         if let history = try? await client.getSessionHistory(studentId: studentId) {
             sessionHistory = history.sessions
