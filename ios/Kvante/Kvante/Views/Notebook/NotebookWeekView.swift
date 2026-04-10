@@ -18,7 +18,7 @@ struct NotebookWeekView: View {
             paperBackground
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     weekHeader
                         .padding(.horizontal, 24)
 
@@ -83,10 +83,12 @@ struct NotebookWeekView: View {
     }
 
     private func toggleExpanded(_ id: String) {
-        if expandedSessions.contains(id) {
-            expandedSessions.remove(id)
-        } else {
-            expandedSessions.insert(id)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if expandedSessions.contains(id) {
+                expandedSessions.remove(id)
+            } else {
+                expandedSessions.insert(id)
+            }
         }
     }
 
