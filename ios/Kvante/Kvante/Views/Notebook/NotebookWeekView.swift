@@ -83,12 +83,10 @@ struct NotebookWeekView: View {
     }
 
     private func toggleExpanded(_ id: String) {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            if expandedSessions.contains(id) {
-                expandedSessions.remove(id)
-            } else {
-                expandedSessions.insert(id)
-            }
+        if expandedSessions.contains(id) {
+            expandedSessions.remove(id)
+        } else {
+            expandedSessions.insert(id)
         }
     }
 
@@ -116,22 +114,6 @@ struct NotebookWeekView: View {
     private var paperBackground: some View {
         ZStack {
             KvanteTheme.Colors.cream
-            Canvas { context, size in
-                var rng = SeededRandomNumberGenerator(seed: 42)
-                let dotCount = Int(size.width * size.height / 200)
-                for _ in 0..<dotCount {
-                    let x = CGFloat.random(in: 0..<size.width, using: &rng)
-                    let y = CGFloat.random(in: 0..<size.height, using: &rng)
-                    let gray = CGFloat.random(in: 0.3...0.7, using: &rng)
-                    context.fill(
-                        Path(CGRect(x: x, y: y, width: 1, height: 1)),
-                        with: .color(Color(white: gray))
-                    )
-                }
-            }
-            .opacity(0.04)
-            .blendMode(.multiply)
-            .allowsHitTesting(false)
 
             // Book spine on left edge
             HStack(spacing: 0) {
