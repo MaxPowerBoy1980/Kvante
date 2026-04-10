@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// One week page in the notebook. Shows facit cards for all assignments.
+/// One week page in the notebook. Shows sessions grouped by type, collapsible.
 struct NotebookWeekView: View {
     let week: NotebookWeek
     let viewModel: NotebookViewModel
     let apiClient: APIClient
     let pageLabel: String
 
-    @State private var weeklyAssignments: [NotebookAssignment] = []
-    @State private var practiceAssignments: [NotebookAssignment] = []
+    @State private var weeklyGroups: [NotebookSessionGroup] = []
+    @State private var practiceGroups: [NotebookSessionGroup] = []
     @State private var isLoading = true
     @State private var selectedAssignment: NotebookAssignment?
+    @State private var expandedSessions: Set<String> = []
 
     var body: some View {
         ZStack {
@@ -25,25 +26,31 @@ struct NotebookWeekView: View {
                         ProgressView()
                             .frame(maxWidth: .infinity, minHeight: 100)
                     } else {
-                        ForEach(weeklyAssignments) { assignment in
-                            FacitCard(assignment: assignment)
-                                .onTapGesture { selectedAssignment = assignment }
+                        // Weekly sessions
+                        if !weeklyGroups.isEmpty {
+                            sectionLabel("Ugematematik")
+                            ForEach(weeklyGroups) { group in
+                                SessionGroupCard(
+                                    group: group,
+                                    isExpanded: expandedSessions.contains(group.id),
+                                    onToggle: { toggleExpanded(group.id) },
+                                    onTapAssignment: { selectedAssignment = $0 }
+                                )
                                 .padding(.horizontal, 24)
+                            }
                         }
 
-                        if !practiceAssignments.isEmpty {
-                            Text("Ekstra \u{00F8}velser")
-                                .font(.system(size: 11, weight: .semibold))
-                                .textCase(.uppercase)
-                                .tracking(0.5)
-                                .foregroundStyle(KvanteTheme.Colors.textMuted)
+                        // Practice sessions
+                        if !practiceGroups.isEmpty {
+                            sectionLabel("Ekstra øvelser")
+                            ForEach(practiceGroups) { group in
+                                SessionGroupCard(
+                                    group: group,
+                                    isExpanded: expandedSessions.contains(group.id),
+                                    onToggle: { toggleExpanded(group.id) },
+                                    onTapAssignment: { selectedAssignment = $0 }
+                                )
                                 .padding(.horizontal, 24)
-                                .padding(.top, 8)
-
-                            ForEach(practiceAssignments) { assignment in
-                                FacitCard(assignment: assignment)
-                                    .onTapGesture { selectedAssignment = assignment }
-                                    .padding(.horizontal, 24)
                             }
                         }
                     }
@@ -53,15 +60,33 @@ struct NotebookWeekView: View {
             }
         }
         .task {
-            let result = await viewModel.assignments(for: week)
-            weeklyAssignments = result.weekly
-            practiceAssignments = result.practice
+            let result = await viewModel.sessionGroups(for: week)
+            weeklyGroups = result.weekly
+            practiceGroups = result.practice
             isLoading = false
         }
         .sheet(item: $selectedAssignment) { assignment in
             AssignmentDetailSheet(assignment: assignment, apiClient: apiClient)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 11, weight: .semibold))
+            .textCase(.uppercase)
+            .tracking(0.5)
+            .foregroundStyle(KvanteTheme.Colors.textMuted)
+            .padding(.horizontal, 24)
+            .padding(.top, 4)
+    }
+
+    private func toggleExpanded(_ id: String) {
+        if expandedSessions.contains(id) {
+            expandedSessions.remove(id)
+        } else {
+            expandedSessions.insert(id)
         }
     }
 
@@ -118,6 +143,85 @@ struct NotebookWeekView: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+// MARK: - Session Group Card
+
+/// A collapsible card showing one session's assignments.
+struct SessionGroupCard: View {
+    let group: NotebookSessionGroup
+    let isExpanded: Bool
+    let onToggle: () -> Void
+    let onTapAssignment: (NotebookAssignment) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header — always visible, tappable
+            Button(action: onToggle) {
+                HStack(spacing: 10) {
+                    // Progress indicator
+                    ZStack {
+                        Circle()
+                            .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 2)
+                            .frame(width: 32, height: 32)
+                        if group.solvedCount == group.totalCount && group.totalCount > 0 {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(KvanteTheme.Colors.success)
+                        } else {
+                            Text("\(group.solvedCount)/\(group.totalCount)")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(group.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(KvanteTheme.Colors.ink)
+                            .lineLimit(1)
+                        if !group.date.isEmpty {
+                            Text(group.date)
+                                .font(.system(size: 11))
+                                .foregroundStyle(KvanteTheme.Colors.textMuted)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(KvanteTheme.Colors.textMuted)
+                }
+                .padding(14)
+            }
+            .buttonStyle(.plain)
+
+            // Expanded: show facit cards
+            if isExpanded {
+                Divider()
+                    .padding(.horizontal, 14)
+
+                VStack(spacing: 8) {
+                    ForEach(group.assignments) { assignment in
+                        FacitCard(assignment: assignment)
+                            .onTapGesture { onTapAssignment(assignment) }
+                    }
+                }
+                .padding(14)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1)
+                )
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(group.name). \(group.solvedCount) af \(group.totalCount) løst.")
     }
 }
 

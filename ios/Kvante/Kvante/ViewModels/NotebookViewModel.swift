@@ -26,6 +26,16 @@ struct NotebookAssignment: Identifiable {
     let weekNumber: Int
 }
 
+/// A group of assignments belonging to one session.
+struct NotebookSessionGroup: Identifiable {
+    let id: String          // session ID
+    let name: String        // e.g. "Ugematematik — uge 15" or "Addition (Let)"
+    let date: String        // e.g. "6. apr"
+    let solvedCount: Int
+    let totalCount: Int
+    let assignments: [NotebookAssignment]
+}
+
 /// Manages notebook data: loads sessions, groups by week, caches detail responses.
 @Observable
 @MainActor
@@ -37,6 +47,8 @@ final class NotebookViewModel {
 
     /// Cache of loaded session details keyed by session ID.
     private var detailCache: [String: SessionDetailResponse] = [:]
+    /// Formatted date strings per session, populated during loadSessions().
+    private var sessionDateStrings: [String: String] = [:]
 
     private let apiClient: APIClient
     private let studentId: String
@@ -80,10 +92,17 @@ final class NotebookViewModel {
             }
         }
 
-        // Build sorted weeks (newest first)
+        // Build date strings per session and sorted weeks
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "da_DK")
         dateFormatter.dateFormat = "d. MMM"
+
+        // Cache formatted dates for each session
+        for session in history.sessions {
+            if let date = isoFormatter.date(from: session.createdAt) {
+                sessionDateStrings[session.sessionId] = dateFormatter.string(from: date)
+            }
+        }
 
         var allWeeks: [NotebookWeek] = []
         for (_, value) in weekMap {
@@ -119,20 +138,27 @@ final class NotebookViewModel {
 
     // MARK: - Lazy-load session details for a week
 
-    /// Returns assignments for a week, loading details on demand.
-    func assignments(for week: NotebookWeek) async -> (weekly: [NotebookAssignment], practice: [NotebookAssignment]) {
-        let weeklyAssignments = await loadAssignments(sessionIds: week.weeklySessionIds, weekNumber: week.weekNumber)
-        let practiceAssignments = await loadAssignments(sessionIds: week.practiceSessionIds, weekNumber: week.weekNumber)
-        return (weekly: weeklyAssignments, practice: practiceAssignments)
+    /// Returns session groups for a week, loading details on demand.
+    func sessionGroups(for week: NotebookWeek) async -> (weekly: [NotebookSessionGroup], practice: [NotebookSessionGroup]) {
+        let weeklyGroups = await loadSessionGroups(sessionIds: week.weeklySessionIds, weekNumber: week.weekNumber)
+        let practiceGroups = await loadSessionGroups(sessionIds: week.practiceSessionIds, weekNumber: week.weekNumber)
+        return (weekly: weeklyGroups, practice: practiceGroups)
     }
 
-    private func loadAssignments(sessionIds: [String], weekNumber: Int) async -> [NotebookAssignment] {
-        var result: [NotebookAssignment] = []
+    private func loadSessionGroups(sessionIds: [String], weekNumber: Int) async -> [NotebookSessionGroup] {
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "da_DK")
+        dateFormatter.dateFormat = "d. MMM"
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+
+        var groups: [NotebookSessionGroup] = []
         for sessionId in sessionIds {
             let detail = await loadDetail(sessionId: sessionId)
             guard let detail else { continue }
-            for a in detail.assignments {
-                result.append(NotebookAssignment(
+
+            let assignments = detail.assignments.map { a in
+                NotebookAssignment(
                     id: a.id,
                     text: a.text,
                     arkStatus: a.arkStatus,
@@ -142,10 +168,25 @@ final class NotebookViewModel {
                     scanId: a.latestScanId,
                     position: a.position,
                     weekNumber: weekNumber
-                ))
-            }
+                )
+            }.sorted { $0.position < $1.position }
+
+            let solved = assignments.filter { $0.arkStatus == "done" }.count
+            let sessionName = detail.sessionName.isEmpty ? "Øvelse" : detail.sessionName
+
+            // Find a date string from the session summary (stored during loadSessions)
+            let dateString = sessionDateStrings[sessionId] ?? ""
+
+            groups.append(NotebookSessionGroup(
+                id: sessionId,
+                name: sessionName,
+                date: dateString,
+                solvedCount: solved,
+                totalCount: assignments.count,
+                assignments: assignments
+            ))
         }
-        return result.sorted { $0.position < $1.position }
+        return groups
     }
 
     private func loadDetail(sessionId: String) async -> SessionDetailResponse? {
