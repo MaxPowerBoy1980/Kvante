@@ -352,6 +352,10 @@ def get_session_history(
     Args:
         limit: Max sessions to return. 0 = all sessions (used by notebook).
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"get_session_history: student_id={student_id!r}, limit={limit}")
+
     query = (
         db.query(Session)
         .filter(Session.student_id == student_id)
@@ -360,6 +364,7 @@ def get_session_history(
     if limit > 0:
         query = query.limit(limit)
     sessions = query.all()
+    logger.info(f"get_session_history: found {len(sessions)} sessions")
 
     summaries = []
     for s in sessions:
