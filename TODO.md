@@ -2,6 +2,9 @@
 
 ## Gennemført
 
+### 2026-04-10
+- [x] **Pakke 5: Bog-arkivet ("Din matematikbog")** — Samarbejdsbog mellem elev og Kvante. Omslag med KvanteFace + blyant, "Matematikbogen", "[navn] & Kvante", bryst-panel-prikker, stats-badge. TabView(.page) swipe mellem omslag og uge-sider. Uge-sider med sammenklapppelige session-kort grupperet under "Ugematematik" og "Ekstra øvelser". Facit-kort med opgavetekst + svar-badge (grøn ✓/orange ✗/grå —) + feedback-linje. AssignmentDetailSheet med scan-billede, svar-sammenligning, Kvante-feedback. Home-kort med mini-bogomslag. Backend: `correct_answer` + `student_answer` på ArkAssignment, konfigurerbar `?limit=` på session-historik. 5 pytest tests. Auto-register student ved manglende backendStudentId. **Kendte mangler:** performance (N+1 API-kald), completion-dato i detail sheet. Branch: `feature/pakke-5-notebook`. Spec: `docs/superpowers/specs/2026-04-09-pakke-5-notebook-design.md`. Plan: `docs/superpowers/plans/2026-04-09-pakke-5-notebook.md`.
+
 ### 2026-04-09
 - [x] **Kvante 2.0 (Pakke 2b + 3 kombineret)** — Persistent KvanteHeaderBar på alle skærme med tegnet KvanteFace (3 udtryk: neutral/glad/store øjne), ProgressDotsView (bryst-panel-prikker), StreakBadge. Celebration redesignet: orange lyn-zigzag erstatter grøn checkmark, haptik-feedback, timing-sekvens (0ms chat → 600ms header-pulse). Home redesignet: velkomst, ugens matematik-kort med mini-ark-preview, kompakt øvelser-kort. "Seneste"-listen fjernet. Sværhedsgrader reduceret 4→3 med farvede prik-ikoner (teal/orange/lilla). Streak-backend: `UserStreak`-tabel med UTC timestamps + `Europe/Copenhagen` timezone, `GET /students/{id}/streak` endpoint, auto-update ved korrekt submission, wired end-to-end til header. VStack-layout (header over NavigationStack) i stedet for safeAreaInset. Branch: `feature/kvante-2.0-header-home-celebration`. Spec: `docs/superpowers/specs/2026-04-09-kvante-2.0-header-home-celebration-design.md`. Plan: `docs/superpowers/plans/2026-04-09-kvante-2.0-header-home-celebration.md`.
 - [x] **SF Symbols brainstorm** — Afsluttet hurtigt: SF Symbols beholdes for utility-ikoner. Kvante-specifikke elementer (cirkel-progres-prikker, lyn-zigzag) bliver SwiftUI `Path`/`Shape`, ikke symboler. Ingen custom illustration nødvendig.
@@ -31,8 +34,8 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 
 **Pakke 1 (Session persistence) er gennemført 2026-04-08**, **Dev-tooling capture-knap er gennemført 2026-04-09**, og **Pakke 2a (Ark-overlay) er gennemført 2026-04-09** — se "Gennemført"-sektionen øverst.
 
-### 1. Pakke 5 — Bog-arkivet ("Din matematikbog")
-**Flyttet op foran pakke 4** fordi den er helt dependency-fri (pakke 1 leverede al data) og lavere-risiko (read-only view, ingen nye backend-koncepter, ingen nye AI-flows). God "pause" efter to UI-tunge pakker før pakke 4's AI-kompleksitet. Side-for-side hæfte, hver session = én side, grupperet pr. uge. Kvante på omslaget. Swipe venstre/højre. Pakke 5 tilføjer også bog-knappen til pakke 3's reserverede layout-plads.
+### 1. Pakke 5 — Performance-optimering af Bog-arkivet
+Bogen fungerer men er for langsom: 34+ API-kald (1 session-liste + 1 per session for detaljer). Expand/collapse af session-kort mærkbart langsomt på fysisk iPad. Løsning: backend endpoint der returnerer assignments inline i session-listen (`?include=assignments`), så én request dækker hele bogen. Alternativt: batch-endpoint for multiple sessions.
 
 ### 2. Pakke 4 — Bulk-scan hele arket + AI fejlanalyse
 `POST /sessions/{id}/bulk-submit` med hele A4-arket. Gemini Vision udtrækker regnestykker + svar, matcher mod sessionens opgaver, validerer. Batch-update af ark-overlay (✓/✗/?). Samlet feedback-kort i chatten. **AI fejlanalyse foldet ind** — pakke 4's spec dækker eksplicit "tap rød opgave → detaljeret fejlanalyse" (ikke svag "prøv igen"). Udfordringer i spec: long mult over flere linjer, OCR-fejl, delvise ark, re-scan, kruseduller.
