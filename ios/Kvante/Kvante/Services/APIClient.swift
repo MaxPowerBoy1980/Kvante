@@ -336,6 +336,19 @@ actor APIClient {
         return try decoder.decode(SessionHistoryResponse.self, from: data)
     }
 
+    func getSessionHistoryWithAssignments(studentId: String) async throws -> SessionHistoryWithAssignmentsResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("students/\(studentId)/sessions"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "limit", value: "0"),
+            URLQueryItem(name: "include", value: "assignments"),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.timeoutInterval = 30
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(SessionHistoryWithAssignmentsResponse.self, from: data)
+    }
+
     /// Fetch an existing session and its assignments with ark-overlay fields.
     /// Used to enter/re-enter a session from the history list.
     func getSession(sessionId: String) async throws -> SessionDetailResponse {

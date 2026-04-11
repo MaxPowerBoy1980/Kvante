@@ -425,6 +425,38 @@ struct SessionHistoryResponse: Codable {
     let sessions: [SessionSummary]
 }
 
+/// Extended session summary with inline assignments (used by notebook).
+struct SessionSummaryWithAssignments: Codable, Identifiable {
+    let sessionId: String
+    let name: String
+    let mode: String
+    let topic: String?
+    let status: String
+    let assignmentCount: Int
+    let completedCount: Int
+    let createdAt: String
+    let completedAt: String?
+    let assignments: [ArkAssignmentResponse]
+    let currentAssignmentIndex: Int
+
+    enum CodingKeys: String, CodingKey {
+        case name, mode, topic, status, assignments
+        case sessionId = "session_id"
+        case assignmentCount = "assignment_count"
+        case completedCount = "completed_count"
+        case createdAt = "created_at"
+        case completedAt = "completed_at"
+        case currentAssignmentIndex = "current_assignment_index"
+    }
+
+    var id: String { sessionId }
+}
+
+/// Response for session history with inline assignments.
+struct SessionHistoryWithAssignmentsResponse: Codable {
+    let sessions: [SessionSummaryWithAssignments]
+}
+
 // MARK: - Health
 
 struct HealthResponse: Codable {
