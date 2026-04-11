@@ -15,6 +15,7 @@ from app.models.schemas import (
     SessionDetailResponse,
     SessionHistoryResponse,
     SessionSummary,
+    SessionSummaryWithAssignments,
     WeeklyRequest,
 )
 from app.services.streak_service import get_streak
@@ -341,16 +342,18 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
     )
 
 
-@router.get("/students/{student_id}/sessions", response_model=SessionHistoryResponse)
+@router.get("/students/{student_id}/sessions")
 def get_session_history(
     student_id: str,
     limit: int = 20,
+    include: str | None = None,
     db: DBSession = Depends(get_db),
 ):
     """Return session history for a student, most recent first.
 
     Args:
         limit: Max sessions to return. 0 = all sessions (used by notebook).
+        include: Set to "assignments" to inline ArkAssignment objects per session.
     """
     query = (
         db.query(Session)
@@ -361,11 +364,121 @@ def get_session_history(
         query = query.limit(limit)
     sessions = query.all()
 
+    if not sessions:
+        return SessionHistoryResponse(sessions=[])
+
+    session_ids = [s.id for s in sessions]
+
+    # Batch-load all assignments for all sessions (fixes backend N+1)
+    all_assignments = (
+        db.query(Assignment)
+        .filter(Assignment.session_id.in_(session_ids))
+        .order_by(Assignment.position)
+        .all()
+    )
+    assignments_by_session: dict[str, list[Assignment]] = defaultdict(list)
+    for a in all_assignments:
+        assignments_by_session[a.session_id].append(a)
+
+    if include == "assignments":
+        # Batch-load submissions and scan messages for all sessions
+        all_submissions = (
+            db.query(Submission)
+            .filter(Submission.session_id.in_(session_ids))
+            .order_by(Submission.created_at)
+            .all()
+        )
+        submissions_by_assignment: dict[str, list[Submission]] = defaultdict(list)
+        for sub in all_submissions:
+            submissions_by_assignment[sub.assignment_id].append(sub)
+
+        scan_messages = (
+            db.query(ChatMessage)
+            .filter(
+                ChatMessage.session_id.in_(session_ids),
+                ChatMessage.content_type == "scanned_image",
+            )
+            .order_by(ChatMessage.created_at)
+            .all()
+        )
+        latest_scan_by_assignment: dict[str, str] = {}
+        for msg in scan_messages:
+            if msg.assignment_id and isinstance(msg.content, dict):
+                scan_id = msg.content.get("scan_id")
+                if scan_id:
+                    latest_scan_by_assignment[msg.assignment_id] = scan_id
+
+        summaries = []
+        for s in sessions:
+            session_assignments = assignments_by_session.get(s.id, [])
+            total = len(session_assignments)
+            completed = sum(1 for a in session_assignments if a.status in ("complete", "completed"))
+
+            # Compute current_assignment_index
+            current_index = total
+            for i, a in enumerate(session_assignments):
+                if a.status not in ("complete", "completed"):
+                    current_index = i
+                    break
+
+            # Build ArkAssignment objects
+            ark_assignments = []
+            for a in session_assignments:
+                subs = submissions_by_assignment.get(a.id, [])
+                latest_feedback = None
+                student_answer = None
+                if subs:
+                    latest_sub = subs[-1]
+                    latest_feedback = _truncate_feedback(latest_sub.feedback_text)
+                    if latest_sub.analysis:
+                        analysis = latest_sub.analysis
+                        if isinstance(analysis, str):
+                            import json as _json
+                            analysis = _json.loads(analysis)
+                        student_answer = analysis.get("student_answer")
+
+                ark_assignments.append(
+                    ArkAssignment(
+                        id=a.id,
+                        local_id=a.local_id,
+                        text=a.text,
+                        type=a.type,
+                        topic=a.topic,
+                        difficulty_estimate=a.difficulty_estimate,
+                        position=a.position,
+                        ark_status=_compute_ark_status(a, subs),
+                        latest_scan_id=latest_scan_by_assignment.get(a.id),
+                        latest_ai_feedback_summary=latest_feedback,
+                        teacher_comment=None,
+                        correct_answer=a.correct_answer,
+                        student_answer=student_answer,
+                    )
+                )
+
+            summaries.append(
+                SessionSummaryWithAssignments(
+                    session_id=s.id,
+                    name=s.name,
+                    mode=s.mode,
+                    topic=s.topic,
+                    status=s.status,
+                    assignment_count=total,
+                    completed_count=completed,
+                    created_at=s.created_at.isoformat(),
+                    completed_at=s.completed_at.isoformat() if s.completed_at else None,
+                    assignments=ark_assignments,
+                    current_assignment_index=current_index,
+                )
+            )
+
+        return SessionHistoryResponse(sessions=summaries)
+
+    # Default path: summaries only (no per-session queries now!)
     summaries = []
     for s in sessions:
-        all_assignments = db.query(Assignment).filter(Assignment.session_id == s.id).all()
-        total = len(all_assignments)
-        completed = sum(1 for a in all_assignments if a.status in ("complete", "completed"))
+        session_assignments = assignments_by_session.get(s.id, [])
+        total = len(session_assignments)
+        completed = sum(1 for a in session_assignments if a.status in ("complete", "completed"))
         summaries.append(
             SessionSummary(
                 session_id=s.id,
