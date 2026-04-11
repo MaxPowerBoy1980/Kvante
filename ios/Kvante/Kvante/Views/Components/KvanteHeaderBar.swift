@@ -60,11 +60,25 @@ struct KvanteHeaderBar: View {
 
             Spacer()
 
+            #if DEBUG
+            Text(Self.buildLabel)
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundStyle(KvanteTheme.Colors.textMuted.opacity(0.5))
+            #endif
+
             StreakBadge(streak: session?.currentStreak ?? 0)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
     }
+
+    #if DEBUG
+    private static let buildLabel: String = {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "v\(version)b\(build)"
+    }()
+    #endif
 
     // MARK: - Expanded
 
