@@ -2,6 +2,9 @@
 
 ## Gennemført
 
+### 2026-04-11
+- [x] **Pakke 5 perf: Inline assignments i session-historik** — Elimineret N+1 API-kald i bog-arkivet. Nyt `?include=assignments` query-parameter på `GET /students/{id}/sessions` returnerer fulde `ArkAssignment`-objekter inline med 4 batch SQL queries i stedet for 1+N individuelle requests. Backend N+1 i default-path også fikset. iOS `NotebookViewModel` simplificeret: `sessionGroups(for:)` er nu synkron, `loadDetail()`/`detailCache` slettet. `SerializeAsAny` for Pydantic v2 subclass-serialisering. Branch: `feature/pakke-5-perf`. Spec: `docs/superpowers/specs/2026-04-11-pakke-5-perf-design.md`. Plan: `docs/superpowers/plans/2026-04-11-pakke-5-perf.md`.
+
 ### 2026-04-10
 - [x] **Pakke 5: Bog-arkivet ("Din matematikbog")** — Samarbejdsbog mellem elev og Kvante. Omslag med KvanteFace + blyant, "Matematikbogen", "[navn] & Kvante", bryst-panel-prikker, stats-badge. TabView(.page) swipe mellem omslag og uge-sider. Uge-sider med sammenklapppelige session-kort grupperet under "Ugematematik" og "Ekstra øvelser". Facit-kort med opgavetekst + svar-badge (grøn ✓/orange ✗/grå —) + feedback-linje. AssignmentDetailSheet med scan-billede, svar-sammenligning, Kvante-feedback. Home-kort med mini-bogomslag. Backend: `correct_answer` + `student_answer` på ArkAssignment, konfigurerbar `?limit=` på session-historik. 5 pytest tests. Auto-register student ved manglende backendStudentId. **Kendte mangler:** performance (N+1 API-kald), completion-dato i detail sheet. Branch: `feature/pakke-5-notebook`. Spec: `docs/superpowers/specs/2026-04-09-pakke-5-notebook-design.md`. Plan: `docs/superpowers/plans/2026-04-09-pakke-5-notebook.md`.
 
@@ -34,13 +37,10 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 
 **Pakke 1 (Session persistence) er gennemført 2026-04-08**, **Dev-tooling capture-knap er gennemført 2026-04-09**, og **Pakke 2a (Ark-overlay) er gennemført 2026-04-09** — se "Gennemført"-sektionen øverst.
 
-### 1. Pakke 5 — Performance-optimering af Bog-arkivet
-Bogen fungerer men er for langsom: 34+ API-kald (1 session-liste + 1 per session for detaljer). Expand/collapse af session-kort mærkbart langsomt på fysisk iPad. Løsning: backend endpoint der returnerer assignments inline i session-listen (`?include=assignments`), så én request dækker hele bogen. Alternativt: batch-endpoint for multiple sessions.
-
-### 2. Pakke 4 — Bulk-scan hele arket + AI fejlanalyse
+### 1. Pakke 4 — Bulk-scan hele arket + AI fejlanalyse
 `POST /sessions/{id}/bulk-submit` med hele A4-arket. Gemini Vision udtrækker regnestykker + svar, matcher mod sessionens opgaver, validerer. Batch-update af ark-overlay (✓/✗/?). Samlet feedback-kort i chatten. **AI fejlanalyse foldet ind** — pakke 4's spec dækker eksplicit "tap rød opgave → detaljeret fejlanalyse" (ikke svag "prøv igen"). Udfordringer i spec: long mult over flere linjer, OCR-fejl, delvise ark, re-scan, kruseduller.
 
-### 3. Single-digit polish-bundle
+### 2. Single-digit polish-bundle
 Samlet pass gennem single-digit multiplikations-koden:
 - **Fix Vision OCR routing:** `should_use_vision_ocr_for_submission(assignment_text)` returnerer kun True når mindst én operand ≥ 10. "via Vision"-label baseret på faktisk path, ikke hardcoded. (Ophøjet fra Kendte bugs)
 - **Fix feedback-tekst:** prompt skal kende forskel på single-digit og long mult. "Du kendte 7 × 8 fra 8-tabellen — 56, helt rigtigt" i stedet for "du gangede ciffer for ciffer med delprodukter". (Ophøjet fra Kendte bugs)
@@ -48,15 +48,15 @@ Samlet pass gennem single-digit multiplikations-koden:
 
 Bundling undgår at røre single-digit-koden tre gange. Bør ordnes før pakke 4's bulk-scan rammer single-digit-submissions.
 
-### 4. Long mult polish-bundle
+### 3. Long mult polish-bundle
 Samlet pass gennem long mult-koden:
 - **Sequential narration-animation:** brainstorm først (retning B: sætning-for-sætning animation i samme boble, eller retning D: fjern tekst, lad grid + audio bære). Start med brainstorm af hvad "ro og klarhed" betyder for 9-13-årig.
 - **Completed LongMultiplicationState efter submission:** static factory `LongMultiplicationState.completed(a:b:)`, multiplikations-success branch bruger `exampleStep` med completed state i stedet for ren tekst. Bringer multiplication op på parity med addition/subtraction.
 
-### 5. Tabel-øvelser (ny feature)
+### 4. Tabel-øvelser (ny feature)
 Separat øvelsesmode hvor eleven træner gangetabellerne systematisk som selvstændig aktivitet, ikke del af opgave-løsning. Kræver egen brainstorm: mode (quick-fire / audio / visuel), adaptivitet, scoring, UI-placering. Fundamentet under al multiplikation.
 
-### 6. Lang division visual
+### 5. Lang division visual
 Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som long-mult (`compute_steps` + `pick_example_numbers` + `generate_text`). Kræver egen brainstorm + spec. Sidste core math method der mangler visual.
 
 ---
