@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, SerializeAsAny, field_validator
 
 
 # --- Page Scan ---
@@ -170,7 +170,13 @@ class SessionSummary(BaseModel):
 
 
 class SessionHistoryResponse(BaseModel):
-    sessions: list[SessionSummary]
+    sessions: list[SerializeAsAny[SessionSummary]]
+
+
+class SessionSummaryWithAssignments(SessionSummary):
+    """SessionSummary with inline ArkAssignment objects (used by notebook)."""
+    assignments: list["ArkAssignment"]
+    current_assignment_index: int
 
 
 # --- Ark Overlay (Pakke 2a) ---
