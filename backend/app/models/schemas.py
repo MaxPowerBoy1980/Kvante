@@ -188,6 +188,8 @@ class ArkAssignment(BaseModel):
     latest_scan_id: str | None = None
     latest_ai_feedback_summary: str | None = None
     teacher_comment: str | None = None
+    correct_answer: str | None = None
+    student_answer: str | None = None
 
     @field_validator("teacher_comment", mode="before")
     @classmethod

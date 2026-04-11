@@ -326,9 +326,10 @@ actor APIClient {
         return try decoder.decode(WeeklySessionResponse.self, from: responseData)
     }
 
-    func getSessionHistory(studentId: String) async throws -> SessionHistoryResponse {
-        let url = baseURL.appendingPathComponent("students/\(studentId)/sessions")
-        var request = URLRequest(url: url)
+    func getSessionHistory(studentId: String, limit: Int = 20) async throws -> SessionHistoryResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("students/\(studentId)/sessions"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "limit", value: "\(limit)")]
+        var request = URLRequest(url: components.url!)
         request.timeoutInterval = 15
         let (data, response) = try await session.data(for: request)
         try checkResponse(response, data: data)

@@ -6,6 +6,7 @@ import SwiftData
 enum SessionRoute: Hashable {
     case ark
     case chat
+    case notebook
 }
 
 // MARK: - ContentView
@@ -27,6 +28,7 @@ struct ContentView: View {
     @State private var sessionPath: [SessionRoute] = []
     @State private var activeSession: SessionViewModel?
     @State private var activeChatViewModel: ChatViewModel?
+    @State private var activeNotebookViewModel: NotebookViewModel?
 
     private var profile: StudentProfile? { profiles.first }
 
@@ -81,6 +83,7 @@ struct ContentView: View {
                             serverDiscovery: serverDiscovery,
                             onPractice: { showPractice = true },
                             onWeekly: { startWeeklySession() },
+                            onNotebook: { sessionPath = [.notebook] },
                             sessionHistory: sessionHistory,
                             onTapSession: { summary in
                                 resumeSession(summary)
@@ -114,6 +117,21 @@ struct ContentView: View {
                             onShowArk: { sessionPath.removeLast() }
                         )
                     }
+                case .notebook:
+                    if let client = apiClient, let p = profile {
+                        let studentId = p.backendStudentId ?? "default"
+                        let vm = activeNotebookViewModel ?? {
+                            let newVM = NotebookViewModel(apiClient: client, studentId: studentId)
+                            Task { @MainActor in activeNotebookViewModel = newVM }
+                            return newVM
+                        }()
+                        NotebookView(
+                            viewModel: vm,
+                            apiClient: client,
+                            studentName: p.name,
+                            onBack: { sessionPath.removeAll() }
+                        )
+                    }
                 }
             }
         }
@@ -121,6 +139,7 @@ struct ContentView: View {
             if newValue.isEmpty {
                 activeSession = nil
                 activeChatViewModel = nil
+                activeNotebookViewModel = nil
                 // Refresh session history when returning to home
                 Task { await loadSessionHistory() }
             }
@@ -217,6 +236,15 @@ struct ContentView: View {
 
     private func loadSessionHistory() async {
         guard let client = apiClient, let p = profile else { return }
+        // Ensure student is registered if backendStudentId is missing
+        if p.backendStudentId == nil {
+            if let response = try? await client.registerStudent(
+                name: p.name, gradeLevel: p.gradeLevel
+            ) {
+                p.backendStudentId = response.studentId
+                try? modelContext.save()
+            }
+        }
         let studentId = p.backendStudentId ?? "default"
         if let history = try? await client.getSessionHistory(studentId: studentId) {
             sessionHistory = history.sessions

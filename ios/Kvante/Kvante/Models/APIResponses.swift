@@ -341,6 +341,8 @@ struct ArkAssignmentResponse: Codable {
     let latestScanId: String?
     let latestAiFeedbackSummary: String?
     let teacherComment: String?
+    let correctAnswer: String?
+    let studentAnswer: String?
 
     enum CodingKeys: String, CodingKey {
         case id, text, type, topic, position
@@ -350,6 +352,8 @@ struct ArkAssignmentResponse: Codable {
         case latestScanId = "latest_scan_id"
         case latestAiFeedbackSummary = "latest_ai_feedback_summary"
         case teacherComment = "teacher_comment"
+        case correctAnswer = "correct_answer"
+        case studentAnswer = "student_answer"
     }
 }
 

@@ -299,11 +299,18 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
     ark_assignments = []
     for a in assignments:
         subs = submissions_by_assignment.get(a.id, [])
-        # Latest feedback from the most recent submission
+        # Latest feedback and student answer from the most recent submission
         latest_feedback = None
+        student_answer = None
         if subs:
             latest_sub = subs[-1]
             latest_feedback = _truncate_feedback(latest_sub.feedback_text)
+            if latest_sub.analysis:
+                analysis = latest_sub.analysis
+                if isinstance(analysis, str):
+                    import json as _json
+                    analysis = _json.loads(analysis)
+                student_answer = analysis.get("student_answer")
 
         ark_assignments.append(
             ArkAssignment(
@@ -318,6 +325,8 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
                 latest_scan_id=latest_scan_by_assignment.get(a.id),
                 latest_ai_feedback_summary=latest_feedback,
                 teacher_comment=None,  # Always null in Pakke 2a
+                correct_answer=a.correct_answer,
+                student_answer=student_answer,
             )
         )
 
@@ -333,15 +342,24 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
 
 
 @router.get("/students/{student_id}/sessions", response_model=SessionHistoryResponse)
-def get_session_history(student_id: str, db: DBSession = Depends(get_db)):
-    """Return session history for a student, most recent first."""
-    sessions = (
+def get_session_history(
+    student_id: str,
+    limit: int = 20,
+    db: DBSession = Depends(get_db),
+):
+    """Return session history for a student, most recent first.
+
+    Args:
+        limit: Max sessions to return. 0 = all sessions (used by notebook).
+    """
+    query = (
         db.query(Session)
         .filter(Session.student_id == student_id)
         .order_by(Session.created_at.desc())
-        .limit(20)
-        .all()
     )
+    if limit > 0:
+        query = query.limit(limit)
+    sessions = query.all()
 
     summaries = []
     for s in sessions:
