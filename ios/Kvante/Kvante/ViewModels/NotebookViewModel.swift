@@ -7,10 +7,11 @@ struct NotebookWeek: Identifiable {
     let weekNumber: Int
     let year: Int
     let dateRange: String
-    let weeklySessionIds: [String]
-    let practiceSessionIds: [String]
     var solvedCount: Int
     var totalCount: Int
+    /// Pre-built session groups for this week.
+    let weeklyGroups: [NotebookSessionGroup]
+    let practiceGroups: [NotebookSessionGroup]
 }
 
 /// A loaded assignment ready for display in a facit card.
@@ -36,7 +37,7 @@ struct NotebookSessionGroup: Identifiable {
     let assignments: [NotebookAssignment]
 }
 
-/// Manages notebook data: loads sessions, groups by week, caches detail responses.
+/// Manages notebook data: loads all sessions with assignments in one request.
 @Observable
 @MainActor
 final class NotebookViewModel {
@@ -44,11 +45,6 @@ final class NotebookViewModel {
     var totalSolved: Int = 0
     var totalWeeks: Int { weeks.count }
     var isLoading = false
-
-    /// Cache of loaded session details keyed by session ID.
-    private var detailCache: [String: SessionDetailResponse] = [:]
-    /// Formatted date strings per session, populated during loadSessions().
-    private var sessionDateStrings: [String: String] = [:]
 
     private let apiClient: APIClient
     private let studentId: String
@@ -58,22 +54,30 @@ final class NotebookViewModel {
         self.studentId = studentId
     }
 
-    // MARK: - Load session list and group by week
+    // MARK: - Load everything in one request
 
     func loadSessions() async {
         isLoading = true
         defer { isLoading = false }
 
-        guard let history = try? await apiClient.getSessionHistory(studentId: studentId, limit: 0) else {
+        guard let history = try? await apiClient.getSessionHistoryWithAssignments(studentId: studentId) else {
             return
         }
 
         let calendar = Calendar(identifier: .iso8601)
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "da_DK")
+        dateFormatter.dateFormat = "d. MMM"
 
-        // Group sessions by ISO week
-        var weekMap: [String: (weekNumber: Int, year: Int, weekly: [SessionSummary], practice: [SessionSummary])] = [:]
+        // Group sessions by ISO week and build groups immediately
+        var weekMap: [String: (
+            weekNumber: Int,
+            year: Int,
+            weekly: [NotebookSessionGroup],
+            practice: [NotebookSessionGroup]
+        )] = [:]
 
         for session in history.sessions {
             guard let date = isoFormatter.date(from: session.createdAt) else { continue }
@@ -85,45 +89,35 @@ final class NotebookViewModel {
                 weekMap[key] = (weekNumber: week, year: year, weekly: [], practice: [])
             }
 
+            let group = buildGroup(from: session, weekNumber: week, dateFormatter: dateFormatter, isoFormatter: isoFormatter)
+
             if session.mode == "practice" {
-                weekMap[key]!.practice.append(session)
+                weekMap[key]!.practice.append(group)
             } else {
-                weekMap[key]!.weekly.append(session)
-            }
-        }
-
-        // Build date strings per session and sorted weeks
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "da_DK")
-        dateFormatter.dateFormat = "d. MMM"
-
-        // Cache formatted dates for each session
-        for session in history.sessions {
-            if let date = isoFormatter.date(from: session.createdAt) {
-                sessionDateStrings[session.sessionId] = dateFormatter.string(from: date)
+                weekMap[key]!.weekly.append(group)
             }
         }
 
         var allWeeks: [NotebookWeek] = []
         for (_, value) in weekMap {
-            let allSessions = value.weekly + value.practice
+            let allGroups = value.weekly + value.practice
             let dateRange = Self.computeDateRange(
                 year: value.year,
                 week: value.weekNumber,
                 calendar: calendar,
                 formatter: dateFormatter
             )
-            let solved = allSessions.reduce(0) { $0 + $1.completedCount }
-            let total = allSessions.reduce(0) { $0 + $1.assignmentCount }
+            let solved = allGroups.reduce(0) { $0 + $1.solvedCount }
+            let total = allGroups.reduce(0) { $0 + $1.totalCount }
 
             allWeeks.append(NotebookWeek(
                 weekNumber: value.weekNumber,
                 year: value.year,
                 dateRange: dateRange,
-                weeklySessionIds: value.weekly.map(\.sessionId),
-                practiceSessionIds: value.practice.map(\.sessionId),
                 solvedCount: solved,
-                totalCount: total
+                totalCount: total,
+                weeklyGroups: value.weekly,
+                practiceGroups: value.practice
             ))
         }
 
@@ -136,71 +130,54 @@ final class NotebookViewModel {
         totalSolved = history.sessions.reduce(0) { $0 + $1.completedCount }
     }
 
-    // MARK: - Lazy-load session details for a week
+    // MARK: - Synchronous group access (data already loaded)
 
-    /// Returns session groups for a week, loading details on demand.
-    func sessionGroups(for week: NotebookWeek) async -> (weekly: [NotebookSessionGroup], practice: [NotebookSessionGroup]) {
-        let weeklyGroups = await loadSessionGroups(sessionIds: week.weeklySessionIds, weekNumber: week.weekNumber)
-        let practiceGroups = await loadSessionGroups(sessionIds: week.practiceSessionIds, weekNumber: week.weekNumber)
-        return (weekly: weeklyGroups, practice: practiceGroups)
-    }
-
-    private func loadSessionGroups(sessionIds: [String], weekNumber: Int) async -> [NotebookSessionGroup] {
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "da_DK")
-        dateFormatter.dateFormat = "d. MMM"
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
-
-        var groups: [NotebookSessionGroup] = []
-        for sessionId in sessionIds {
-            let detail = await loadDetail(sessionId: sessionId)
-            guard let detail else { continue }
-
-            let assignments = detail.assignments.map { a in
-                NotebookAssignment(
-                    id: a.id,
-                    text: a.text,
-                    arkStatus: a.arkStatus,
-                    correctAnswer: a.correctAnswer,
-                    studentAnswer: a.studentAnswer,
-                    feedbackSummary: a.latestAiFeedbackSummary,
-                    scanId: a.latestScanId,
-                    position: a.position,
-                    weekNumber: weekNumber
-                )
-            }.sorted { $0.position < $1.position }
-
-            let solved = assignments.filter { $0.arkStatus == "done" }.count
-            let sessionName = detail.sessionName.isEmpty ? "Øvelse" : detail.sessionName
-
-            // Find a date string from the session summary (stored during loadSessions)
-            let dateString = sessionDateStrings[sessionId] ?? ""
-
-            groups.append(NotebookSessionGroup(
-                id: sessionId,
-                name: sessionName,
-                date: dateString,
-                solvedCount: solved,
-                totalCount: assignments.count,
-                assignments: assignments
-            ))
-        }
-        return groups
-    }
-
-    private func loadDetail(sessionId: String) async -> SessionDetailResponse? {
-        if let cached = detailCache[sessionId] {
-            return cached
-        }
-        guard let detail = try? await apiClient.getSession(sessionId: sessionId) else {
-            return nil
-        }
-        detailCache[sessionId] = detail
-        return detail
+    /// Returns pre-built session groups for a week. No async, no API calls.
+    func sessionGroups(for week: NotebookWeek) -> (weekly: [NotebookSessionGroup], practice: [NotebookSessionGroup]) {
+        return (weekly: week.weeklyGroups, practice: week.practiceGroups)
     }
 
     // MARK: - Helpers
+
+    private func buildGroup(
+        from session: SessionSummaryWithAssignments,
+        weekNumber: Int,
+        dateFormatter: DateFormatter,
+        isoFormatter: ISO8601DateFormatter
+    ) -> NotebookSessionGroup {
+        let assignments = session.assignments.map { a in
+            NotebookAssignment(
+                id: a.id,
+                text: a.text,
+                arkStatus: a.arkStatus,
+                correctAnswer: a.correctAnswer,
+                studentAnswer: a.studentAnswer,
+                feedbackSummary: a.latestAiFeedbackSummary,
+                scanId: a.latestScanId,
+                position: a.position,
+                weekNumber: weekNumber
+            )
+        }.sorted { $0.position < $1.position }
+
+        let solved = assignments.filter { $0.arkStatus == "done" }.count
+        let sessionName = session.name.isEmpty ? "Øvelse" : session.name
+
+        let dateString: String
+        if let date = isoFormatter.date(from: session.createdAt) {
+            dateString = dateFormatter.string(from: date)
+        } else {
+            dateString = ""
+        }
+
+        return NotebookSessionGroup(
+            id: session.sessionId,
+            name: sessionName,
+            date: dateString,
+            solvedCount: solved,
+            totalCount: assignments.count,
+            assignments: assignments
+        )
+    }
 
     private static func computeDateRange(year: Int, week: Int, calendar: Calendar, formatter: DateFormatter) -> String {
         var comps = DateComponents()
