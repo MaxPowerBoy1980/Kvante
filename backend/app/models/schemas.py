@@ -213,6 +213,35 @@ class SessionDetailResponse(BaseModel):
     streak: "StreakResponse | None" = None
 
 
+# --- Bulk Scan (Pakke 4) ---
+
+class BulkSubmitResult(BaseModel):
+    assignment_id: str
+    assignment_text: str
+    student_answer: str | None
+    status: Literal["correct", "incorrect", "uncertain", "not_found"]
+    error_type: Literal["procedural", "understanding", "careless"] | None = None
+    error_description: str | None = None
+    confidence: float
+    page_index: int | None = None
+    submission_id: str | None = None
+
+
+class BulkSubmitSummary(BaseModel):
+    total: int
+    correct: int
+    incorrect: int
+    uncertain: int
+    not_found: int
+
+
+class BulkSubmitResponse(BaseModel):
+    session_id: str
+    results: list[BulkSubmitResult]
+    summary: BulkSubmitSummary
+    scan_ids: list[str]
+
+
 # --- Streak (Pakke 2b PR2) ---
 
 class StreakResponse(BaseModel):
