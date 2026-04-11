@@ -83,10 +83,12 @@ struct NotebookWeekView: View {
     }
 
     private func toggleExpanded(_ id: String) {
-        if expandedSessions.contains(id) {
-            expandedSessions.remove(id)
-        } else {
-            expandedSessions.insert(id)
+        withAnimation(.easeInOut(duration: 0.25)) {
+            if expandedSessions.contains(id) {
+                expandedSessions.remove(id)
+            } else {
+                expandedSessions.insert(id)
+            }
         }
     }
 
@@ -141,7 +143,7 @@ struct SessionGroupCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header — always visible, tappable
+            // Header — always visible, entire row tappable
             Button(action: onToggle) {
                 HStack(spacing: 10) {
                     // Progress indicator
@@ -179,8 +181,9 @@ struct SessionGroupCard: View {
                         .foregroundStyle(KvanteTheme.Colors.textMuted)
                 }
                 .padding(14)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(SessionHeaderButtonStyle())
 
             // Expanded: show facit cards
             if isExpanded {
@@ -314,6 +317,16 @@ struct FacitCard: View {
         default:
             return "Opgave: \(assignment.text). Ikke besvaret."
         }
+    }
+}
+
+// MARK: - Button Style
+
+/// Gives subtle opacity feedback when pressing session header.
+private struct SessionHeaderButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.6 : 1.0)
     }
 }
 
