@@ -457,6 +457,60 @@ struct SessionHistoryWithAssignmentsResponse: Codable {
     let sessions: [SessionSummaryWithAssignments]
 }
 
+// MARK: - Bulk Scan (Pakke 4)
+
+struct BulkSubmitResult: Codable, Identifiable {
+    let assignmentId: String
+    let assignmentText: String
+    let studentAnswer: String?
+    let status: String  // correct, incorrect, uncertain, not_found
+    let errorType: String?
+    let errorDescription: String?
+    let confidence: Double
+    let pageIndex: Int?
+    let submissionId: String?
+
+    var id: String { assignmentId }
+
+    enum CodingKeys: String, CodingKey {
+        case assignmentText = "assignment_text"
+        case assignmentId = "assignment_id"
+        case studentAnswer = "student_answer"
+        case status
+        case errorType = "error_type"
+        case errorDescription = "error_description"
+        case confidence
+        case pageIndex = "page_index"
+        case submissionId = "submission_id"
+    }
+}
+
+struct BulkSubmitSummary: Codable {
+    let total: Int
+    let correct: Int
+    let incorrect: Int
+    let uncertain: Int
+    let notFound: Int
+
+    enum CodingKeys: String, CodingKey {
+        case total, correct, incorrect, uncertain
+        case notFound = "not_found"
+    }
+}
+
+struct BulkSubmitResponse: Codable {
+    let sessionId: String
+    let results: [BulkSubmitResult]
+    let summary: BulkSubmitSummary
+    let scanIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case results, summary
+        case scanIds = "scan_ids"
+    }
+}
+
 // MARK: - Health
 
 struct HealthResponse: Codable {

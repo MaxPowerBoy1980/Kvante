@@ -36,6 +36,11 @@ final class SessionViewModel {
     var latestScanId: [String: String]
     var feedbackSummary: [String: String]
     var teacherComments: [String: String]  // Always empty in Pakke 2a
+    var errorDescription: [String: String]  // assignment_id → error description
+    var studentAnswer: [String: String]     // assignment_id → student's answer
+    var errorType: [String: String]         // assignment_id → error type
+    var bulkScanIds: [String]              // scan IDs from last bulk scan
+    var pageIndexByAssignment: [String: Int] // assignment_id → page_index
 
     // MARK: - Computed
 
@@ -118,5 +123,52 @@ final class SessionViewModel {
         self.latestScanId = scans
         self.feedbackSummary = feedback
         self.teacherComments = comments
+        self.errorDescription = [:]
+        self.studentAnswer = [:]
+        self.errorType = [:]
+        self.bulkScanIds = []
+        self.pageIndexByAssignment = [:]
+    }
+
+    /// Process bulk-scan results: update status, store error info, scan IDs.
+    func processBulkResult(_ response: BulkSubmitResponse) {
+        bulkScanIds = response.scanIds
+
+        for result in response.results {
+            let id = result.assignmentId
+
+            switch result.status {
+            case "correct":
+                statusByAssignment[id] = .done
+            case "incorrect":
+                statusByAssignment[id] = .inProgress
+            case "uncertain":
+                if statusByAssignment[id] == .notStarted {
+                    statusByAssignment[id] = .inProgress
+                }
+            default:
+                break  // not_found — leave unchanged
+            }
+
+            if let answer = result.studentAnswer {
+                studentAnswer[id] = answer
+            }
+            if let desc = result.errorDescription {
+                errorDescription[id] = desc
+                feedbackSummary[id] = desc
+            }
+            if let type = result.errorType {
+                errorType[id] = type
+            }
+            if let pageIdx = result.pageIndex {
+                pageIndexByAssignment[id] = pageIdx
+            }
+            if result.submissionId != nil {
+                let scanIdx = result.pageIndex ?? 0
+                if response.scanIds.indices.contains(scanIdx) {
+                    latestScanId[id] = response.scanIds[scanIdx]
+                }
+            }
+        }
     }
 }

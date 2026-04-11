@@ -368,6 +368,32 @@ actor APIClient {
         try checkResponse(response, data: data)
     }
 
+    // MARK: - Bulk Scan
+
+    func bulkSubmit(sessionId: String, images: [Data]) async throws -> BulkSubmitResponse {
+        let url = baseURL.appendingPathComponent("sessions/\(sessionId)/bulk-submit")
+        var request = URLRequest(url: url, timeoutInterval: 60)  // 60s for multi-image AI
+        request.httpMethod = "POST"
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        for (i, imageData) in images.enumerated() {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"images\"; filename=\"page\(i).jpg\"\r\n")
+            body.append("Content-Type: image/jpeg\r\n\r\n")
+            body.append(imageData)
+            body.append("\r\n")
+        }
+        body.append("--\(boundary)--\r\n")
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        try checkResponse(response, data: data)
+        return try decoder.decode(BulkSubmitResponse.self, from: data)
+    }
+
     // MARK: - Dev Screenshot
 
     #if DEBUG
