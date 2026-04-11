@@ -20,11 +20,15 @@ Kvante afslører **aldrig** det korrekte svar — heller ikke i bulk-scan. Arket
 
 **Kamera:** VisionKit `VNDocumentCameraViewController` i multi-page mode. Eleven scanner 1+ sider. Auto-crop og perspektivkorrektion er built-in. Alle sider returneres som `[UIImage]`.
 
+**Billedkomprimering:** Hver side nedskaleres til max 2048px på længste side (`CGImage`-baseret downsampling) og JPEG-encodes med quality 0.8. Holder hvert billede under ~1 MB og sikrer god OCR-kvalitet.
+
 ### 2. Loading
 
 KvanteFace i headeren skifter til tænker-udtryk (store øjne). Bryst-panel-prikkerne pulserer. Tekst under arket: "Kvante læser dit ark...".
 
 Alle sider sendes til backend i ét kald. Backend sender billederne + sessionens opgaveliste til Claude Vision.
+
+**Timeout:** Hvis backend ikke svarer inden 45 sekunder, viser iOS: "Det tager lidt længere end forventet..." med en "Annullér"-knap. Netværkstimeout sat til 60 sekunder på `URLSession`-kaldet. Backend-side: AI-kaldet har 45s timeout; ved timeout returneres HTTP 504 med fejlbesked.
 
 ### 3. AI-analyse (ét kald)
 
@@ -33,13 +37,14 @@ Claude Vision modtager:
 - Sessionens opgaveliste (opgavenummer, opgavetekst, korrekt svar)
 
 Claude returnerer per-opgave:
-- `assignment_match`: hvilket assignment_id der matches (via opgavenummer, regnestykke, tallene)
+- `assignment_index`: hvilket opgave-index der matches (via opgavenummer, regnestykke, tallene)
 - `student_answer`: hvad eleven skrev
-- `is_correct`: om svaret er korrekt
 - `error_type`: fejlkategori hvis forkert (procedural, understanding, careless) — samme som eksisterende `analyze_work.txt`
 - `error_description`: kort dansk beskrivelse af fejlen ("Mente-fejl i tieren", "Forkert tabel-produkt")
 - `confidence`: 0.0–1.0 for læsbarhed
 - `page_index`: hvilken side svaret blev fundet på
+
+AI'en returnerer **ikke** `is_correct` — backend validerer deterministisk med `compare_answer()`. AI'en fokuserer på matching, læsning og fejlklassificering.
 
 Opgaver der ikke matches (eleven sprang over) forbliver `not_started`.
 
@@ -47,12 +52,13 @@ Opgaver der ikke matches (eleven sprang over) forbliver `not_started`.
 
 Backend modtager Claude's JSON-response og:
 
-1. **Validerer matches** — hvert `assignment_match` skal pege på et gyldigt assignment i sessionen. Duplikerede matches afvises (to svar til samme opgave → tag den med højest confidence).
-2. **Dobbelt-tjekker svar** — for aritmetik bruges `compare_answer()` som ground truth (deterministisk), ikke AI'ens `is_correct`. AI'ens fejltype beholdes.
-3. **Confidence-tærskel** — under `settings.confidence_threshold` (0.6) markeres opgaven som `uncertain` i stedet for rigtigt/forkert.
-4. **Opretter Submissions** — én `Submission` per matchet opgave med `analysis`-dict. Scan-billedet gemmes som `Scan`-record.
-5. **Opdaterer Assignment-status** — `complete` (korrekt), `in_progress` (forkert), uændret (usikker/ikke-matchet).
-6. **Streak-opdatering** — `update_streak()` kaldes for hver korrekt opgave.
+1. **Validerer matches** — hvert `assignment_index` skal pege på et gyldigt assignment i sessionen. Duplikerede matches afvises (to svar til samme opgave → tag den med højest confidence).
+2. **Skipper allerede-complete opgaver** — matches til opgaver med status `complete` ignoreres. Eleven har allerede fået feedback via step-by-step flowet. AI'en ser hele opgavelisten (for bedre matching-kontekst), men backend filtrerer.
+3. **Validerer svar deterministisk** — `compare_answer()` bruges som ground truth. AI'ens fejltype og fejlbeskrivelse beholdes uanset.
+4. **Confidence-tærskel** — under `settings.confidence_threshold` (0.6) markeres opgaven som `uncertain` i stedet for rigtigt/forkert.
+5. **Opretter Submissions** — én `Submission` per matchet opgave med `analysis`-dict. `page_index` persisteres i `analysis` så iOS kan vise det rigtige scan-billede i bottom sheet. Scan-billedet gemmes som `Scan`-record (1 per side).
+6. **Opdaterer Assignment-status** — `complete` (korrekt), `in_progress` (forkert), uændret (usikker/ikke-matchet).
+7. **Streak-opdatering** — `update_streak()` kaldes for hver korrekt opgave.
 
 ### 5. Resultat — Arket
 
@@ -76,6 +82,8 @@ Et samlet feedback-kort indsættes i chatten:
 
 Feedback-kortet gemmes som `ChatMessage` med `content_type: "bulk_scan_result"`.
 
+**Timing:** Feedback-kortet indsættes i chatten **efter** arket er opdateret. Arket er den primære feedback — eleven ser ✓/✗/❓ først. Chat-kortet er sekundært og dukker op når eleven navigerer til chatten.
+
 ---
 
 ## Fejlanalyse-flow (tap forkert opgave)
@@ -85,7 +93,7 @@ Feedback-kortet gemmes som `ChatMessage` med `content_type: "bulk_scan_result"`.
 Når eleven tapper en forkert opgave (✗) på arket:
 
 1. Bottom sheet slider op med:
-   - **Scannet billede** af elevens ark (fra Scan-record, helside)
+   - **Scannet billede** af elevens ark (fra Scan-record, valgt via `page_index` i submission's `analysis`-dict — viser den side hvor svaret blev fundet)
    - **Hvad Kvante læste**: "Du skrev: 613"
    - **Fejlforklaring**: "Mente-fejl i hundrederne" (fra AI-analysen)
    - **"Få hjælp i chatten"**-knap
@@ -110,11 +118,13 @@ Når eleven tapper en usikker opgave (❓) på arket:
 1. **Besked**: "Kvante kan ikke læse dit svar til opgave [N]"
 2. **Mulighed A**: "Scan igen" → åbner VisionKit kamera. Fokus-guide overlay viser hvilken opgave der scannes. Kun den ene opgave sendes til backend som single submission (eksisterende `POST /submissions/`).
 3. **Mulighed B**: "Skriv svaret" → tekstfelt hvor eleven taster svaret ind. Sendes som `answer_text` til eksisterende `POST /submissions/`.
-4. **Pædagogisk nudge**: Tip-boks med ordenstips:
+4. **Pædagogisk nudge** (vis kun første gang per session): Tip-boks med ordenstips:
    - "Skriv tydeligt med sort eller blå pen"
    - "Brug linjer eller tern-papir"
    - "Giv god plads mellem opgaverne"
    - "Skriv opgavenummeret ved hvert svar"
+
+   Gemt via `UserDefaults`-flag `hasSeenOrderTips_<sessionId>`. Undgår at gentage tips ved hver ❓-opgave i samme session.
 
 Resultatet opdaterer arket (❓ → ✓ eller ✗) og chatten.
 
@@ -137,7 +147,6 @@ Resultatet opdaterer arket (❓ → ✓ eller ✗) og chatten.
       "assignment_id": "...",
       "assignment_text": "34 + 67",
       "student_answer": "101",
-      "is_correct": true,
       "status": "correct",
       "error_type": null,
       "error_description": null,
@@ -148,7 +157,6 @@ Resultatet opdaterer arket (❓ → ✓ eller ✗) og chatten.
       "assignment_id": "...",
       "assignment_text": "245 + 378",
       "student_answer": "613",
-      "is_correct": false,
       "status": "incorrect",
       "error_type": "procedural",
       "error_description": "Mente-fejl i hundrederne",
@@ -159,7 +167,6 @@ Resultatet opdaterer arket (❓ → ✓ eller ✗) og chatten.
       "assignment_id": "...",
       "assignment_text": "453 − 187",
       "student_answer": null,
-      "is_correct": null,
       "status": "uncertain",
       "error_type": null,
       "error_description": null,
@@ -192,9 +199,8 @@ Din opgave:
 1. Find hvert håndskrevet svar i billedet/billederne
 2. Match hvert svar til den rigtige opgave via opgavenummer, regnestykke, eller tallene
 3. Læs elevens svar omhyggeligt — læs hvad der FAKTISK ER SKREVET, beregn IKKE selv
-4. Tjek om svaret er korrekt
-5. Hvis forkert: klassificér fejltypen og beskriv fejlen kort på dansk
-6. Vurdér din confidence (0.0–1.0) for hvert svar baseret på læsbarhed
+4. Sammenlign med det korrekte svar og klassificér fejltypen hvis forkert. Beskriv fejlen kort på dansk
+5. Vurdér din confidence (0.0–1.0) for hvert svar baseret på læsbarhed
 
 Fejltyper:
 - "procedural": Rigtig metode, fejl i udførelsen (mente-fejl, forskydningsfejl, ciferfejl)
@@ -238,7 +244,7 @@ Backend'en bruger `compare_answer()` til at validere rigtigt/forkert (determinis
 
 `send_vision()` understøtter i dag kun ét billede. Bulk-scan kræver 1+ billeder.
 
-**Tilgang:** Ny metode `send_vision_multi(system_prompt, images: list[bytes], user_message, media_types)` på `AIClient`. Implementeres for `ClaudeAIClient` (multi-image i `messages[].content[]`). Gemini og Ollama kan få stub der sender billederne sekventielt eller raises NotImplementedError.
+**Tilgang:** Ny metode `send_vision_multi(system_prompt, images: list[bytes], user_message, media_types)` på `AIClient`. Implementeres for `ClaudeAIClient` (multi-image i `messages[].content[]`). Gemini og Ollama får sekventiel fallback: sender hvert billede separat med samme prompt og samler resultater. Langsomt men funktionelt — undgår crash under lokal udvikling.
 
 ---
 
@@ -280,11 +286,11 @@ class BulkSubmitResult(BaseModel):
     assignment_id: str
     assignment_text: str
     student_answer: str | None
-    is_correct: bool | None
     status: Literal["correct", "incorrect", "uncertain", "not_found"]
     error_type: Literal["procedural", "understanding", "careless"] | None
     error_description: str | None
     confidence: float
+    page_index: int | None
     submission_id: str | None
 
 class BulkSubmitSummary(BaseModel):
@@ -315,6 +321,7 @@ Ingen nye tabeller. Bulk-scan opretter:
 | Scenarie | Håndtering |
 |----------|-----------|
 | AI-kald fejler | "Kvante kunne ikke læse dit ark — prøv igen" med retry-knap |
+| Timeout (>45s) | "Det tager for lang tid — prøv igen med færre sider" med retry-knap |
 | Ingen opgaver matchet | "Kvante kunne ikke finde nogen svar — er det det rigtige ark?" |
 | AI returnerer invalid JSON | Retry én gang med strengere prompt. Hvis fejl igen: fejlbesked |
 | Billede for stort | VisionKit komprimerer allerede. Backend: max 10 MB per billede |
@@ -354,7 +361,8 @@ Ingen nye tabeller. Bulk-scan opretter:
 5. Confidence under tærskel → `uncertain` status
 6. Duplikerede matches → højeste confidence vinder
 7. Streak opdateres for korrekte svar
-8. Fejlhåndtering: invalid JSON, ingen matches, AI-fejl
+8. Fejlhåndtering: invalid JSON, ingen matches, AI-fejl, timeout
+9. Delvise sessioner: allerede-complete opgaver ignoreres i bulk-scan resultat
 
 ### iOS (manuel QA)
 
