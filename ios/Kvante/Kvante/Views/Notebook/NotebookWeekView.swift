@@ -59,8 +59,8 @@ struct NotebookWeekView: View {
                 .padding(.bottom, 40)
             }
         }
-        .task {
-            let result = await viewModel.sessionGroups(for: week)
+        .onAppear {
+            let result = viewModel.sessionGroups(for: week)
             weeklyGroups = result.weekly
             practiceGroups = result.practice
             isLoading = false
