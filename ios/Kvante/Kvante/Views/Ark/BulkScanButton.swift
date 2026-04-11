@@ -46,7 +46,7 @@ struct BulkScanButton: View {
             }
             .buttonStyle(.plain)
             .fullScreenCover(isPresented: $showScanner) {
-                DocumentScannerView { images in
+                MultiPageScannerView { images in
                     showScanner = false
                     let jpegData = images.map { downscaleToJPEG($0) }
                     onScanComplete(jpegData)
@@ -58,9 +58,9 @@ struct BulkScanButton: View {
     }
 }
 
-// MARK: - DocumentScannerView (VisionKit wrapper)
+// MARK: - MultiPageScannerView (VisionKit wrapper for bulk-scan)
 
-struct DocumentScannerView: UIViewControllerRepresentable {
+struct MultiPageScannerView: UIViewControllerRepresentable {
     let onComplete: ([UIImage]) -> Void
     let onCancel: () -> Void
 

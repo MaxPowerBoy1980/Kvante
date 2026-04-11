@@ -1,5 +1,4 @@
 import SwiftUI
-import VisionKit
 
 struct RescanSheet: View {
     let assignment: ParsedAssignment
@@ -82,11 +81,9 @@ struct RescanSheet: View {
         }
         .padding(20)
         .fullScreenCover(isPresented: $showScanner) {
-            DocumentScannerView { images in
+            DocumentScannerView { imageData in
                 showScanner = false
-                if let first = images.first {
-                    Task { await submitRescan(first) }
-                }
+                Task { await submitRescanData(imageData) }
             } onCancel: {
                 showScanner = false
             }
@@ -142,15 +139,14 @@ struct RescanSheet: View {
     }
 
     @MainActor
-    private func submitRescan(_ image: UIImage) async {
+    private func submitRescanData(_ imageData: Data) async {
         isSubmitting = true
         errorMessage = nil
-        let jpegData = downscaleToJPEG(image)
         do {
             let response = try await apiClient.submitWork(
                 sessionId: sessionId,
                 assignmentId: assignment.id,
-                imageData: jpegData
+                imageData: imageData
             )
             onResult(response)
         } catch {
