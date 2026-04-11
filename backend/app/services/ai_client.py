@@ -23,6 +23,24 @@ class AIClient(ABC):
     ) -> str:
         """Send an image + text prompt. Returns the text response."""
 
+    def send_vision_multi(
+        self,
+        system_prompt: str,
+        images: list[bytes],
+        user_message: str,
+        media_types: list[str] | None = None,
+    ) -> str:
+        """Send multiple images + text prompt. Returns the text response.
+        Default: sends images sequentially and concatenates results.
+        """
+        # Fallback for providers that don't support multi-image natively
+        results = []
+        for i, img in enumerate(images):
+            mt = media_types[i] if media_types else "image/jpeg"
+            r = self.send_vision(system_prompt, img, user_message, mt)
+            results.append(r)
+        return results[-1] if results else ""
+
 
 class ClaudeAIClient(AIClient):
     def __init__(self):
@@ -74,6 +92,41 @@ class ClaudeAIClient(AIClient):
                     ],
                 }
             ],
+        )
+        elapsed = time.time() - start
+        self._log_usage(response.usage, elapsed)
+        return response.content[0].text
+
+    def send_vision_multi(
+        self,
+        system_prompt: str,
+        images: list[bytes],
+        user_message: str,
+        media_types: list[str] | None = None,
+    ) -> str:
+        """Send multiple images in a single Claude API call."""
+        logger.debug("Claude send_vision_multi: %d images, prompt: %s", len(images), system_prompt[:200])
+
+        content_blocks = []
+        for i, img_bytes in enumerate(images):
+            mt = media_types[i] if media_types else "image/jpeg"
+            image_b64 = base64.b64encode(img_bytes).decode("utf-8")
+            content_blocks.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": mt,
+                    "data": image_b64,
+                },
+            })
+        content_blocks.append({"type": "text", "text": user_message})
+
+        start = time.time()
+        response = self._client.messages.create(
+            model=self._model,
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": content_blocks}],
         )
         elapsed = time.time() - start
         self._log_usage(response.usage, elapsed)
