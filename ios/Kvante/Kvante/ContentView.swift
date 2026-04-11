@@ -120,17 +120,18 @@ struct ContentView: View {
                 case .notebook:
                     if let client = apiClient, let p = profile {
                         let studentId = p.backendStudentId ?? "default"
-                        let vm = activeNotebookViewModel ?? {
-                            let newVM = NotebookViewModel(apiClient: client, studentId: studentId)
-                            Task { @MainActor in activeNotebookViewModel = newVM }
-                            return newVM
-                        }()
+                        let vm = activeNotebookViewModel ?? NotebookViewModel(apiClient: client, studentId: studentId)
                         NotebookView(
                             viewModel: vm,
                             apiClient: client,
                             studentName: p.name,
                             onBack: { sessionPath.removeAll() }
                         )
+                        .onAppear {
+                            if activeNotebookViewModel == nil {
+                                activeNotebookViewModel = vm
+                            }
+                        }
                     }
                 }
             }
@@ -246,7 +247,7 @@ struct ContentView: View {
             }
         }
         let studentId = p.backendStudentId ?? "default"
-        if let history = try? await client.getSessionHistory(studentId: studentId) {
+        if let history = try? await client.getSessionHistory(studentId: studentId, limit: 0) {
             sessionHistory = history.sessions
         }
     }

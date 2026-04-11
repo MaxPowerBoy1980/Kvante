@@ -44,7 +44,7 @@ final class NotebookViewModel {
     var weeks: [NotebookWeek] = []
     var totalSolved: Int = 0
     var totalWeeks: Int { weeks.count }
-    var isLoading = false
+    var isLoading = true
     var loadError: String?
 
     private let apiClient: APIClient
