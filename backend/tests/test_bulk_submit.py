@@ -1,7 +1,16 @@
-"""Tests for bulk-scan submission (Pakke 4)."""
+"""Unit tests for bulk-scan components (Pakke 4).
 
-from unittest.mock import patch, MagicMock
+These tests cover AIClient.send_vision_multi, build_user_message, parse_ai_response,
+and validate_and_build_results — all without touching SQLAlchemy or the FastAPI router.
+
+Router integration tests live in test_bulk_submit_router.py which uses sys.modules
+stubs to bypass the Python 3.14 / SQLAlchemy 2.0 incompatibility.
+"""
+
 import json
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.services.ai_client import ClaudeAIClient
 from app.services.bulk_scan_service import build_user_message, parse_ai_response, validate_and_build_results
@@ -103,7 +112,6 @@ def test_parse_ai_response_strips_markdown_fences():
 
 def test_parse_ai_response_invalid_json_raises():
     """parse_ai_response should raise ValueError on invalid JSON."""
-    import pytest
     with pytest.raises(ValueError, match="parse AI"):
         parse_ai_response("this is not json at all")
 

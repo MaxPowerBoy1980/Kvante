@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import assignments, chat, dev_screenshots, dev_todos, feedback, health, library, pages, practice, scans, streaks, students, submissions, test_ocr
+from app.routers import assignments, bulk_submit, chat, dev_screenshots, dev_todos, feedback, health, library, pages, practice, scans, streaks, students, submissions, test_ocr
 
 from app.logging_config import setup_logging
 
@@ -101,3 +101,4 @@ app.include_router(test_ocr.router)
 app.include_router(dev_screenshots.router)
 app.include_router(dev_todos.router)
 app.include_router(scans.router)
+app.include_router(bulk_submit.router)
