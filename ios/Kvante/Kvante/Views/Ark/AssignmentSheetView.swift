@@ -17,6 +17,11 @@ struct AssignmentSheetView: View {
     var onBack: (() -> Void)?
 
     @State private var presentedFeedback: ArkFeedbackItem?
+    @State private var isBulkScanning = false
+    @State private var bulkScanError: String?
+    @State private var bulkScanResponse: BulkSubmitResponse?
+    @State private var presentedError: ArkFeedbackItem?
+    @State private var presentedRescan: ArkFeedbackItem?
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -39,17 +44,20 @@ struct AssignmentSheetView: View {
                                 status: session.statusByAssignment[assignment.id] ?? .notStarted,
                                 scanId: session.latestScanId[assignment.id],
                                 feedbackSummary: session.feedbackSummary[assignment.id],
+                                errorDescription: session.errorDescription[assignment.id],
                                 isCurrent: session.currentAssignmentIndex == index,
                                 apiClient: apiClient,
-                                onTap: {
-                                    onSelectAssignment(index)
-                                },
+                                onTap: { onSelectAssignment(index) },
                                 onFeedbackTap: {
-                                    presentedFeedback = ArkFeedbackItem(
-                                        id: assignment.id,
-                                        assignment: assignment,
-                                        index: index
-                                    )
+                                    if session.errorDescription[assignment.id] != nil {
+                                        presentedError = ArkFeedbackItem(id: assignment.id, assignment: assignment, index: index)
+                                    } else {
+                                        presentedFeedback = ArkFeedbackItem(
+                                            id: assignment.id,
+                                            assignment: assignment,
+                                            index: index
+                                        )
+                                    }
                                 }
                             )
                         }
@@ -57,6 +65,38 @@ struct AssignmentSheetView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
                     .padding(.bottom, 24)
+                }
+
+                if !isBulkScanning {
+                    BulkScanButton(
+                        hasIncompleteAssignments: session.completedCount < session.totalAssignments
+                    ) { imageDataList in
+                        Task { await performBulkScan(imageDataList) }
+                    }
+                    .padding(.bottom, 16)
+                }
+
+                if isBulkScanning {
+                    VStack(spacing: 8) {
+                        ProgressView()
+                            .tint(KvanteTheme.Colors.primary)
+                        Text("Kvante læser dit ark...")
+                            .font(.subheadline)
+                            .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                    }
+                    .padding(.vertical, 16)
+                }
+
+                if let error = bulkScanError {
+                    VStack(spacing: 8) {
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                        Button("Prøv igen") { bulkScanError = nil }
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .padding(16)
                 }
             }
         }
@@ -73,6 +113,51 @@ struct AssignmentSheetView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .sheet(item: $presentedError) { item in
+            ErrorAnalysisSheet(
+                assignment: item.assignment,
+                studentAnswer: session.studentAnswer[item.assignment.id] ?? "?",
+                errorDescription: session.errorDescription[item.assignment.id] ?? "",
+                scanId: session.latestScanId[item.assignment.id],
+                apiClient: apiClient,
+                onOpenChat: {
+                    presentedError = nil
+                    onSelectAssignment(item.index)
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $presentedRescan) { item in
+            RescanSheet(
+                assignment: item.assignment,
+                sessionId: session.sessionId,
+                apiClient: apiClient,
+                onResult: { response in
+                    presentedRescan = nil
+                    if response.methodologySound {
+                        session.markCompleted(item.assignment.id, feedback: nil)
+                    }
+                },
+                onDismiss: { presentedRescan = nil }
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    // MARK: - Bulk Scan
+
+    @MainActor
+    private func performBulkScan(_ images: [Data]) async {
+        isBulkScanning = true
+        bulkScanError = nil
+        do {
+            let response = try await apiClient.bulkSubmit(sessionId: session.sessionId, images: images)
+            session.processBulkResult(response)
+            bulkScanResponse = response
+        } catch {
+            bulkScanError = error.localizedDescription
+        }
+        isBulkScanning = false
     }
 
     // MARK: - Header

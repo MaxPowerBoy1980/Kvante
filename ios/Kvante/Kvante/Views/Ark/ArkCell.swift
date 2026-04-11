@@ -6,6 +6,7 @@ struct ArkCell: View {
     let status: ArkStatus
     let scanId: String?
     let feedbackSummary: String?
+    let errorDescription: String?
     let isCurrent: Bool
     let apiClient: APIClient
     let onTap: () -> Void
@@ -165,8 +166,14 @@ struct ArkCell: View {
                 EmptyView()
             }
 
-            // Feedback teaser
-            if let feedbackSummary {
+            // Error description (shown when status is not done and error is present)
+            if status != .done, let errorDescription {
+                Text(errorDescription)
+                    .font(.caption)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
+                    .lineLimit(2)
+            } else if let feedbackSummary {
+                // Feedback teaser
                 Text(feedbackSummary)
                     .font(.caption2.italic())
                     .foregroundStyle(KvanteTheme.Colors.textMuted)
@@ -175,8 +182,8 @@ struct ArkCell: View {
 
             Spacer()
 
-            // Info button (feedback preview)
-            if feedbackSummary != nil {
+            // Info button (feedback preview or error detail)
+            if feedbackSummary != nil || (status != .done && errorDescription != nil) {
                 Button(action: onFeedbackTap) {
                     Image(systemName: "info.circle.fill")
                         .font(.body)
