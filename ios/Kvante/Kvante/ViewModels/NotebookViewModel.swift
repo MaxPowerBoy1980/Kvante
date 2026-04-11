@@ -45,6 +45,7 @@ final class NotebookViewModel {
     var totalSolved: Int = 0
     var totalWeeks: Int { weeks.count }
     var isLoading = false
+    var loadError: String?
 
     private let apiClient: APIClient
     private let studentId: String
@@ -58,11 +59,18 @@ final class NotebookViewModel {
 
     func loadSessions() async {
         isLoading = true
+        loadError = nil
         defer { isLoading = false }
 
-        guard let history = try? await apiClient.getSessionHistoryWithAssignments(studentId: studentId) else {
+        let history: SessionHistoryWithAssignmentsResponse
+        do {
+            history = try await apiClient.getSessionHistoryWithAssignments(studentId: studentId)
+        } catch {
+            loadError = "loadSessions failed: \(error)"
+            print("[NotebookVM] loadSessions FAILED for student \(studentId): \(error)")
             return
         }
+        print("[NotebookVM] loadSessions OK: \(history.sessions.count) sessions")
 
         let calendar = Calendar(identifier: .iso8601)
         let isoFormatter = ISO8601DateFormatter()

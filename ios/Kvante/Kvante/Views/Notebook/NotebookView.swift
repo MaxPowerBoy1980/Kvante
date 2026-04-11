@@ -31,6 +31,22 @@ struct NotebookView: View {
                 Spacer()
                 ProgressView()
                 Spacer()
+            } else if let error = viewModel.loadError {
+                Spacer()
+                VStack(spacing: 12) {
+                    Text("Fejl ved indlæsning")
+                        .font(.headline)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    Button("Prøv igen") {
+                        Task { await viewModel.loadSessions() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                Spacer()
             } else {
                 TabView(selection: $currentPage) {
                     // Page 0: Cover
