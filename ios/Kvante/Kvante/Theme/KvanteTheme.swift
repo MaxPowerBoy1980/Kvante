@@ -73,6 +73,7 @@ enum KvanteTheme {
         // Rob pixelart-derived colors
         static let robBlue = Color(hex: "5B9EB5")       // Rob's head — used for done-chips
         static let backgroundWarm = Color(hex: "FFF7ED") // Warm cream for triumph card gradient
+        static let triumphGradientEnd = Color(hex: "FFE8D6") // Warmer endpoint for triumph card
 
         // Difficulty level colors
         static let difficultyEasy = teal
