@@ -241,7 +241,7 @@ struct ArkCell: View {
         if isCurrent {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(borderColor, lineWidth: 2)
+                    .stroke(KvanteTheme.Colors.primary, lineWidth: 2)
 
                 // Current indicator dot
                 Circle()
