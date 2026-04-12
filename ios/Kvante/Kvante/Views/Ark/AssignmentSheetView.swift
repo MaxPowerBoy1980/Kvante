@@ -16,11 +16,10 @@ struct AssignmentSheetView: View {
     let onSelectAssignment: (Int) -> Void
     var onBack: (() -> Void)?
 
-    @State private var presentedFeedback: ArkFeedbackItem?
+    @State private var presentedFeedbackSheet: ArkFeedbackItem?
     @State private var isBulkScanning = false
     @State private var bulkScanError: String?
     @State private var bulkScanResponse: BulkSubmitResponse?
-    @State private var presentedError: ArkFeedbackItem?
     @State private var presentedRescan: ArkFeedbackItem?
 
     private let columns = [
@@ -51,21 +50,17 @@ struct AssignmentSheetView: View {
                                 onTap: {
                                     let status = session.statusByAssignment[assignment.id] ?? .notStarted
                                     if status == .done {
-                                        presentedFeedback = ArkFeedbackItem(id: assignment.id, assignment: assignment, index: index)
+                                        presentedFeedbackSheet = ArkFeedbackItem(id: assignment.id, assignment: assignment, index: index)
                                     } else {
                                         onSelectAssignment(index)
                                     }
                                 },
                                 onFeedbackTap: {
-                                    if session.errorDescription[assignment.id] != nil {
-                                        presentedError = ArkFeedbackItem(id: assignment.id, assignment: assignment, index: index)
-                                    } else {
-                                        presentedFeedback = ArkFeedbackItem(
-                                            id: assignment.id,
-                                            assignment: assignment,
-                                            index: index
-                                        )
-                                    }
+                                    presentedFeedbackSheet = ArkFeedbackItem(
+                                        id: assignment.id,
+                                        assignment: assignment,
+                                        index: index
+                                    )
                                 }
                             )
                         }
@@ -109,41 +104,38 @@ struct AssignmentSheetView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(item: $presentedFeedback) { item in
-            FeedbackPreviewSheet(
-                assignment: item.assignment,
-                session: session,
-                apiClient: apiClient,
-                onOpenChat: {
-                    presentedFeedback = nil
-                    onSelectAssignment(item.index)
-                }
-            )
-            .presentationDetents([.medium, .large])
-        }
-        .sheet(item: $presentedError) { item in
-            ErrorAnalysisSheet(
-                assignment: item.assignment,
-                studentAnswer: session.studentAnswer[item.assignment.id] ?? "?",
-                errorDescription: session.errorDescription[item.assignment.id] ?? "",
-                scanId: session.latestScanId[item.assignment.id],
-                cropRegion: session.boundingBoxByAssignment[item.assignment.id],
-                apiClient: apiClient,
-                sessionId: session.sessionId,
-                onOpenChat: {
-                    presentedError = nil
-                    onSelectAssignment(item.index)
-                },
-                onCorrected: { response in
-                    presentedError = nil
-                    if response.methodologySound {
-                        session.markCompleted(item.assignment.id, feedback: nil)
-                    } else {
-                        session.statusByAssignment[item.assignment.id] = .inProgress
+        .sheet(item: $presentedFeedbackSheet) { item in
+            let assignmentId = item.assignment.id
+            FeedbackSheet(
+                assignmentId: assignmentId,
+                assignmentText: item.assignment.text,
+                assignmentIndex: item.index,
+                status: {
+                    let s = session.statusByAssignment[assignmentId] ?? .notStarted
+                    switch s {
+                    case .done: return "done"
+                    case .inProgress: return "in_progress"
+                    case .notStarted: return "not_started"
                     }
+                }(),
+                errorType: session.errorType[assignmentId],
+                studentAnswer: session.studentAnswer[assignmentId],
+                scanId: session.latestScanId[assignmentId],
+                cropRegion: session.boundingBoxByAssignment[assignmentId],
+                gearScore: session.gearScoreByAssignment[assignmentId],
+                improvementTip: session.improvementTipByAssignment[assignmentId],
+                feedbackSummary: session.feedbackSummary[assignmentId],
+                submissionId: session.submissionIdByAssignment[assignmentId],
+                isHistorical: false,
+                apiClient: apiClient,
+                onRetry: {
+                    presentedFeedbackSheet = nil
+                },
+                onShowExample: {
+                    presentedFeedbackSheet = nil
+                    onSelectAssignment(item.index)
                 }
             )
-            .presentationDetents([.medium, .large])
         }
         .sheet(item: $presentedRescan) { item in
             ConfirmAnswerSheet(
