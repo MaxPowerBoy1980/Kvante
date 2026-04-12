@@ -20,8 +20,6 @@ struct FeedbackSheet: View {
     var onShowExample: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
-    @State private var feedbackText: String?
-    @State private var isLoadingFeedback = false
     @State private var scanImage: UIImage?
     @State private var isLoadingScan = false
 
@@ -159,24 +157,7 @@ struct FeedbackSheet: View {
                 .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 .textCase(.uppercase)
 
-            if isLoadingFeedback {
-                HStack(spacing: 10) {
-                    Image("rob2_thinking")
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 32, height: 32)
-
-                    Text("Kvante kigger p\u{00e5} dit arbejde...")
-                        .font(.body.italic())
-                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                }
-                .padding(12)
-            } else {
-                let displayText = feedbackText
-                    ?? feedbackSummary
-                    ?? (isCorrect ? "Godt arbejde! Du løste opgaven." : "Godt forsøg — bliv ved med at øve dig!")
-
+            if let displayText = composedFeedbackText {
                 Text(displayText)
                     .font(.body)
                     .foregroundStyle(KvanteTheme.Colors.ink)
@@ -188,6 +169,34 @@ struct FeedbackSheet: View {
                     )
             }
         }
+    }
+
+    /// Compose feedback text from gear_score + improvement_tip.
+    /// Falls back to feedbackSummary (from bulk error_description).
+    /// Returns nil if no data available — section shows nothing.
+    private var composedFeedbackText: String? {
+        // Priority 1: gear_score opening line + improvement_tip
+        if let gs = gearScore {
+            let opening: String
+            switch gs.total {
+            case 6: opening = "Perfekt!"
+            case 4...5: opening = "Godt arbejde!"
+            case 2...3: opening = "Tæt på!"
+            default: opening = "Lad os prøve igen"
+            }
+            if let tip = improvementTip {
+                return "\(opening) \(tip)"
+            }
+            return opening
+        }
+
+        // Priority 2: feedbackSummary from bulk-scan error description
+        if let summary = feedbackSummary {
+            return summary
+        }
+
+        // No data — show nothing
+        return nil
     }
 
     // MARK: - 5. Tip Section
@@ -295,18 +304,6 @@ struct FeedbackSheet: View {
                 )
             }
             isLoadingScan = false
-        }
-
-        // Load feedback text lazily
-        if feedbackText == nil, feedbackSummary == nil, let subId = submissionId {
-            isLoadingFeedback = true
-            do {
-                let response = try await apiClient.getFeedback(submissionId: subId)
-                feedbackText = response.feedbackText
-            } catch {
-                // Fallback: show nothing rather than crash
-            }
-            isLoadingFeedback = false
         }
     }
 }
