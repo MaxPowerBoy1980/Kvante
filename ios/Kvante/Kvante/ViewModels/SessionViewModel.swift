@@ -42,6 +42,9 @@ final class SessionViewModel {
     var bulkScanIds: [String]              // scan IDs from last bulk scan
     var pageIndexByAssignment: [String: Int] // assignment_id → page_index
     var boundingBoxByAssignment: [String: CropRegion] // assignment_id → crop region
+    var gearScoreByAssignment: [String: GearScore]    // assignment_id → gear score
+    var improvementTipByAssignment: [String: String]  // assignment_id → improvement tip
+    var submissionIdByAssignment: [String: String]    // assignment_id → submission id
 
     // MARK: - Computed
 
@@ -106,6 +109,8 @@ final class SessionViewModel {
         var scans: [String: String] = [:]
         var feedback: [String: String] = [:]
         var comments: [String: String] = [:]
+        var gearScores: [String: GearScore] = [:]
+        var tips: [String: String] = [:]
 
         for ark in response.assignments {
             status[ark.id] = ArkStatus(from: ark.arkStatus)
@@ -118,18 +123,27 @@ final class SessionViewModel {
             if let comment = ark.teacherComment {
                 comments[ark.id] = comment
             }
+            if let gearScore = ark.gearScore {
+                gearScores[ark.id] = gearScore
+            }
+            if let tip = ark.improvementTip {
+                tips[ark.id] = tip
+            }
         }
 
         self.statusByAssignment = status
         self.latestScanId = scans
         self.feedbackSummary = feedback
         self.teacherComments = comments
+        self.gearScoreByAssignment = gearScores
+        self.improvementTipByAssignment = tips
         self.errorDescription = [:]
         self.studentAnswer = [:]
         self.errorType = [:]
         self.bulkScanIds = []
         self.pageIndexByAssignment = [:]
         self.boundingBoxByAssignment = [:]
+        self.submissionIdByAssignment = [:]
     }
 
     /// Process bulk-scan results: update status, store error info, scan IDs.
@@ -173,6 +187,15 @@ final class SessionViewModel {
                 if response.scanIds.indices.contains(scanIdx) {
                     latestScanId[id] = response.scanIds[scanIdx]
                 }
+            }
+            if let gearScore = result.gearScore {
+                gearScoreByAssignment[id] = gearScore
+            }
+            if let tip = result.improvementTip {
+                improvementTipByAssignment[id] = tip
+            }
+            if let subId = result.submissionId {
+                submissionIdByAssignment[id] = subId
             }
         }
     }
