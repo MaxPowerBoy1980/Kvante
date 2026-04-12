@@ -1,6 +1,31 @@
 from typing import Literal
 
-from pydantic import BaseModel, SerializeAsAny, field_validator
+from pydantic import BaseModel, Field, SerializeAsAny, computed_field, field_validator
+
+
+# --- GearScore ---
+
+class GearScore(BaseModel):
+    correct_answer: int = Field(ge=0, le=2, description="0=forkert, 2=korrekt (binært)")
+    visible_method: int = Field(ge=0, le=2, description="0=ingen, 1=noget, 2=alle trin")
+    notation: int = Field(ge=0, le=2, description="0=rodet, 1=okay, 2=tydelig")
+
+    @computed_field
+    @property
+    def total(self) -> int:
+        return self.correct_answer + self.visible_method + self.notation
+
+    @field_validator("correct_answer", mode="before")
+    @classmethod
+    def correct_answer_binary(cls, v: int) -> int:
+        if v == 1:
+            return 2
+        return max(0, min(2, v))
+
+    @field_validator("visible_method", "notation", mode="before")
+    @classmethod
+    def clamp_0_2(cls, v: int) -> int:
+        return max(0, min(2, v))
 
 
 # --- Page Scan ---
@@ -70,6 +95,8 @@ class SubmissionResponse(BaseModel):
     methodology_assessment: str
     handwriting_note: str = ""
     confidence: float
+    gear_score: GearScore | None = None
+    improvement_tip: str | None = None
 
 
 # --- Feedback ---
@@ -196,6 +223,8 @@ class ArkAssignment(BaseModel):
     teacher_comment: str | None = None
     correct_answer: str | None = None
     student_answer: str | None = None
+    gear_score: GearScore | None = None
+    improvement_tip: str | None = None
 
     @field_validator("teacher_comment", mode="before")
     @classmethod
@@ -226,6 +255,8 @@ class BulkSubmitResult(BaseModel):
     page_index: int | None = None
     submission_id: str | None = None
     bounding_box: list[float] | None = None
+    gear_score: GearScore | None = None
+    improvement_tip: str | None = None
 
 
 class BulkSubmitSummary(BaseModel):
