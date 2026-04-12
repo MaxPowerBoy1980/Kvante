@@ -66,9 +66,22 @@ struct NotebookWeekView: View {
             isLoading = false
         }
         .sheet(item: $selectedAssignment) { assignment in
-            AssignmentDetailSheet(assignment: assignment, apiClient: apiClient)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+            FeedbackSheet(
+                assignmentId: assignment.id,
+                assignmentText: assignment.text,
+                assignmentIndex: assignment.position,
+                status: assignment.arkStatus,
+                errorType: nil,
+                studentAnswer: assignment.studentAnswer,
+                scanId: assignment.scanId,
+                cropRegion: nil,
+                gearScore: assignment.gearScore,
+                improvementTip: assignment.improvementTip,
+                feedbackSummary: assignment.feedbackSummary,
+                submissionId: nil,
+                isHistorical: true,
+                apiClient: apiClient
+            )
         }
     }
 

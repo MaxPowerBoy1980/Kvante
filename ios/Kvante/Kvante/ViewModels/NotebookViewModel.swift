@@ -25,6 +25,8 @@ struct NotebookAssignment: Identifiable {
     let scanId: String?
     let position: Int
     let weekNumber: Int
+    let gearScore: GearScore?
+    let improvementTip: String?
 }
 
 /// A group of assignments belonging to one session.
@@ -163,7 +165,9 @@ final class NotebookViewModel {
                 feedbackSummary: a.latestAiFeedbackSummary,
                 scanId: a.latestScanId,
                 position: a.position,
-                weekNumber: weekNumber
+                weekNumber: weekNumber,
+                gearScore: a.gearScore,
+                improvementTip: a.improvementTip
             )
         }.sorted { $0.position < $1.position }
 
