@@ -41,6 +41,7 @@ final class SessionViewModel {
     var errorType: [String: String]         // assignment_id → error type
     var bulkScanIds: [String]              // scan IDs from last bulk scan
     var pageIndexByAssignment: [String: Int] // assignment_id → page_index
+    var boundingBoxByAssignment: [String: CropRegion] // assignment_id → crop region
 
     // MARK: - Computed
 
@@ -128,6 +129,7 @@ final class SessionViewModel {
         self.errorType = [:]
         self.bulkScanIds = []
         self.pageIndexByAssignment = [:]
+        self.boundingBoxByAssignment = [:]
     }
 
     /// Process bulk-scan results: update status, store error info, scan IDs.
@@ -162,6 +164,9 @@ final class SessionViewModel {
             }
             if let pageIdx = result.pageIndex {
                 pageIndexByAssignment[id] = pageIdx
+            }
+            if let region = CropRegion(from: result.boundingBox) {
+                boundingBoxByAssignment[id] = region
             }
             if result.submissionId != nil {
                 let scanIdx = result.pageIndex ?? 0

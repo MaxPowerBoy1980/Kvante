@@ -469,6 +469,7 @@ struct BulkSubmitResult: Codable, Identifiable {
     let confidence: Double
     let pageIndex: Int?
     let submissionId: String?
+    let boundingBox: [Double]?
 
     var id: String { assignmentId }
 
@@ -482,6 +483,7 @@ struct BulkSubmitResult: Codable, Identifiable {
         case confidence
         case pageIndex = "page_index"
         case submissionId = "submission_id"
+        case boundingBox = "bounding_box"
     }
 }
 
