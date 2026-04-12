@@ -70,6 +70,10 @@ enum KvanteTheme {
         static let coral = Color(hex: "E8507A")  // Lightning zigzag / celebration
         static let antennePink = Color(hex: "E8507A")  // Antenna pom-pom (same as coral)
 
+        // Rob pixelart-derived colors
+        static let robBlue = Color(hex: "5B9EB5")       // Rob's head — used for done-chips
+        static let backgroundWarm = Color(hex: "FFF7ED") // Warm cream for triumph card gradient
+
         // Difficulty level colors
         static let difficultyEasy = teal
         static let difficultyNormal = primary
