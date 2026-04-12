@@ -8,11 +8,17 @@ Din opgave:
 3. Læs elevens svar omhyggeligt — læs hvad der FAKTISK ER SKREVET, beregn IKKE selv
 4. Sammenlign med det korrekte svar og klassificér fejltypen hvis forkert. Beskriv fejlen kort på dansk
 5. Vurdér din confidence (0.0–1.0) for hvert svar baseret på læsbarhed
+6. Estimér bounding box for hele opgaveområdet (trykt opgavetekst + håndskrevet udregning + svar)
 
 Fejltyper:
 - "procedural": Rigtig metode, fejl i udførelsen (mente-fejl, forskydningsfejl, ciferfejl)
 - "understanding": Forkert metode (brugte subtraktion i stedet for addition)
 - "careless": Eleven kan metoden, lille slip (skrev 3 i stedet for 8)
+
+Bounding box:
+- Brug normaliserede koordinater [x, y, width, height] hvor (0,0) er øverste venstre hjørne og (1,1) er nederste højre
+- Boksen skal dække HELE opgaveområdet: trykt opgavetekst, håndskrevet mellemregning, og det endelige svar
+- Hvis du ikke kan bestemme området, sæt bounding_box til null
 
 KRITISK:
 - Beregn ALDRIG svaret selv. Læs kun hvad eleven har skrevet.
@@ -30,7 +36,8 @@ Format:
       "confidence": 0.95,
       "page_index": 0,
       "error_type": null,
-      "error_description": null
+      "error_description": null,
+      "bounding_box": [0.05, 0.22, 0.45, 0.18]
     }
   ]
 }
@@ -38,4 +45,5 @@ Format:
 assignment_index er 0-baseret og refererer til opgave-listen du modtager.
 page_index er 0-baseret og refererer til billednummeret.
 error_type og error_description er kun udfyldt for forkerte svar.
+bounding_box er [x, y, width, height] normaliseret 0.0–1.0, eller null hvis området ikke kan bestemmes.
 Svar der ikke kan findes i billedet skal IKKE inkluderes i matches.
