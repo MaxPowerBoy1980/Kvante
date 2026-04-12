@@ -9,7 +9,7 @@ struct GearRatingView: View {
         HStack(spacing: 8) {
             ForEach(0..<maxScore, id: \.self) { index in
                 GearShape()
-                    .fill(index < score ? Color.accentColor : Color(.systemGray5))
+                    .fill(index < score ? KvanteTheme.Colors.primary : Color(.systemGray5))
                     .frame(width: 28, height: 28)
             }
         }

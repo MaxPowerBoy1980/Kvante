@@ -49,7 +49,7 @@ struct FeedbackSheet: View {
     }
 
     private var headlineColor: Color {
-        isCorrect ? .green : .accentColor
+        isCorrect ? KvanteTheme.Colors.success : KvanteTheme.Colors.primary
     }
 
     private var questionText: String? {
@@ -203,7 +203,7 @@ struct FeedbackSheet: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("TIP FRA KVANTE")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(KvanteTheme.Colors.primary)
                     .textCase(.uppercase)
 
                 HStack(spacing: 0) {
