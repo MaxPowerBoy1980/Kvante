@@ -449,27 +449,20 @@ class ChatViewModel {
                                 actions: [ActionChipModel(id: "next_assignment", label: "Næste opgave", icon: "arrow.right.circle.fill", isPrimary: true)]
                             ))
                         }
+
+                        // Gear tip for correct but non-perfect
+                        if let gs = result.gearScore, gs.total < 6, let tip = result.improvementTip {
+                            appendMessage(ChatMessage(sender: .kvante, content: .text("💡 \(tip)")))
+                        }
                     }
 
-                    // Request feedback for wrong answers
+                    // Show gear feedback inline for wrong answers
                     if !result.methodologySound {
-                        let feedbackLoadingId = addLoading("Kvante kigger på din metode...")
-                        do {
-                            let feedback = try await apiClient.getFeedback(
-                                submissionId: result.submissionId
-                            )
-                            let chips = feedback.structuredPrompts.map { ActionChipModel.fromPrompt($0) }
-                            replaceLoading(feedbackLoadingId, with: ChatMessage(
-                                sender: .kvante,
-                                content: .feedback(feedback),
-                                actions: chips
-                            ))
-                        } catch {
-                            replaceLoading(feedbackLoadingId, with: ChatMessage(
-                                sender: .kvante,
-                                content: .text("Prøv igen — tryk + for hjælp hvis du sidder fast.")
-                            ))
-                        }
+                        let feedbackMsg = Self.buildGearFeedbackMessage(
+                            gearScore: result.gearScore,
+                            improvementTip: result.improvementTip
+                        )
+                        appendMessage(feedbackMsg)
                     }
                 } catch {
                     replaceLoading(loadingId, with: ChatMessage(
@@ -544,25 +537,20 @@ class ChatViewModel {
                     loadingId: loadingId
                 )
 
-                // Request feedback for wrong answers
+                // Gear tip for correct but non-perfect
+                if submission.methodologySound,
+                   let gs = submission.gearScore, gs.total < 6,
+                   let tip = submission.improvementTip {
+                    appendMessage(ChatMessage(sender: .kvante, content: .text("💡 \(tip)")))
+                }
+
+                // Show gear feedback inline for wrong answers
                 if !submission.methodologySound {
-                    let feedbackLoadingId = addLoading("Kvante kigger på din metode...")
-                    do {
-                        let feedback = try await apiClient.getFeedback(
-                            submissionId: submission.submissionId
-                        )
-                        let chips = feedback.structuredPrompts.map { ActionChipModel.fromPrompt($0) }
-                        replaceLoading(feedbackLoadingId, with: ChatMessage(
-                            sender: .kvante,
-                            content: .feedback(feedback),
-                            actions: chips
-                        ))
-                    } catch {
-                        replaceLoading(feedbackLoadingId, with: ChatMessage(
-                            sender: .kvante,
-                            content: .text("Prøv igen — tryk + for hjælp hvis du sidder fast.")
-                        ))
-                    }
+                    let feedbackMsg = Self.buildGearFeedbackMessage(
+                        gearScore: submission.gearScore,
+                        improvementTip: submission.improvementTip
+                    )
+                    appendMessage(feedbackMsg)
                 }
             } catch {
                 replaceLoading(loadingId, with: ChatMessage(
@@ -799,5 +787,36 @@ class ChatViewModel {
             appendMessage(message)
         }
         isLoading = false
+    }
+
+    // MARK: - Gear Feedback
+
+    /// Build a chat message with gear_score feedback for incorrect answers.
+    /// Uses improvement_tip from submission instead of calling POST /feedback/.
+    static func buildGearFeedbackMessage(
+        gearScore: GearScore?,
+        improvementTip: String?
+    ) -> ChatMessage {
+        var parts: [String] = []
+
+        if let gs = gearScore {
+            parts.append("⚙ \(gs.total)/6")
+        }
+        if let tip = improvementTip {
+            parts.append(tip)
+        }
+
+        let text = parts.isEmpty
+            ? "Prøv igen — tryk + for hjælp hvis du sidder fast."
+            : parts.joined(separator: " — ")
+
+        return ChatMessage(
+            sender: .kvante,
+            content: .text(text),
+            actions: [
+                ActionChipModel(id: "try_again", label: "Prøv igen", icon: "arrow.counterclockwise", isPrimary: false),
+                ActionChipModel(id: "another_example", label: "Vis mig eksempel", icon: "lightbulb", isPrimary: true),
+            ]
+        )
     }
 }
