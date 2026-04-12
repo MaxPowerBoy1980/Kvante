@@ -76,6 +76,8 @@ struct SubmissionResponse: Codable {
     let methodologyAssessment: String
     let handwritingNote: String
     let confidence: Double
+    let gearScore: GearScore?
+    let improvementTip: String?
 
     enum CodingKeys: String, CodingKey {
         case submissionId = "submission_id"
@@ -90,6 +92,26 @@ struct SubmissionResponse: Codable {
         case methodologyAssessment = "methodology_assessment"
         case handwritingNote = "handwriting_note"
         case confidence
+        case gearScore = "gear_score"
+        case improvementTip = "improvement_tip"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        submissionId = try container.decode(String.self, forKey: .submissionId)
+        assignmentId = try container.decode(String.self, forKey: .assignmentId)
+        sessionId = try container.decode(String.self, forKey: .sessionId)
+        studentAnswer = try container.decode(String.self, forKey: .studentAnswer)
+        correctAnswer = try container.decode(String.self, forKey: .correctAnswer)
+        methodologySound = try container.decode(Bool.self, forKey: .methodologySound)
+        stepsIdentified = try container.decode([AnalysisStep].self, forKey: .stepsIdentified)
+        errors = try container.decode([String].self, forKey: .errors)
+        correctElements = try container.decode([String].self, forKey: .correctElements)
+        methodologyAssessment = try container.decode(String.self, forKey: .methodologyAssessment)
+        handwritingNote = try container.decode(String.self, forKey: .handwritingNote)
+        confidence = try container.decode(Double.self, forKey: .confidence)
+        gearScore = try container.decodeIfPresent(GearScore.self, forKey: .gearScore)
+        improvementTip = try container.decodeIfPresent(String.self, forKey: .improvementTip)
     }
 }
 
