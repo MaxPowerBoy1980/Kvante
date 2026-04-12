@@ -55,16 +55,16 @@ Nyt felt:
 Læser `bounding_box` fra AI-response. Validering:
 - Skal være en liste med 4 floats
 - Alle værdier 0.0–1.0
-- width > 0, height > 0
-- Areal (width * height) < 0.80 af siden (afvis boxes der dækker næsten alt)
+- width > 0.03, height > 0.03 (afvis mikro-boxes fra misfire)
+- Areal (width * height) < 0.50 af siden (afvis boxes der dækker for meget)
 - Ugyldig/manglende → `null` (graceful fallback)
 
 ### Nyt endpoint: GET /scans/{id}/crop
 
-**Query-parametre:** `x`, `y`, `w`, `h` (alle required floats 0.0–1.0), `padding` (optional float, default 0.15)
+**Query-parametre:** `x`, `y`, `w`, `h` (alle required floats 0.0–1.0), `padding` (optional float, default 0.08), `page` (optional int, default 0 — for multi-page scans)
 
 **Logik:**
-1. Load original JPEG fra disk
+1. Load original JPEG fra disk (vælg side via `page` parameter)
 2. Konverter normaliserede koordinater til pixel-koordinater
 3. Udvid med padding i alle retninger (clamped til billedkanten)
 4. Crop med Pillow
@@ -74,17 +74,32 @@ Fordel: iOS behøver ikke loade hele billedet for at vise en crop.
 
 ## 3. iOS-ændringer
 
+### CropRegion type
+
+Ny `CropRegion` struct i stedet for rå `[Double]`:
+
+```swift
+struct CropRegion: Codable, Hashable {
+    let x, y, width, height: Double
+
+    var cacheKeySuffix: String {
+        String(format: "%.3f_%.3f_%.3f_%.3f", x, y, width, height)
+    }
+}
+```
+
 ### ArkCell
 
 Når `bounding_box` er tilgængelig:
 - Kalder crop-endpoint i stedet for fuld scan-image
-- `ScannedImageView` får en ny optional `cropRegion: [Double]?` parameter
+- `ScannedImageView` får en ny optional `cropRegion: CropRegion?` parameter
 - Når `cropRegion` er sat, bruges crop-URL i stedet for standard scan-URL
+- **Loading-state**: Viser en `RoundedRectangle` med pulserende shimmer-animation (som skeleton loader) i cellens `visualSlot`. Samme dimensioner som det endelige billede.
 - Fallback: ingen bounding_box → fuld side (status quo)
 
 ### ScanImageCache
 
-- Cacher cropped billeder med key `"{scanId}_crop_{x}_{y}_{w}_{h}"`
+- Cacher cropped billeder med key `"{scanId}_crop_{region.cacheKeySuffix}"` (3 decimaler, undgår afrundingsproblemer)
 - Eksisterende cache-logik for fuld-side billeder uændret
 
 ### ErrorAnalysisSheet / FeedbackPreviewSheet / AssignmentDetailSheet
@@ -99,20 +114,21 @@ Viser fuld side med highlight:
 ### SessionViewModel
 
 Udvides med:
-- `boundingBox: [String: [Double]]` dictionary (assignment_id → [x, y, w, h])
+- `boundingBox: [String: CropRegion]` dictionary (assignment_id → CropRegion)
 - Populeres i `processBulkResult()` fra response
 
 ### BulkSubmitResponse iOS model
 
 Tilføj:
-- `boundingBox: [Double]?` på `BulkSubmitResult`
+- `boundingBox: [Double]?` på `BulkSubmitResult` (decoded til `CropRegion?` i processBulkResult)
 
 ## 4. Fallback og edge cases
 
 | Situation | Håndtering |
 |-----------|-----------|
 | Vision returnerer ingen bounding_box | `null` i analysis, iOS viser fuld side (status quo) |
-| Bounding box > 80% af sidens areal | Backend afviser → sæt til null |
+| Bounding box > 50% af sidens areal | Backend afviser → sæt til null |
+| Bounding box for lille (width/height < 3%) | Backend afviser → sæt til null |
 | Gamle submissions (før auto-crop) | Ingen bounding_box i analysis → fuld side |
 | Multi-page scan | `page_index` + `bounding_box` kombineret — crop-endpoint modtager scan_id (peger på rigtig side) |
 | Overlappende bounding boxes | Accepteres — hver celle viser sin egen crop |
@@ -131,6 +147,15 @@ Tilføj:
 - Svar-specifik bounding box (kun hele opgave-området)
 - Brugerjustering af bounding box
 - Disk-caching af cropped billeder (kun NSCache in-memory)
+
+## 6. Bounding box præcision — accept-strategi
+
+Vision-modellers bounding box-præcision på håndskrevet indhold er den største tekniske usikkerhed. Mitigering:
+
+1. **Stikprøve før release**: Test prompt på 20 scan-billeder (varierede ark-layouts: tæt-pakkede, spredte, multi-page). Mål: >80% af boxes dækker opgave-området uden at klippe væsentligt arbejde.
+2. **Fallback-rate monitoring**: Log andelen af null-boxes (validering fejlet eller Vision returnerede ingen). Hvis >30% af matches mangler bounding_box, undersøg prompt-formulering.
+3. **Generøs padding (8%)**: Kompenserer for upræcise kanter — bedre at vise lidt for meget end at klippe elevens udregning.
+4. **Graceful degradation**: Hele featuren er additivt — null-box giver fuld-side visning. Intet går i stykker.
 
 ## Berørte filer
 
@@ -151,6 +176,11 @@ Tilføj:
 - `Kvante/Models/APIResponses.swift` — BulkSubmitResult model
 - `Kvante/Views/Shared/ScannedImageView.swift` — cropRegion parameter
 
-### Tests
-- `backend/tests/test_bulk_submit.py` — bounding_box parsing + validering
-- `backend/tests/test_scan_crop.py` — nyt crop-endpoint
+### Tests — Backend
+- `backend/tests/test_bulk_submit.py` — bounding_box parsing + validering (gyldige, ugyldige, manglende, arealgrænser)
+- `backend/tests/test_scan_crop.py` — crop-endpoint (normal crop, padding clamping, ugyldig scan_id, out-of-range koordinater)
+
+### Tests — iOS (unit tests)
+- `SessionViewModel.processBulkResult()` — boundingBox dictionary populeres korrekt, nil-boxes håndteres
+- `CropRegion.cacheKeySuffix` — deterministisk output, 3-decimal præcision
+- `ScanImageCache` — crop-key vs. fuld-side key er distinkte
