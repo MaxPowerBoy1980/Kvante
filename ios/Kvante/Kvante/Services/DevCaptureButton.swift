@@ -37,75 +37,26 @@ enum ScreenshotCapture {
     }
 }
 
-// MARK: - Floating Kvante FAB
+// MARK: - Notification trigger (replaces visible FAB)
 
-private struct DevKvanteFloatingButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .topLeading) {
-                // Base circle — Kvante orange/coral
-                Circle()
-                    .fill(Color(red: 0.85, green: 0.48, blue: 0.35))
-                    .frame(width: 44, height: 44)
-                    .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
-
-                // Stylized eyes (two black dots)
-                HStack(spacing: 6) {
-                    Circle().fill(Color.black).frame(width: 5, height: 5)
-                    Circle().fill(Color.black).frame(width: 5, height: 5)
-                }
-                .offset(x: 12, y: 18)
-
-                // Coral pom-pom antenna
-                Path { path in
-                    path.move(to: CGPoint(x: 22, y: 2))
-                    path.addLine(to: CGPoint(x: 22, y: -4))
-                }
-                .stroke(Color(red: 0.93, green: 0.4, blue: 0.55), lineWidth: 2)
-                .offset(x: 0, y: 0)
-
-                Circle()
-                    .fill(Color(red: 0.93, green: 0.4, blue: 0.55))
-                    .frame(width: 6, height: 6)
-                    .offset(x: 19, y: -8)
-
-                // DEV badge
-                Text("DEV")
-                    .font(.system(size: 7, weight: .heavy, design: .monospaced))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 3)
-                    .padding(.vertical, 1)
-                    .background(Color.black.opacity(0.75))
-                    .cornerRadius(2)
-                    .offset(x: -2, y: 28)
-            }
-            .frame(width: 44, height: 44)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Dev capture")
-    }
+extension Notification.Name {
+    /// Long-press on KvanteFace triggers dev capture via this notification.
+    static let devCaptureRequested = Notification.Name("devCaptureRequested")
 }
 
-// MARK: - View modifier
+// MARK: - View modifier (invisible — listens for notification)
 
 private struct DevCaptureButtonModifier: ViewModifier {
     let apiClient: APIClient?
 
-    // pendingScreenshot is captured BEFORE the sheet is presented
-    // (at FAB tap time), held in memory, and only attached to a submission
-    // if the user explicitly taps "Tag billede" in the sheet.
     @State private var pendingScreenshot: UIImage?
     @State private var sheetPresented = false
 
     func body(content: Content) -> some View {
         content
-            .overlay(alignment: .topTrailing) {
-                DevKvanteFloatingButton(action: triggerCapture)
-                    .padding(.trailing, 16)
-                    .padding(.top, 60)
-                    .allowsHitTesting(!sheetPresented)
+            .onReceive(NotificationCenter.default.publisher(for: .devCaptureRequested)) { _ in
+                guard !sheetPresented else { return }
+                triggerCapture()
             }
             .sheet(isPresented: $sheetPresented) {
                 DevCaptureSheet(

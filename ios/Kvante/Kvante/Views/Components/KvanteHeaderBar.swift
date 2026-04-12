@@ -39,6 +39,11 @@ struct KvanteHeaderBar: View {
         HStack(spacing: 12) {
             KvanteFace(expression: expression, size: 28)
                 .clipped()
+                #if DEBUG
+                .onLongPressGesture {
+                    NotificationCenter.default.post(name: .devCaptureRequested, object: nil)
+                }
+                #endif
 
             if let session {
                 ProgressDotsView(
