@@ -5,6 +5,7 @@ import SwiftUI
 struct AssignmentDetailSheet: View {
     let assignment: NotebookAssignment
     let apiClient: APIClient
+    var cropRegion: CropRegion? = nil
 
     @State private var scanImage: UIImage?
     @State private var isLoadingScan = false
@@ -121,6 +122,11 @@ struct AssignmentDetailSheet: View {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
+                        .overlay {
+                            if let cropRegion {
+                                BoundingBoxOverlay(region: cropRegion)
+                            }
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .accessibilityLabel("Dit h\u{00E5}ndskrevne arbejde")
                 } else if isLoadingScan {
