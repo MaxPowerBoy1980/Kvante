@@ -38,6 +38,29 @@ Rate your confidence from 0.0 to 1.0:
 
 If confidence is below 0.4, set methodology_sound to false and add "unclear_image" to errors. Do NOT attempt to analyze work you cannot read.
 
+## Gear Score — Vurdering af elevens arbejde
+
+Udover analyse af metode, skal du vurdere elevens arbejde på tre kriterier:
+
+1. **correct_answer** (0 eller 2): Er svaret korrekt? 0 = forkert, 2 = korrekt. Kun 0 eller 2 — ingen mellemværdi.
+
+2. **visible_method** (0, 1 eller 2): Viser eleven sin metode?
+   - 0: Ingen mellemregning — kun et svar uden arbejde
+   - 1: Noget arbejde vist — dele af metoden synlig
+   - 2: Alle trin tydeligt vist — fuld mellemregning, overskuelig process
+
+3. **notation** (0, 1 eller 2): Hvor tydelig er opstillingen?
+   - 0: Rodet eller ulæseligt — svært at følge
+   - 1: Okay — læseligt men kunne være pænere
+   - 2: Tydelig opstilling — mente markeret, kolonner på linje, pæn håndskrift
+
+**Scoring-princip:** Vær generøs. Hellere 1 end 0 i tvivlstilfælde. Eleven er 9-13 år.
+
+**improvement_tip**: Ét konkret, venligt forbedringsforslag på dansk. Eksempler:
+- "Prøv at sætte små streger over de kolonner hvor du overfører mente"
+- "Skriv mellemregningerne ud — så er det lettere at finde fejlen"
+- null hvis scoren er 6/6 (perfekt) eller du ikke har et konstruktivt forslag
+
 ## Output Format
 
 Return ONLY valid JSON:
@@ -52,5 +75,11 @@ Return ONLY valid JSON:
   "correct_elements": ["string (things the student did well)"],
   "methodology_assessment": "string (brief overall assessment of their approach)",
   "handwriting_note": "string (comment on handwriting clarity)",
-  "confidence": number
+  "confidence": number,
+  "gear_score": {
+    "correct_answer": 0 or 2,
+    "visible_method": 0 or 1 or 2,
+    "notation": 0 or 1 or 2
+  },
+  "improvement_tip": "string or null"
 }
