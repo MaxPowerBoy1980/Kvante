@@ -12,6 +12,10 @@ struct FeedbackPreviewSheet: View {
         session.latestScanId[assignment.id]
     }
 
+    private var cropRegion: CropRegion? {
+        session.boundingBoxByAssignment[assignment.id]
+    }
+
     private var aiFeedback: String? {
         session.feedbackSummary[assignment.id]
     }
@@ -31,12 +35,19 @@ struct FeedbackPreviewSheet: View {
 
                     // Large scan thumbnail (full-width)
                     if let scanId {
-                        ScannedImageView(
-                            data: nil,
-                            scanId: scanId,
-                            apiClient: apiClient,
-                            maxPixelSize: 800
-                        )
+                        ZStack {
+                            ScannedImageView(
+                                data: nil,
+                                scanId: scanId,
+                                apiClient: apiClient,
+                                maxPixelSize: 800
+                            )
+                            .overlay {
+                                if let cropRegion {
+                                    BoundingBoxOverlay(region: cropRegion)
+                                }
+                            }
+                        }
                         .frame(maxWidth: .infinity)
                         .frame(maxHeight: 300)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
