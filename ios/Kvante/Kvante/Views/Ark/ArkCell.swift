@@ -27,7 +27,7 @@ struct ArkCell: View {
                 // Visual slot
                 visualSlot
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 70)
+                    .frame(minHeight: 90)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
 
@@ -37,7 +37,7 @@ struct ArkCell: View {
                     .padding(.bottom, 10)
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 160)
+            .frame(minHeight: 200)
             .background(cellBackground)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(cellBorder)
@@ -56,13 +56,13 @@ struct ArkCell: View {
     private var cellHead: some View {
         HStack {
             Text("OPG \(index + 1)")
-                .font(.caption.weight(.bold))
+                .font(.caption2.weight(.bold))
                 .foregroundStyle(KvanteTheme.Colors.textMuted)
 
             Spacer()
 
             Text(assignment.text)
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(KvanteTheme.Colors.ink)
                 .lineLimit(1)
         }

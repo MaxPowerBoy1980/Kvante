@@ -47,7 +47,14 @@ struct AssignmentSheetView: View {
                                 errorDescription: session.errorDescription[assignment.id],
                                 isCurrent: session.currentAssignmentIndex == index,
                                 apiClient: apiClient,
-                                onTap: { onSelectAssignment(index) },
+                                onTap: {
+                                    let status = session.statusByAssignment[assignment.id] ?? .notStarted
+                                    if status == .done {
+                                        presentedFeedback = ArkFeedbackItem(id: assignment.id, assignment: assignment, index: index)
+                                    } else {
+                                        onSelectAssignment(index)
+                                    }
+                                },
                                 onFeedbackTap: {
                                     if session.errorDescription[assignment.id] != nil {
                                         presentedError = ArkFeedbackItem(id: assignment.id, assignment: assignment, index: index)
@@ -189,25 +196,6 @@ struct AssignmentSheetView: View {
             Text("\(session.sessionName) — \(session.completedCount) af \(session.totalAssignments) løst")
                 .font(.subheadline)
                 .foregroundStyle(KvanteTheme.Colors.textSecondary)
-
-            // Back button
-            HStack {
-                Button {
-                    onBack?()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Hjem")
-                            .font(.subheadline.weight(.medium))
-                    }
-                    .foregroundStyle(KvanteTheme.Colors.ink)
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
         }
         .padding(.bottom, 8)
         .background(
