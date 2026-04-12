@@ -83,7 +83,7 @@ Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som
 
 ## Kendte bugs
 
-- [ ] **OCR-præcision** — Claude Haiku læser nogle gange forkert (856 i stedet for 850). Brøker er særligt problematiske: "1/4" læses som "4". Undersøg prompt eller model-valg.
+- [ ] **OCR-præcision** — AI'en forveksler lignende cifre i håndskrift: 5↔6, 3↔8, 1↔7. Eksempel: eleven skriver 533 men systemet læser 633 (som er det korrekte svar), markerer opgaven rigtigt. Brøker er også problematiske: "1/4" læses som "4". Default provider er Gemini (`config.py: ai_provider = "gemini"`) — skift til Claude for bedre håndskrift-OCR. Overvej også: (1) prompt-instruktion om at foretrække aflæsning der IKKE matcher facit ved tvivl, (2) ConfirmAnswerSheet ved "correct" med confidence < 0.85, (3) specifik prompt-guidance om forvekslelige cifre.
 - [ ] **Swift 6 concurrency warnings** — `append` kaldt fra baggrundstråd på @MainActor property. Warnings nu, fejl i fremtiden.
 - [ ] **Visuel/tekst-konsistens** — AI skriver "æbler" men appen tegner cirkler. Prompt instruerer nu "prikker" men kan stadig ske.
 - [ ] **Opgaveforklaring på engelsk** — Explain-endpoint returnerer nogle gange engelsk tekst.
