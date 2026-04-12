@@ -101,7 +101,7 @@ struct ContentView: View {
                             session: session,
                             apiClient: client,
                             onSelectAssignment: { index in
-                                session.goToAssignment(index)
+                                activeChatViewModel?.jumpToAssignment(index)
                                 sessionPath.append(.chat)
                             },
                             onBack: {

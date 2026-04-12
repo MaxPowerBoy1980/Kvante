@@ -45,7 +45,7 @@ struct AssignmentSheetView: View {
                                 scanId: session.latestScanId[assignment.id],
                                 feedbackSummary: session.feedbackSummary[assignment.id],
                                 errorDescription: session.errorDescription[assignment.id],
-                                isCurrent: session.currentAssignmentIndex == index,
+                                isCurrent: session.currentAssignmentIndex == index && (session.statusByAssignment[assignment.id] ?? .notStarted) != .done,
                                 cropRegion: session.boundingBoxByAssignment[assignment.id],
                                 apiClient: apiClient,
                                 onTap: {

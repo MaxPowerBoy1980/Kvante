@@ -85,6 +85,22 @@ struct ChatView: View {
                     }
                 }
             }
+            .onAppear {
+                // Scroll to the current assignment's intro message
+                let currentId = viewModel.currentAssignment.id
+                if let introMsg = viewModel.messages.last(where: { msg in
+                    if case .assignmentIntro(let a) = msg.content {
+                        return a.id == currentId
+                    }
+                    return false
+                }) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            proxy.scrollTo(introMsg.id, anchor: .top)
+                        }
+                    }
+                }
+            }
         }
 
         // Input bar
