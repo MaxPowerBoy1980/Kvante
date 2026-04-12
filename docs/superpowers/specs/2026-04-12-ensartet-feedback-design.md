@@ -18,9 +18,11 @@ To forskellige scan-flows giver eleven to forskellige feedback-oplevelser:
 
 1. **FeedbackSheet som primær fra arket, chat som fallback (C)** — tap i arket åbner altid FeedbackSheet med fuld data, uanset scan-type. Chat-flowet bevarer sin samtalefølelse med inline feedback.
 
-2. **Gear score beregnes ved submission (A)** — `POST /submissions/` udvides til at kalde work_analyzer med scan-billedet. AI returnerer gear_score + improvement_tip i samme kald. Data er klar med det samme, ingen shimmer/loading.
+2. **Gear score beregnes ved submission (A)** — `POST /submissions/` udvides til at kalde work_analyzer med scan-billedet. AI returnerer gear_score + improvement_tip i samme kald. **Latency-konsekvens:** dette tilføjer ~2-4 sekunder til det synkrone submissions-kald. Det er acceptabelt fordi (a) eleven allerede venter på OCR-resultatet, (b) chatten viser svar-bekræftelse ("Kvante læste: 735") med det samme fra compare_answer(), og gear-rating kan poppe ind bagefter som en separat chat-besked. Submission-response returnerer gear_score, men iOS behøver ikke blokere UI på det — vis resultat først, gear-rating når response er komplet.
 
 3. **Erstat chat-feedback med gear_score data (C)** — i stedet for at kalde `POST /feedback/` efter forkert svar i chatten, vis gear_score + improvement_tip inline. Eliminerer den timeout'ende feedback-generator for enkelt-scan.
+
+4. **improvement_tip vs. feedbackText** — improvement_tip er én konkret sætning ("Prøv at skrive mellemregninger tydeligt under hinanden"). Den gamle feedbackText var 2-3 sætninger med ros + observation + tip. I FeedbackSheet sammensættes en feedback-tekst fra gear_score-data: en åbningslinje baseret på gear_score.total (fx "Godt arbejde!" / "Tæt på!" / "Lad os prøve igen"), efterfulgt af improvement_tip. I chat vises improvement_tip alene — chatten har allerede kontekst fra svar-bekræftelsen.
 
 ## Arkitektur
 
@@ -133,7 +135,10 @@ FeedbackSheet modtager data via samme path som bulk. Ingen ændring i FeedbackSh
 
 Fjern koden der kalder `POST /feedback/` on-demand. Al feedback-data er nu tilgængelig via session detail response ved åbning.
 
-Behold `feedbackText` display — men data kommer fra `improvement_tip` i stedet for feedback_generator.
+FeedbackSheet's "Kvante siger"-sektion sammensætter feedback fra gear_score-data:
+- Åbningslinje baseret på `gear_score.total` (6: "Perfekt!", 4-5: "Godt arbejde!", 2-3: "Tæt på!", 0-1: "Lad os prøve igen")
+- Efterfulgt af `improvement_tip` (hvis tilgængelig)
+- Hvis hverken gear_score eller improvement_tip er tilgængelig: vis ingenting (tomt felt, ikke fallback-tekst)
 
 ## Berørte filer
 
@@ -150,7 +155,7 @@ Behold `feedbackText` display — men data kommer fra `improvement_tip` i stedet
 
 ## Ikke i scope
 
-- **Feedback-generator bugfix** — erstattes, ikke fikses. `POST /feedback/` forbliver men bruges ikke fra enkelt-scan.
+- **`POST /feedback/` endpoint** — deprecated efter denne feature. Ingen iOS-path kalder den længere. Endpoint beholdes midlertidigt (ingen breaking change for evt. fremtidige klienter), men markeres med deprecation-kommentar i koden. Slettes i en fremtidig oprydningssprint. Timeout-buggen fikses ikke.
 - **Scan-billede crop bug** — separat issue, ikke relateret til feedback-data.
 - **Ændringer i bulk-scan flow** — allerede korrekt, ingen ændringer.
 - **Chat-per-assignment refactor** — separat issue, uafhængig af feedback-ensretning.
