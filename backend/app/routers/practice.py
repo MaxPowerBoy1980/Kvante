@@ -20,6 +20,7 @@ from app.models.schemas import (
     WeeklyRequest,
 )
 from app.services.streak_service import get_streak
+from app.services.work_analyzer import extract_gear_score
 
 router = APIRouter(tags=["practice"])
 
@@ -337,6 +338,15 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
                 latest_sub.work_image_path = scan.id
                 db.commit()
 
+        gear_score_obj = None
+        improvement_tip_val = None
+        if latest_sub and latest_sub.analysis:
+            analysis_dict = latest_sub.analysis
+            if isinstance(analysis_dict, str):
+                import json as _json
+                analysis_dict = _json.loads(analysis_dict)
+            gear_score_obj, improvement_tip_val = extract_gear_score(analysis_dict)
+
         ark_assignments.append(
             ArkAssignment(
                 id=a.id,
@@ -352,6 +362,8 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
                 teacher_comment=None,  # Always null in Pakke 2a
                 correct_answer=a.correct_answer,
                 student_answer=student_answer,
+                gear_score=gear_score_obj,
+                improvement_tip=improvement_tip_val,
             )
         )
 
@@ -451,6 +463,7 @@ def get_session_history(
                 subs = submissions_by_assignment.get(a.id, [])
                 latest_feedback = None
                 student_answer = None
+                latest_sub = None
                 if subs:
                     latest_sub = subs[-1]
                     latest_feedback = _truncate_feedback(latest_sub.feedback_text)
@@ -460,6 +473,15 @@ def get_session_history(
                             import json as _json
                             analysis = _json.loads(analysis)
                         student_answer = analysis.get("student_answer")
+
+                gear_score_obj = None
+                improvement_tip_val = None
+                if latest_sub and latest_sub.analysis:
+                    analysis_dict = latest_sub.analysis
+                    if isinstance(analysis_dict, str):
+                        import json as _json
+                        analysis_dict = _json.loads(analysis_dict)
+                    gear_score_obj, improvement_tip_val = extract_gear_score(analysis_dict)
 
                 ark_assignments.append(
                     ArkAssignment(
@@ -476,6 +498,8 @@ def get_session_history(
                         teacher_comment=None,
                         correct_answer=a.correct_answer,
                         student_answer=student_answer,
+                        gear_score=gear_score_obj,
+                        improvement_tip=improvement_tip_val,
                     )
                 )
 
