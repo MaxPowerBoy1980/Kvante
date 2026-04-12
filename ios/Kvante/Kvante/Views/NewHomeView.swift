@@ -59,7 +59,7 @@ struct NewHomeView: View {
                     // "Se dit arbejde" link — only in tilstand 2 (triumf)
                     if activeWeekly == nil, completedWeekly != nil {
                         Button(action: onNotebook) {
-                            Text("Se dit arbejde denne uge →")
+                            Text("Se hvad du har lavet →")
                                 .font(.system(size: 13))
                                 .foregroundStyle(KvanteTheme.Colors.robBlue)
                         }
@@ -215,7 +215,7 @@ struct NewHomeView: View {
             RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
                 .fill(
                     LinearGradient(
-                        colors: [.white, KvanteTheme.Colors.backgroundWarm],
+                        colors: [.white, KvanteTheme.Colors.triumphGradientEnd],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
