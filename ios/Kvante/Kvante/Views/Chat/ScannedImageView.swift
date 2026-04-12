@@ -8,6 +8,7 @@ struct ScannedImageView: View {
     let scanId: String?
     let apiClient: APIClient
     var maxPixelSize: Int? = nil
+    var cropRegion: CropRegion? = nil
 
     @State private var cachedImage: UIImage?
     @State private var failed = false
@@ -18,7 +19,7 @@ struct ScannedImageView: View {
                 imageFrame(uiImage: uiImage)
             } else if let cachedImage {
                 imageFrame(uiImage: cachedImage)
-            } else if let scanId, maxPixelSize == nil {
+            } else if let scanId, maxPixelSize == nil, cropRegion == nil {
                 // Full-resolution path (existing behavior)
                 AsyncImage(url: apiClient.scanImageURL(scanId: scanId)) { phase in
                     switch phase {
@@ -42,10 +43,16 @@ struct ScannedImageView: View {
             }
         }
         .task(id: scanId) {
-            guard let scanId, let maxPixelSize, data == nil else { return }
-            cachedImage = await ScanImageCache.shared.image(
-                for: scanId, apiClient: apiClient, maxPixelSize: maxPixelSize
-            )
+            guard let scanId, data == nil else { return }
+            if let cropRegion {
+                cachedImage = await ScanImageCache.shared.croppedImage(
+                    for: scanId, region: cropRegion, apiClient: apiClient
+                )
+            } else if let maxPixelSize {
+                cachedImage = await ScanImageCache.shared.image(
+                    for: scanId, apiClient: apiClient, maxPixelSize: maxPixelSize
+                )
+            }
             if cachedImage == nil { failed = true }
         }
     }
