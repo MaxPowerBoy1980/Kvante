@@ -209,9 +209,15 @@ struct ArkCell: View {
         }
     }
 
+    @ViewBuilder
     private var cellBorder: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .stroke(borderColor, lineWidth: borderWidth)
+        if isCurrent {
+            // currentOverlay handles the border when this is the active assignment
+            EmptyView()
+        } else {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(borderColor, lineWidth: borderWidth)
+        }
     }
 
     private var borderColor: Color {
@@ -235,8 +241,7 @@ struct ArkCell: View {
         if isCurrent {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(KvanteTheme.Colors.primary, lineWidth: 2)
-                    .padding(-2)
+                    .stroke(borderColor, lineWidth: 2)
 
                 // Current indicator dot
                 Circle()

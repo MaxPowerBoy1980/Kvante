@@ -1,14 +1,16 @@
 import SwiftUI
 
-struct RescanSheet: View {
+/// Shown when Kvante read a student's answer but confidence is low or the answer is wrong.
+/// Lets the student confirm what Kvante read, or correct it by typing the actual answer.
+struct ConfirmAnswerSheet: View {
     let assignment: ParsedAssignment
+    let kvanteRead: String
     let sessionId: String
     let apiClient: APIClient
     let onResult: (SubmissionResponse) -> Void
     let onDismiss: () -> Void
 
-    @State private var typedAnswer = ""
-    @State private var showScanner = false
+    @State private var correctedAnswer = ""
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
@@ -18,47 +20,58 @@ struct RescanSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Opgave \(assignment.localId)")
+            Text("Opgave \(assignment.localId): \(assignment.text)")
                 .font(.headline)
                 .foregroundStyle(KvanteTheme.Colors.ink)
 
-            Text("Kvante kan ikke læse dit svar til denne opgave.")
-                .font(.body)
-                .foregroundStyle(KvanteTheme.Colors.ink)
+            // What Kvante read
+            HStack(spacing: 8) {
+                Image(systemName: "text.magnifyingglass")
+                    .foregroundStyle(KvanteTheme.Colors.primary)
+                Text("Kvante læste: \(kvanteRead)")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(KvanteTheme.Colors.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
 
+            // Confirm button
             Button {
-                showScanner = true
+                Task { await submitAnswer(kvanteRead) }
             } label: {
                 HStack {
-                    Image(systemName: "camera")
-                    Text("Scan igen")
+                    Image(systemName: "checkmark.circle")
+                    Text("Ja, det er rigtigt")
                 }
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(KvanteTheme.Colors.primary, in: RoundedRectangle(cornerRadius: 12))
+                .background(KvanteTheme.Colors.success, in: RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
+            .disabled(isSubmitting)
 
+            // Correct section
             VStack(alignment: .leading, spacing: 8) {
-                Text("Eller skriv dit svar:")
+                Text("Nej, jeg skrev:")
                     .font(.subheadline)
                     .foregroundStyle(KvanteTheme.Colors.textSecondary)
 
                 HStack {
-                    TextField("Dit svar...", text: $typedAnswer)
+                    TextField("Dit svar...", text: $correctedAnswer)
                         .textFieldStyle(.roundedBorder)
                         .keyboardType(.numbersAndPunctuation)
 
                     Button {
-                        Task { await submitTypedAnswer() }
+                        Task { await submitAnswer(correctedAnswer) }
                     } label: {
                         Image(systemName: "arrow.right.circle.fill")
                             .font(.title2)
                             .foregroundStyle(KvanteTheme.Colors.primary)
                     }
-                    .disabled(typedAnswer.isEmpty || isSubmitting)
+                    .disabled(correctedAnswer.isEmpty || isSubmitting)
                 }
             }
 
@@ -80,14 +93,6 @@ struct RescanSheet: View {
             Spacer()
         }
         .padding(20)
-        .fullScreenCover(isPresented: $showScanner) {
-            DocumentScannerView { imageData in
-                showScanner = false
-                Task { await submitRescanData(imageData) }
-            } onCancel: {
-                showScanner = false
-            }
-        }
     }
 
     private var orderTipsView: some View {
@@ -120,33 +125,16 @@ struct RescanSheet: View {
     }
 
     @MainActor
-    private func submitTypedAnswer() async {
+    private func submitAnswer(_ answer: String) async {
         isSubmitting = true
         errorMessage = nil
         do {
             let response = try await apiClient.submitAnswer(
                 sessionId: sessionId,
                 assignmentId: assignment.id,
-                answerText: typedAnswer,
-                fullOcrText: typedAnswer,
+                answerText: answer,
+                fullOcrText: answer,
                 imageData: Data()
-            )
-            onResult(response)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isSubmitting = false
-    }
-
-    @MainActor
-    private func submitRescanData(_ imageData: Data) async {
-        isSubmitting = true
-        errorMessage = nil
-        do {
-            let response = try await apiClient.submitWork(
-                sessionId: sessionId,
-                assignmentId: assignment.id,
-                imageData: imageData
             )
             onResult(response)
         } catch {

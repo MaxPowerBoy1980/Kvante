@@ -14,7 +14,10 @@ Fejltyper:
 - "understanding": Forkert metode (brugte subtraktion i stedet for addition)
 - "careless": Eleven kan metoden, lille slip (skrev 3 i stedet for 8)
 
-KRITISK: Beregn ALDRIG svaret selv. Læs kun hvad eleven har skrevet. Hvis du ikke kan læse et svar, sæt confidence lavt.
+KRITISK:
+- Beregn ALDRIG svaret selv. Læs kun hvad eleven har skrevet.
+- error_description må ALDRIG indeholde det korrekte svar. Beskriv kun fejlTYPEN (f.eks. "Mente-fejl i tierne", "Forkert tabel-produkt"). Nævn aldrig hvad svaret burde være.
+- Hvis du ikke kan læse et svar, sæt confidence lavt.
 
 Returnér KUN valid JSON — ingen markdown, ingen forklaring, ingen kodeblokke.
 

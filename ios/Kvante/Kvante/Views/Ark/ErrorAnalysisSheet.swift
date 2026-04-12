@@ -6,16 +6,19 @@ struct ErrorAnalysisSheet: View {
     let errorDescription: String
     let scanId: String?
     let apiClient: APIClient
+    let sessionId: String
     let onOpenChat: () -> Void
+    let onCorrected: (SubmissionResponse) -> Void
+
+    @State private var showCorrection = false
+    @State private var correctedAnswer = ""
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Opgave \(assignment.localId)")
+            Text("Opgave \(assignment.localId): \(assignment.text)")
                 .font(.headline)
-                .foregroundStyle(KvanteTheme.Colors.ink)
-
-            Text(assignment.text)
-                .font(.title3.weight(.semibold))
                 .foregroundStyle(KvanteTheme.Colors.ink)
 
             if let scanId {
@@ -30,39 +33,115 @@ struct ErrorAnalysisSheet: View {
                 }
             }
 
+            // What Kvante read
             HStack(spacing: 8) {
                 Image(systemName: "text.magnifyingglass")
                     .foregroundStyle(KvanteTheme.Colors.primary)
-                Text("Du skrev: \(studentAnswer)")
+                Text("Kvante læste: \(studentAnswer)")
                     .font(.body.weight(.medium))
             }
 
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "exclamationmark.triangle")
-                    .foregroundStyle(KvanteTheme.Colors.primary)
-                Text(errorDescription)
-                    .font(.body).foregroundStyle(KvanteTheme.Colors.ink)
+            // Error info
+            if !errorDescription.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(KvanteTheme.Colors.primary)
+                    Text(errorDescription)
+                        .font(.body).foregroundStyle(KvanteTheme.Colors.ink)
+                }
+                .padding(12)
+                .background(KvanteTheme.Colors.primary.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
             }
-            .padding(12)
-            .background(KvanteTheme.Colors.primary.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+
+            // Correction option
+            if showCorrection {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Hvad skrev du?")
+                        .font(.subheadline)
+                        .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                    HStack {
+                        TextField("Dit svar...", text: $correctedAnswer)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.numbersAndPunctuation)
+                        Button {
+                            Task { await submitCorrected() }
+                        } label: {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(KvanteTheme.Colors.primary)
+                        }
+                        .disabled(correctedAnswer.isEmpty || isSubmitting)
+                    }
+                }
+
+                if isSubmitting {
+                    ProgressView("Sender...")
+                        .font(.subheadline)
+                }
+                if let error = errorMessage {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+            }
 
             Spacer()
 
-            Button {
-                onOpenChat()
-            } label: {
-                HStack {
-                    Image(systemName: "bubble.left.and.bubble.right")
-                    Text("Få hjælp i chatten")
+            // Actions
+            VStack(spacing: 10) {
+                if !showCorrection {
+                    Button {
+                        showCorrection = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "pencil")
+                            Text("Kvante læste forkert — ret mit svar")
+                        }
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(KvanteTheme.Colors.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(KvanteTheme.Colors.primary, lineWidth: 1.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(KvanteTheme.Colors.primary, in: RoundedRectangle(cornerRadius: 12))
+
+                Button {
+                    onOpenChat()
+                } label: {
+                    HStack {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                        Text("Få hjælp i chatten")
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(KvanteTheme.Colors.primary, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(20)
+    }
+
+    @MainActor
+    private func submitCorrected() async {
+        isSubmitting = true
+        errorMessage = nil
+        do {
+            let response = try await apiClient.submitAnswer(
+                sessionId: sessionId,
+                assignmentId: assignment.id,
+                answerText: correctedAnswer,
+                fullOcrText: correctedAnswer,
+                imageData: Data()
+            )
+            onCorrected(response)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isSubmitting = false
     }
 }

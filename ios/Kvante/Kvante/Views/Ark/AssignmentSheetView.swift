@@ -120,22 +120,34 @@ struct AssignmentSheetView: View {
                 errorDescription: session.errorDescription[item.assignment.id] ?? "",
                 scanId: session.latestScanId[item.assignment.id],
                 apiClient: apiClient,
+                sessionId: session.sessionId,
                 onOpenChat: {
                     presentedError = nil
                     onSelectAssignment(item.index)
+                },
+                onCorrected: { response in
+                    presentedError = nil
+                    if response.methodologySound {
+                        session.markCompleted(item.assignment.id, feedback: nil)
+                    } else {
+                        session.statusByAssignment[item.assignment.id] = .inProgress
+                    }
                 }
             )
             .presentationDetents([.medium, .large])
         }
         .sheet(item: $presentedRescan) { item in
-            RescanSheet(
+            ConfirmAnswerSheet(
                 assignment: item.assignment,
+                kvanteRead: session.studentAnswer[item.assignment.id] ?? "?",
                 sessionId: session.sessionId,
                 apiClient: apiClient,
                 onResult: { response in
                     presentedRescan = nil
                     if response.methodologySound {
                         session.markCompleted(item.assignment.id, feedback: nil)
+                    } else {
+                        session.statusByAssignment[item.assignment.id] = .inProgress
                     }
                 },
                 onDismiss: { presentedRescan = nil }
