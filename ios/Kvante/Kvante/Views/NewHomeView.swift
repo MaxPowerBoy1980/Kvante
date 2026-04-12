@@ -405,13 +405,13 @@ struct NewHomeView: View {
     }
 
     private func chipFill(isDone: Bool, isCurrent: Bool) -> Color {
-        if isDone { return KvanteTheme.Colors.robBlue.opacity(0.15) }
+        if isDone { return KvanteTheme.Colors.robBlue }
         if isCurrent { return KvanteTheme.Colors.primary.opacity(0.1) }
         return KvanteTheme.Colors.ink.opacity(0.03)
     }
 
     private func chipBorder(isDone: Bool, isCurrent: Bool) -> Color {
-        if isDone { return KvanteTheme.Colors.robBlue.opacity(0.3) }
+        if isDone { return KvanteTheme.Colors.robBlue }
         if isCurrent { return KvanteTheme.Colors.primary.opacity(0.4) }
         return KvanteTheme.Colors.ink.opacity(0.12)
     }
@@ -421,7 +421,7 @@ struct NewHomeView: View {
         if isDone {
             Text("✓")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(KvanteTheme.Colors.robBlue)
+                .foregroundStyle(.white)
         } else if isCurrent {
             Text("\(index + 1)")
                 .font(.system(size: 11, weight: .semibold))
