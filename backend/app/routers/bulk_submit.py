@@ -134,6 +134,7 @@ async def bulk_submit(
             "page_index": v["page_index"],
             "bulk_scan": True,
             "error_type": v["error_type"],
+            "bounding_box": v["bounding_box"],
         }
 
         # Determine attempt number
@@ -180,6 +181,7 @@ async def bulk_submit(
             confidence=v["confidence"],
             page_index=v["page_index"],
             submission_id=submission.id,
+            bounding_box=v["bounding_box"],
         ))
 
     # Add not_found entries for unmatched assignments

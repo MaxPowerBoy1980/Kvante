@@ -116,6 +116,8 @@ def validate_and_build_results(
         page_index = match.get("page_index", 0)
         error_type = match.get("error_type")
         error_description = match.get("error_description")
+        raw_bbox = match.get("bounding_box")
+        bounding_box = validate_bounding_box(raw_bbox)
 
         # Determine status
         if confidence < confidence_threshold:
@@ -142,6 +144,7 @@ def validate_and_build_results(
                 "error_description": error_description,
                 "confidence": confidence,
                 "page_index": page_index,
+                "bounding_box": bounding_box,
             }
         )
 

@@ -225,6 +225,7 @@ class BulkSubmitResult(BaseModel):
     confidence: float
     page_index: int | None = None
     submission_id: str | None = None
+    bounding_box: list[float] | None = None
 
 
 class BulkSubmitSummary(BaseModel):

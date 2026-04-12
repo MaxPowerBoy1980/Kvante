@@ -234,3 +234,38 @@ def test_validate_bounding_box_non_list():
     """Non-list input returns None."""
     assert validate_bounding_box("not a list") is None
     assert validate_bounding_box(42) is None
+
+
+def test_validate_preserves_bounding_box():
+    """Valid bounding_box flows through validate_and_build_results."""
+    assignments = [_mock_assignment()]
+    matches = [{
+        "assignment_index": 0, "student_answer": "101", "confidence": 0.95,
+        "page_index": 0, "error_type": None, "error_description": None,
+        "bounding_box": [0.05, 0.22, 0.45, 0.18],
+    }]
+    results = validate_and_build_results(matches, assignments, confidence_threshold=0.6)
+    assert results[0]["bounding_box"] == [0.05, 0.22, 0.45, 0.18]
+
+
+def test_validate_nullifies_invalid_bounding_box():
+    """Invalid bounding_box becomes None in results."""
+    assignments = [_mock_assignment()]
+    matches = [{
+        "assignment_index": 0, "student_answer": "101", "confidence": 0.95,
+        "page_index": 0, "error_type": None, "error_description": None,
+        "bounding_box": [0.0, 0.0, 0.9, 0.9],
+    }]
+    results = validate_and_build_results(matches, assignments, confidence_threshold=0.6)
+    assert results[0]["bounding_box"] is None
+
+
+def test_validate_handles_missing_bounding_box():
+    """Missing bounding_box key in match produces None in results."""
+    assignments = [_mock_assignment()]
+    matches = [{
+        "assignment_index": 0, "student_answer": "101", "confidence": 0.95,
+        "page_index": 0, "error_type": None, "error_description": None,
+    }]
+    results = validate_and_build_results(matches, assignments, confidence_threshold=0.6)
+    assert results[0]["bounding_box"] is None
