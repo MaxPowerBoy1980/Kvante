@@ -3,6 +3,7 @@
 ## Gennemført
 
 ### 2026-04-12
+- [x] **Auto-crop ved bulk-scan** — Claude Vision returnerer normaliserede bounding boxes [x, y, w, h] per opgave. Backend validerer (min 3%, max 50% areal) + nyt `GET /scans/{id}/crop` endpoint med Pillow. iOS: `CropRegion` model, cropped thumbnails i ArkCell via `ScanImageCache.croppedImage()`, `BoundingBoxOverlay` (dimming + orange cutout) i ErrorAnalysisSheet/FeedbackPreviewSheet/AssignmentDetailSheet. Shimmer skeleton loading. Fallback: ingen bbox → fuld side. 26 pytest tests. Bugfixes: `isCurrent`-border skjult på done-opgaver, ark→chat scroller nu til valgt opgave. Branch: `feature/auto-crop`. Spec: `docs/superpowers/specs/2026-04-12-auto-crop-design.md`. Plan: `docs/superpowers/plans/2026-04-12-auto-crop.md`.
 - [x] **Pakke 4: Bulk-scan hele arket + AI fejlanalyse** — `POST /sessions/{id}/bulk-submit` med multi-page VisionKit scanner. Claude Vision matcher håndskrevne svar til opgaver, validerer deterministisk med `compare_answer()`, analyserer fejltyper (procedural/understanding/careless). Tre-status ark (✓/✗/❓). ErrorAnalysisSheet (tap forkert → scan + fejltype + "Få hjælp" + "Ret mit svar"). ConfirmAnswerSheet (erstatter re-scan — "Kvante læste X, stemmer det?"). Multi-image `send_vision_multi()` på AIClient. 15 pytest tests. Ark UX fixes: fjernet dobbelt Hjem-knap, tap done → FeedbackPreviewSheet, større opgavekort, DEV-knap bag long-press på KvanteFace, scan-thumbnails for alle løste opgaver (Scan fallback fra Submission). Branch: `feature/pakke-4-bulk-scan`. Spec: `docs/superpowers/specs/2026-04-11-pakke-4-bulk-scan-design.md`. Plan: `docs/superpowers/plans/2026-04-11-pakke-4-bulk-scan.md`.
 
 ### 2026-04-11
@@ -40,10 +41,7 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 
 **Pakke 1 (Session persistence) er gennemført 2026-04-08**, **Dev-tooling capture-knap er gennemført 2026-04-09**, og **Pakke 2a (Ark-overlay) er gennemført 2026-04-09** — se "Gennemført"-sektionen øverst.
 
-### 1. Auto-crop ved bulk-scan (pakke 4 opfølgning)
-Når eleven bulk-scanner sit ark, skal Claude Vision returnere bounding box (crop-koordinater) per opgave. Backend gemmer koordinaterne i `Submission.analysis`. iOS cropper thumbnailet client-side så hver opgave viser kun den relevante del af billedet — ikke hele arket. Kræver prompt-ændring + backend parser + iOS crop-logik.
-
-### 2. Feedback-visning brainstorm (pakke 4 opfølgning)
+### 1. Feedback-visning brainstorm (pakke 4 opfølgning)
 FeedbackPreviewSheet og ErrorAnalysisSheet skal redesignes. Eleven ser for lidt — kun regnestykke og kort tekst. Brainstorm hvad der giver værdi: forstørret scan-billede, Kvantes ros, fejlforklaring med visuel markering, "prøv igen"-flow. Hænger sammen med auto-crop (#1).
 
 ### 3. Startskærm UX-sprint (B1-B3)
