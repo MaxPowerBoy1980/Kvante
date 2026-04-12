@@ -328,6 +328,20 @@ struct StreakInfo: Codable {
 
 // MARK: - Ark Overlay (Pakke 2a)
 
+struct GearScore: Codable {
+    let correctAnswer: Int
+    let visibleMethod: Int
+    let notation: Int
+    let total: Int
+
+    enum CodingKeys: String, CodingKey {
+        case correctAnswer = "correct_answer"
+        case visibleMethod = "visible_method"
+        case notation
+        case total
+    }
+}
+
 struct ArkAssignmentResponse: Codable {
     let id: String
     let localId: String
@@ -343,6 +357,8 @@ struct ArkAssignmentResponse: Codable {
     let teacherComment: String?
     let correctAnswer: String?
     let studentAnswer: String?
+    let gearScore: GearScore?
+    let improvementTip: String?
 
     enum CodingKeys: String, CodingKey {
         case id, text, type, topic, position
@@ -354,6 +370,8 @@ struct ArkAssignmentResponse: Codable {
         case teacherComment = "teacher_comment"
         case correctAnswer = "correct_answer"
         case studentAnswer = "student_answer"
+        case gearScore = "gear_score"
+        case improvementTip = "improvement_tip"
     }
 }
 
@@ -470,6 +488,8 @@ struct BulkSubmitResult: Codable, Identifiable {
     let pageIndex: Int?
     let submissionId: String?
     let boundingBox: [Double]?
+    let gearScore: GearScore?
+    let improvementTip: String?
 
     var id: String { assignmentId }
 
@@ -484,6 +504,8 @@ struct BulkSubmitResult: Codable, Identifiable {
         case pageIndex = "page_index"
         case submissionId = "submission_id"
         case boundingBox = "bounding_box"
+        case gearScore = "gear_score"
+        case improvementTip = "improvement_tip"
     }
 }
 
