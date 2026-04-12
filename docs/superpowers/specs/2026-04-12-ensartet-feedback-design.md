@@ -111,6 +111,8 @@ Logik: for hvert assignment med submission, læs `analysis.get("gear_score")` og
 
 **Fil:** `ios/Kvante/Kvante/ViewModels/ChatViewModel.swift`
 
+**Chat-timing:** Chat viser svar-bekræftelse ("Kvante læste: 735 ✓/✗") straks ved response. Gear-rating + improvement_tip tilføjes som efterfølgende chat-besked i samme completion-handler — ét naturligt delay, ingen ekstra API-kald eller polling.
+
 **Korrekt svar:**
 - Behold celebration (lyn-zigzag, haptik)
 - Tilføj kompakt gear-rating (fx inline "⚙ 5/6") fra `submissionResponse.gearScore`
