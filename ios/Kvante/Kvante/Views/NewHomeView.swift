@@ -34,10 +34,24 @@ struct NewHomeView: View {
     }
 
     /// First incomplete weekly session — drives tilstand 1
-    /// A session is considered done when status == "completed" OR all assignments are solved
+    /// Prioritises in-progress (completedCount > 0) over fresh (0 completed).
+    /// Fresh sessions only count as active if there's no completed session to celebrate.
     private var activeWeekly: SessionSummary? {
-        sessionHistory.first {
-            $0.mode == "weekly" && !$0.isCompleted && $0.completedCount < $0.assignmentCount
+        // 1. Session with actual progress (started but not finished)
+        let inProgress = sessionHistory.first {
+            $0.mode == "weekly" && $0.completedCount > 0
+                && $0.completedCount < $0.assignmentCount && !$0.isCompleted
+        }
+        if let inProgress { return inProgress }
+
+        // 2. Fresh session (0 completed) — only if nothing to celebrate
+        let hasCompleted = sessionHistory.contains {
+            $0.mode == "weekly" && ($0.isCompleted || $0.completedCount >= $0.assignmentCount)
+        }
+        if hasCompleted { return nil }
+
+        return sessionHistory.first {
+            $0.mode == "weekly" && $0.completedCount == 0 && !$0.isCompleted
         }
     }
 
