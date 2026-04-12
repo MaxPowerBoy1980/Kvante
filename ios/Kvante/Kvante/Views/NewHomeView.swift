@@ -10,6 +10,10 @@ struct NewHomeView: View {
     let sessionHistory: [SessionSummary]
     let onTapSession: (SessionSummary) -> Void
 
+    @State private var chipFeedbackSession: SessionViewModel?
+    @State private var chipFeedbackItem: ArkFeedbackItem?
+    @State private var isLoadingChipFeedback = false
+
     private var notebookSolvedCount: Int {
         sessionHistory.reduce(0) { $0 + $1.completedCount }
     }
@@ -81,6 +85,35 @@ struct NewHomeView: View {
                     Spacer(minLength: 40)
                 }
                 .padding(.horizontal, 24)
+            }
+        }
+        .sheet(item: $chipFeedbackItem) { item in
+            if let session = chipFeedbackSession,
+               let serverURL = serverDiscovery.serverURL {
+                let assignmentId = item.assignment.id
+                FeedbackSheet(
+                    assignmentId: assignmentId,
+                    assignmentText: item.assignment.text,
+                    assignmentIndex: item.index,
+                    status: {
+                        let s = session.statusByAssignment[assignmentId] ?? .notStarted
+                        switch s {
+                        case .done: return "done"
+                        case .inProgress: return "in_progress"
+                        case .notStarted: return "not_started"
+                        }
+                    }(),
+                    errorType: session.errorType[assignmentId],
+                    studentAnswer: session.studentAnswer[assignmentId],
+                    scanId: session.latestScanId[assignmentId],
+                    cropRegion: session.boundingBoxByAssignment[assignmentId],
+                    gearScore: session.gearScoreByAssignment[assignmentId],
+                    improvementTip: session.improvementTipByAssignment[assignmentId],
+                    feedbackSummary: session.feedbackSummary[assignmentId],
+                    submissionId: session.submissionIdByAssignment[assignmentId],
+                    isHistorical: true,
+                    apiClient: APIClient(baseURL: serverURL)
+                )
             }
         }
     }
@@ -411,7 +444,27 @@ struct NewHomeView: View {
         return name
     }
 
+    // MARK: - Chip Tap → FeedbackSheet
+
     private func loadFeedbackForChip(sessionId: String, chipIndex: Int) {
-        // Implemented in Task 3
+        guard let serverURL = serverDiscovery.serverURL else { return }
+        isLoadingChipFeedback = true
+        Task {
+            do {
+                let client = APIClient(baseURL: serverURL)
+                let response = try await client.getSession(sessionId: sessionId)
+                let session = SessionViewModel(from: response)
+                chipFeedbackSession = session
+                let assignment = session.assignments[chipIndex]
+                chipFeedbackItem = ArkFeedbackItem(
+                    id: assignment.id,
+                    assignment: assignment,
+                    index: chipIndex
+                )
+            } catch {
+                print("Failed to load chip feedback: \(error)")
+            }
+            isLoadingChipFeedback = false
+        }
     }
 }
