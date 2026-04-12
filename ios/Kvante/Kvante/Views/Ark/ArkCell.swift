@@ -8,6 +8,7 @@ struct ArkCell: View {
     let feedbackSummary: String?
     let errorDescription: String?
     let isCurrent: Bool
+    let cropRegion: CropRegion?
     let apiClient: APIClient
     let onTap: () -> Void
     let onFeedbackTap: () -> Void
@@ -79,7 +80,8 @@ struct ArkCell: View {
                     data: nil,
                     scanId: scanId,
                     apiClient: apiClient,
-                    maxPixelSize: 400
+                    maxPixelSize: cropRegion != nil ? nil : 400,
+                    cropRegion: cropRegion
                 )
             } else {
                 statusPlaceholder(icon: "checkmark.circle.fill", text: "Løst", color: KvanteTheme.Colors.success)
@@ -92,7 +94,8 @@ struct ArkCell: View {
                         data: nil,
                         scanId: scanId,
                         apiClient: apiClient,
-                        maxPixelSize: 400
+                        maxPixelSize: cropRegion != nil ? nil : 400,
+                        cropRegion: cropRegion
                     )
                     VStack {
                         Spacer()

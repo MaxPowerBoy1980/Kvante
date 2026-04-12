@@ -46,6 +46,7 @@ struct AssignmentSheetView: View {
                                 feedbackSummary: session.feedbackSummary[assignment.id],
                                 errorDescription: session.errorDescription[assignment.id],
                                 isCurrent: session.currentAssignmentIndex == index,
+                                cropRegion: session.boundingBoxByAssignment[assignment.id],
                                 apiClient: apiClient,
                                 onTap: {
                                     let status = session.statusByAssignment[assignment.id] ?? .notStarted

@@ -37,9 +37,12 @@ struct ScannedImageView: View {
             } else if failed {
                 placeholder
             } else {
-                ProgressView()
+                // Shimmer skeleton while loading
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(KvanteTheme.Colors.cream)
                     .frame(width: maxPixelSize != nil ? 160 : 220,
                            height: maxPixelSize != nil ? 100 : 180)
+                    .modifier(ShimmerModifier())
             }
         }
         .task(id: scanId) {
@@ -84,5 +87,27 @@ struct ScannedImageView: View {
             .foregroundStyle(KvanteTheme.Colors.textMuted)
             .frame(width: maxPixelSize != nil ? 160 : 220,
                    height: maxPixelSize != nil ? 40 : 60)
+    }
+}
+
+private struct ShimmerModifier: ViewModifier {
+    @State private var phase: CGFloat = -200
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                LinearGradient(
+                    colors: [.clear, Color.white.opacity(0.4), .clear],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .offset(x: phase)
+            )
+            .clipped()
+            .onAppear {
+                withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
+                    phase = 200
+                }
+            }
     }
 }
