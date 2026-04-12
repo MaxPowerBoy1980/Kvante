@@ -43,7 +43,26 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 ### 1. Auto-crop ved bulk-scan (pakke 4 opfølgning)
 Når eleven bulk-scanner sit ark, skal Claude Vision returnere bounding box (crop-koordinater) per opgave. Backend gemmer koordinaterne i `Submission.analysis`. iOS cropper thumbnailet client-side så hver opgave viser kun den relevante del af billedet — ikke hele arket. Kræver prompt-ændring + backend parser + iOS crop-logik.
 
-### 2. Single-digit polish-bundle
+### 2. Feedback-visning brainstorm (pakke 4 opfølgning)
+FeedbackPreviewSheet og ErrorAnalysisSheet skal redesignes. Eleven ser for lidt — kun regnestykke og kort tekst. Brainstorm hvad der giver værdi: forstørret scan-billede, Kvantes ros, fejlforklaring med visuel markering, "prøv igen"-flow. Hænger sammen med auto-crop (#1).
+
+### 3. Startskærm UX-sprint (B1-B3)
+Tre sammenhængende issues på home-skærmen:
+- **B1: Dobbelt velkomst** — "Hej, [navn]"-header og KvanteHeaderBar er redundante. Konsolidér al velkomst ind i KvanteHeaderBar.
+- **B2: Afsluttet ugesæt vises som aktivt** — Når 0 opgaver tilbage, fjern "Fortsæt"-knap. Flyt til matematikbogen, vis næste uge eller øvelsesforslag.
+- **B3: Tom tilstand** — Definer hvad der vises uden aktivt ugesæt. Aldrig tom skærm — vis øvelsesforslag og/eller ros.
+Berørte filer: `NewHomeView.swift`, `ContentView.swift`, `KvanteHeaderBar.swift`. Kræver brainstorm for tom-tilstand.
+
+### 4. Matematikbog redesign (C1-C5, kræver brainstorm)
+Samlet UX-pass over bog-arkivet:
+- **C1: Navngivning** — "Ugematematik — uge 15" er uinformativt. Brainstorm navne der afspejler emne/regneart/sværhedsgrad.
+- **C2: SF Symbols + visuel progress** — Ikon per opgavetype, grafisk progressbar i stedet for tekst-tæller.
+- **C3: Kvalitetsvurdering** — Vis Kvantes vurdering direkte i listen (stjerner, emoji, farvekode). Eleven ser kvalitet på ét blik.
+- **C4: Gratifying oplevelse** — Animerede completion-states, badges, streak-visning, ugens samlede progressbar. Listen er flad og uinspirerende.
+- **C5: Mockup-data** — Populer historiske uger med realistisk data: varierede navne, completion-states, kvalitetsvurderinger. Appen skal se brugt ud.
+Berørte filer: `NotebookView.swift`, `NotebookWeekView.swift`, `NotebookViewModel.swift`, evt. backend seed data. Kræver brainstorm.
+
+### 5. Single-digit polish-bundle (var #2)
 Samlet pass gennem single-digit multiplikations-koden:
 - **Fix Vision OCR routing:** `should_use_vision_ocr_for_submission(assignment_text)` returnerer kun True når mindst én operand ≥ 10. "via Vision"-label baseret på faktisk path, ikke hardcoded. (Ophøjet fra Kendte bugs)
 - **Fix feedback-tekst:** prompt skal kende forskel på single-digit og long mult. "Du kendte 7 × 8 fra 8-tabellen — 56, helt rigtigt" i stedet for "du gangede ciffer for ciffer med delprodukter". (Ophøjet fra Kendte bugs)
@@ -51,15 +70,15 @@ Samlet pass gennem single-digit multiplikations-koden:
 
 Bundling undgår at røre single-digit-koden tre gange. Bør ordnes før pakke 4's bulk-scan rammer single-digit-submissions.
 
-### 3. Long mult polish-bundle
+### 6. Long mult polish-bundle
 Samlet pass gennem long mult-koden:
 - **Sequential narration-animation:** brainstorm først (retning B: sætning-for-sætning animation i samme boble, eller retning D: fjern tekst, lad grid + audio bære). Start med brainstorm af hvad "ro og klarhed" betyder for 9-13-årig.
 - **Completed LongMultiplicationState efter submission:** static factory `LongMultiplicationState.completed(a:b:)`, multiplikations-success branch bruger `exampleStep` med completed state i stedet for ren tekst. Bringer multiplication op på parity med addition/subtraction.
 
-### 4. Tabel-øvelser (ny feature)
+### 7. Tabel-øvelser (ny feature)
 Separat øvelsesmode hvor eleven træner gangetabellerne systematisk som selvstændig aktivitet, ikke del af opgave-løsning. Kræver egen brainstorm: mode (quick-fire / audio / visuel), adaptivitet, scoring, UI-placering. Fundamentet under al multiplikation.
 
-### 5. Lang division visual
+### 8. Lang division visual
 Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som long-mult (`compute_steps` + `pick_example_numbers` + `generate_text`). Kræver egen brainstorm + spec. Sidste core math method der mangler visual.
 
 ---
