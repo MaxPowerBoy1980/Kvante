@@ -33,26 +33,12 @@ struct NewHomeView: View {
         return weeks.count
     }
 
-    /// First incomplete weekly session — drives tilstand 1
-    /// Prioritises in-progress (completedCount > 0) over fresh (0 completed).
-    /// Fresh sessions only count as active if there's no completed session to celebrate.
+    /// Most recent weekly session, only if it's not finished — drives tilstand 1
+    /// Only the newest weekly session matters; older ones are stale test data.
     private var activeWeekly: SessionSummary? {
-        // 1. Session with actual progress (started but not finished)
-        let inProgress = sessionHistory.first {
-            $0.mode == "weekly" && $0.completedCount > 0
-                && $0.completedCount < $0.assignmentCount && !$0.isCompleted
-        }
-        if let inProgress { return inProgress }
-
-        // 2. Fresh session (0 completed) — only if nothing to celebrate
-        let hasCompleted = sessionHistory.contains {
-            $0.mode == "weekly" && ($0.isCompleted || $0.completedCount >= $0.assignmentCount)
-        }
-        if hasCompleted { return nil }
-
-        return sessionHistory.first {
-            $0.mode == "weekly" && $0.completedCount == 0 && !$0.isCompleted
-        }
+        guard let newest = sessionHistory.first(where: { $0.mode == "weekly" }) else { return nil }
+        if newest.isCompleted || newest.completedCount >= newest.assignmentCount { return nil }
+        return newest
     }
 
     /// Most recent completed weekly session — drives tilstand 2
