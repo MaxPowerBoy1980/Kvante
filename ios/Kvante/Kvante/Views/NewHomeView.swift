@@ -240,9 +240,9 @@ struct NewHomeView: View {
 
             Text("Ingen nye opgaver endnu")
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.7))
+                .foregroundStyle(KvanteTheme.Colors.textPrimary.opacity(0.5))
 
-            Text("Kvante venter på at din lærer lægger ugens opgaver ind. Tjek igen senere.")
+            Text("Der er ingen nye opgaver til dig endnu. Tjek igen snart!")
                 .font(.system(size: 14))
                 .foregroundStyle(KvanteTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
