@@ -13,6 +13,7 @@ from app.models.schemas import BulkSubmitResponse, BulkSubmitResult, BulkSubmitS
 from app.services.ai_client import get_ai_client
 from app.services.bulk_scan_service import build_user_message, parse_ai_response, validate_and_build_results
 from app.services.streak_service import update_streak
+from app.services.work_analyzer import extract_gear_score
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -119,6 +120,9 @@ async def bulk_submit(
     for v in validated:
         assignment = next(a for a in assignments if a.id == v["assignment_id"])
 
+        # Extract and validate gear_score
+        gear_score_obj, improvement_tip = extract_gear_score(v)
+
         # Build analysis dict (same shape as single submission)
         analysis = {
             "student_answer": v["student_answer"] or "",
@@ -135,6 +139,8 @@ async def bulk_submit(
             "bulk_scan": True,
             "error_type": v["error_type"],
             "bounding_box": v["bounding_box"],
+            "gear_score": v.get("gear_score"),
+            "improvement_tip": v.get("improvement_tip"),
         }
 
         # Determine attempt number
@@ -182,6 +188,8 @@ async def bulk_submit(
             page_index=v["page_index"],
             submission_id=submission.id,
             bounding_box=v["bounding_box"],
+            gear_score=gear_score_obj,
+            improvement_tip=improvement_tip,
         ))
 
     # Add not_found entries for unmatched assignments

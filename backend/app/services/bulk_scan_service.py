@@ -145,6 +145,8 @@ def validate_and_build_results(
                 "confidence": confidence,
                 "page_index": page_index,
                 "bounding_box": bounding_box,
+                "gear_score": match.get("gear_score"),
+                "improvement_tip": match.get("improvement_tip"),
             }
         )
 
