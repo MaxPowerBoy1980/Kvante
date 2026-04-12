@@ -8,6 +8,7 @@ struct KvanteHeaderBar: View {
     var session: SessionViewModel?
     var onNavigateHome: (() -> Void)? = nil
     var homeExpression: KvanteExpression = .neutral
+    var showHomeDots: Bool = true
     @State private var isExpanded = false
     @State private var celebratingDotIndex: Int? = nil
     @State private var expression: KvanteExpression = .neutral
@@ -69,7 +70,7 @@ struct KvanteHeaderBar: View {
                     assignmentIds: session.assignments.map(\.id),
                     celebratingIndex: celebratingDotIndex
                 )
-            } else {
+            } else if showHomeDots {
                 ProgressDotsView(
                     total: 6,
                     completedIds: [],
@@ -153,19 +154,8 @@ struct KvanteHeaderBar: View {
                     .buttonStyle(.plain)
                 }
             } else {
-                // No session — welcome message
-                HStack(spacing: 12) {
-                    KvanteFace(expression: .happy, size: 44)
-                        .clipped()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Klar til matematik?")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(KvanteTheme.Colors.ink)
-                        Text("Vælg ugens opgaver eller øvelser nedenfor")
-                            .font(.system(size: 13))
-                            .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                    }
-                }
+                // No session — no welcome text (B1: welcome lives in mainCard)
+                EmptyView()
             }
         }
         .padding(.horizontal, 16)

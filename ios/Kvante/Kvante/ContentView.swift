@@ -54,7 +54,8 @@ struct ContentView: View {
                 onNavigateHome: sessionPath.isEmpty ? nil : {
                     sessionPath.removeAll()
                 },
-                homeExpression: sessionPath.isEmpty ? homeExpression : .neutral
+                homeExpression: sessionPath.isEmpty ? homeExpression : .neutral,
+                showHomeDots: sessionPath.isEmpty ? sessionHistory.contains(where: { $0.mode == "weekly" }) : true
             )
 
             NavigationStack(path: $sessionPath) {
