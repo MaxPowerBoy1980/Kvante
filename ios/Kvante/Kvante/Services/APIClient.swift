@@ -158,6 +158,18 @@ actor APIClient {
         baseURL.appendingPathComponent("scans/\(scanId)/image")
     }
 
+    func cropImageURL(scanId: String, region: CropRegion, padding: Double = 0.08) -> URL {
+        var components = URLComponents(url: baseURL.appendingPathComponent("scans/\(scanId)/crop"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "x", value: String(format: "%.4f", region.x)),
+            URLQueryItem(name: "y", value: String(format: "%.4f", region.y)),
+            URLQueryItem(name: "w", value: String(format: "%.4f", region.width)),
+            URLQueryItem(name: "h", value: String(format: "%.4f", region.height)),
+            URLQueryItem(name: "padding", value: String(format: "%.2f", padding)),
+        ]
+        return components.url!
+    }
+
     // MARK: - Chat Persistence
 
     func saveMessages(sessionId: String, messages: [ChatMessageCreate]) async throws {

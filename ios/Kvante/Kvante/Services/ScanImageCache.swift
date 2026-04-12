@@ -47,4 +47,22 @@ final class ScanImageCache {
             return nil
         }
     }
+
+    /// Load a cropped scan image from the crop endpoint, cached by scan ID + region.
+    func croppedImage(for scanId: String, region: CropRegion, apiClient: APIClient) async -> UIImage? {
+        let key = "\(scanId)_crop_\(region.cacheKeySuffix)" as NSString
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
+
+        do {
+            let url = await apiClient.cropImageURL(scanId: scanId, region: region)
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let image = UIImage(data: data) else { return nil }
+            cache.setObject(image, forKey: key)
+            return image
+        } catch {
+            return nil
+        }
+    }
 }
