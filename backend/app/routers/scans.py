@@ -1,8 +1,10 @@
 import logging
 import os
+from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse, Response
+from PIL import Image
 from sqlalchemy.orm import Session as DBSession
 
 from app.config import settings
@@ -51,3 +53,38 @@ def get_scan_image(scan_id: str, db: DBSession = Depends(get_db)):
     if not scan or not os.path.exists(scan.image_path):
         raise HTTPException(status_code=404, detail="Scan not found")
     return FileResponse(scan.image_path, media_type="image/jpeg")
+
+
+@router.get("/scans/{scan_id}/crop")
+def crop_scan_image(
+    scan_id: str,
+    x: float = Query(..., ge=0.0, le=1.0),
+    y: float = Query(..., ge=0.0, le=1.0),
+    w: float = Query(..., ge=0.0, le=1.0),
+    h: float = Query(..., ge=0.0, le=1.0),
+    padding: float = Query(0.08, ge=0.0, le=1.0),
+    db: DBSession = Depends(get_db),
+):
+    """Return a cropped region of a scan image. Coordinates are normalized 0.0–1.0."""
+    scan = db.query(Scan).filter(Scan.id == scan_id).first()
+    if not scan or not os.path.exists(scan.image_path):
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    img = Image.open(scan.image_path)
+    img_w, img_h = img.size
+
+    # Apply padding (proportional to box dimensions)
+    pad_x = w * padding
+    pad_y = h * padding
+    left = max(0, round((x - pad_x) * img_w))
+    top = max(0, round((y - pad_y) * img_h))
+    right = min(img_w, round((x + w + pad_x) * img_w))
+    bottom = min(img_h, round((y + h + pad_y) * img_h))
+
+    cropped = img.crop((left, top, right, bottom))
+
+    buf = BytesIO()
+    cropped.save(buf, format="JPEG", quality=85)
+    body = buf.getvalue()
+
+    return Response(content=body, media_type="image/jpeg")
