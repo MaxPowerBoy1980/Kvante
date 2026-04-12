@@ -65,27 +65,38 @@ Label: "TIP FRA KVANTE" i uppercase, size 12, font weight 600, orange.
 
 Tip-boble: varm hvid baggrund (`#FFF7ED`), 3pt orange venstre-border, 12pt border radius. LLM-genereret forbedringsforslag, size 14.
 
-Vises kun når opgaven er korrekt OG LLM'en har et konkret forbedringsforslag. Kan udelades ved 6/6 tandhjul.
+**Visningsregel:** Vises når opgaven er korrekt OG `improvement_tip` ikke er null. Ved 6/6 tandhjul vises tip aldrig — LLM'en instrueres til at returnere `improvement_tip: null` ved perfekt score, og iOS skjuler sektionen hvis feltet er null uanset.
 
 ### 7. Kvantes spørgsmål + svar-knapper (kun ved fejl)
 
 Feedbacken fra sektion 5 slutter med et spørgsmål fra Kvante. Knapperne er elevens svar — det føles som en samtale, ikke kommandoer.
 
-**Spørgsmålet tilpasses fejltype:**
+**Spørgsmålet er en fast skabelon valgt af fejltype — ikke LLM-genereret.** Dette sikrer konsistent tone og undgår kvalitetsproblemer. iOS vælger skabelon baseret på `error_type` fra bulk-scan-resultatet:
 
-| Fejltype | Kvantes spørgsmål |
-|----------|-------------------|
-| Procedural | "Vil du prøve igen, eller skal jeg vise dig et eksempel med andre tal?" |
-| Understanding | "Skal jeg vise dig hvordan man [regnearten]?" |
-| Careless | "Det var bare en lille glider — vil du prøve igen?" |
+| Fejltype | Fast spørgsmålstekst |
+|----------|---------------------|
+| `procedural` | "Vil du prøve igen, eller skal jeg vise dig et eksempel med andre tal?" |
+| `understanding` | "Skal jeg vise dig hvordan man løser den slags opgaver?" |
+| `careless` | "Det var bare en lille glider — vil du prøve igen?" |
 
 **Knapper:**
 - **"Jeg prøver igen"** — stroked (border: 2pt orange, hvid baggrund). Lukker sheeten, eleven scanner nyt forsøg.
-- **"Ja, vis mig!"** — filled (orange baggrund, hvid tekst). Lukker sheeten, åbner chatten med Kvante der viser et gennemregnet eksempel med andre tal.
+- **"Ja, vis mig!"** — filled (orange baggrund, hvid tekst). Lukker sheeten, navigerer til chatten med kontekst (se "Chat-kontekst ved Ja, vis mig!" nedenfor).
 
-Ved careless fejl kan "Ja, vis mig!" erstattes af blot "Jeg prøver igen" som eneste knap — eleven behøver ikke hjælp, bare opmærksomhed.
+Ved `careless` fejl vises kun "Jeg prøver igen" som eneste knap — eleven behøver ikke hjælp, bare opmærksomhed.
 
-**Kontekst-afhængig visning:** Knapperne vises kun i aktive sessions (arket). I matematikbogen (historisk review) vises feedback og tandhjul, men ingen handlingsknapper — eleven browser sit gamle arbejde, ikke løser opgaver.
+**Kontekst-afhængig visning:** I aktive sessions (arket) vises spørgsmål + knapper. I matematikbogen (historisk review) vises hverken spørgsmål eller knapper — kun feedback-tekst og tandhjul. Eleven browser sit gamle arbejde, ikke løser opgaver.
+
+### Chat-kontekst ved "Ja, vis mig!"
+
+Når eleven tapper "Ja, vis mig!" sker følgende:
+
+1. FeedbackSheet lukkes
+2. iOS navigerer til chat-viewet med den pågældende assignment valgt som `currentAssignment`
+3. iOS kalder `POST /sessions/{session_id}/assignments/{assignment_id}/example` — det eksisterende eksempel-endpoint der genererer et gennemregnet eksempel med andre tal
+4. Chat-viewet viser Kvantes eksempel som en normal chat-besked med visual (stacked arithmetic, long multiplication, etc.)
+
+Ingen ny backend-funktionalitet — det er det eksisterende eksempel-flow der trigges programmatisk i stedet for via chat-knap.
 
 ## Tandhjul-scoring
 
@@ -114,20 +125,60 @@ Ved careless fejl kan "Ja, vis mig!" erstattes af blot "Jeg prøver igen" som en
     "visible_method": 0 | 1 | 2,
     "notation": 0 | 1 | 2
   },
-  "improvement_tip": "string or null",
-  "kvante_question": "string"
+  "improvement_tip": "string or null"
 }
 ```
 
-- `gear_score`: de tre kriterier. Summen er det samlede antal tandhjul.
-- `improvement_tip`: konkret forbedringsforslag. Null hvis 6/6 eller hvis LLM'en ikke har noget konstruktivt.
-- `kvante_question`: det afsluttende spørgsmål tilpasset fejltypen. Null ved korrekt svar.
+- `gear_score`: de tre kriterier. Summen er det samlede antal tandhjul (0-6).
+- `improvement_tip`: konkret forbedringsforslag. Null hvis total == 6 eller hvis LLM'en ikke har noget konstruktivt.
+
+`kvante_question` genereres IKKE af LLM'en — det er faste skabeloner valgt af `error_type` på iOS-siden (se sektion 7).
 
 Eksisterende felter (`methodology_sound`, `errors`, `correct_elements`, `methodology_assessment`, `steps_identified`) bevares uændret.
 
+### Validering af gear_score
+
+Backend validerer LLM-output og clamper ugyldige værdier:
+- `correct_answer`: skal være 0 eller 2. Hvis LLM returnerer 1, clamp til 2 (generøst). Hvis udenfor 0-2, clamp til nærmeste.
+- `visible_method`: skal være 0, 1 eller 2. Clamp til [0, 2].
+- `notation`: skal være 0, 1 eller 2. Clamp til [0, 2].
+- Total sum valideres: max 6. Hvis LLM returnerer malformed JSON, fallback til `{"correct_answer": 2, "visible_method": 1, "notation": 1}` (generøs default = 4/6).
+
+### GearScore Pydantic-model
+
+```python
+class GearScore(BaseModel):
+    correct_answer: int = Field(ge=0, le=2, description="0=forkert, 2=korrekt (binært)")
+    visible_method: int = Field(ge=0, le=2, description="0=ingen, 1=noget, 2=alle trin")
+    notation: int = Field(ge=0, le=2, description="0=rodet, 1=okay, 2=tydelig")
+
+    @computed_field
+    @property
+    def total(self) -> int:
+        return self.correct_answer + self.visible_method + self.notation
+
+    @field_validator("correct_answer")
+    @classmethod
+    def correct_answer_binary(cls, v: int) -> int:
+        if v == 1:
+            return 2
+        return max(0, min(2, v))
+```
+
 ### Hvornår genereres feedback?
 
-I dag genereres feedback on-demand via `POST /feedback/`. Med det nye design skal feedback genereres automatisk som del af bulk-scan flowet (`POST /sessions/{id}/bulk-submit`). Bulk-scan-servicen kalder allerede `analyze_work.txt` — den udvides til også at returnere `gear_score`, `improvement_tip` og `kvante_question`. Feedback-teksten ("Kvante siger") genereres i samme kald, ikke som separat request. Resultatet gemmes på Submission og returneres i BulkSubmitResult så iOS kan vise det med det samme uden ekstra API-kald.
+**Opdelt i to lag for at undgå latency-problemer:**
+
+**Lag 1 — Under bulk-scan (synkront):** `gear_score` og `improvement_tip` udtrækkes fra det eksisterende `analyze_work.txt`-kald. Det er ekstra struktureret output fra samme prompt, ikke et separat AI-kald. Latency-påvirkning: minimal — prompten returnerer lidt mere JSON.
+
+**Lag 2 — Ved tap på opgave (lazy, on-demand):** Feedback-teksten ("Kvante siger") genereres først når eleven tapper på en opgave i FeedbackSheet. iOS kalder `POST /feedback/` med submission_id. Resultatet caches på Submission så gentagne taps er instant.
+
+**Loading-state:** Når eleven åbner FeedbackSheet:
+- Gear-score, overskrift, scan-billede og pixelart vises med det samme (data fra bulk-scan).
+- "Kvante siger"-sektionen viser `rob2_thinking.png` + shimmer/skeleton mens feedback-tekst genereres (typisk 1-2 sekunder).
+- Hvis feedback allerede er cached (eleven vender tilbage til en opgave): alt vises instant, ingen loading.
+
+Denne opdeling holder bulk-scan hurtigt (20 opgaver påvirkes minimalt) og giver responsiv UI ved tap.
 
 ### Backend: Feedback-tekst
 
@@ -140,14 +191,27 @@ I dag genereres feedback on-demand via `POST /feedback/`. Med det nye design ska
 - 2-3 sætninger max
 - Dansk, uformelt, varmt
 
+## Migration: Alle indgangspunkter til gamle sheets
+
+Før de tre gamle sheets slettes, skal alle indgangspunkter verificeres og omdirigeres:
+
+1. **ArkCell.swift** — `onFeedbackTap` callback åbner FeedbackPreviewSheet eller ErrorAnalysisSheet afhængigt af status. → Omdirigér til FeedbackSheet.
+2. **ArkCell.swift** — tap på done-opgave åbner FeedbackPreviewSheet. → Omdirigér til FeedbackSheet.
+3. **AssignmentSheetView.swift** — `.sheet`-presentationer der binder til de gamle sheets. → Opdater bindings.
+4. **NotebookWeekView.swift** (eller tilsvarende) — tap på historisk opgave åbner AssignmentDetailSheet. → Omdirigér til FeedbackSheet med `isHistorical: true`.
+
+Implementation-test: byg appen, tap på ALLE opgave-tilstande (notStarted, inProgress, done) i arket OG i matematikbogen. Verificér at ingen navigation peger på de slettede sheets.
+
 ## Scope
 
 ### Med i denne feature
 - `FeedbackSheet` SwiftUI view (erstatter FeedbackPreviewSheet, ErrorAnalysisSheet, AssignmentDetailSheet)
 - Tandhjul-rating komponent (`GearRatingView`)
 - Tandhjul-ikon som custom SwiftUI Shape
-- Backend: udvidet `analyze_work.txt` prompt med `gear_score`, `improvement_tip`, `kvante_question`
+- Backend: udvidet `analyze_work.txt` prompt med `gear_score` og `improvement_tip`
+- Backend: `GearScore` Pydantic-model med validering
 - Backend: udvidet `give_feedback.txt` prompt
+- iOS: faste spørgsmålsskabeloner baseret på `error_type` (ingen LLM-generering)
 - Backend: nye felter på Submission/ArkAssignment response schemas
 - Pixelart integration (de 5 eksisterende states)
 
@@ -175,15 +239,18 @@ I dag genereres feedback on-demand via `POST /feedback/`. Med det nye design ska
 - `ErrorAnalysisSheet.swift`
 - `AssignmentDetailSheet.swift`
 
+### Backend (nye)
+- `app/models/schemas.py` — `GearScore` Pydantic-model med validering
+
 ### Backend (ændres)
-- `app/prompts/analyze_work.txt` — tilføj gear_score, improvement_tip, kvante_question
-- `app/prompts/give_feedback.txt` — opdater til ny feedback-stil
-- `app/models/schemas.py` — nye felter på response-modeller
-- `app/services/work_analyzer.py` — parse nye felter fra AI-response
-- `app/services/feedback_generator.py` — evt. tilpasninger
-- `app/routers/bulk_submit.py` — inkluder gear_score i BulkSubmitResult
+- `app/prompts/analyze_work.txt` — tilføj `gear_score` og `improvement_tip` til prompt-instruktioner
+- `app/prompts/give_feedback.txt` — opdater til ny feedback-stil (ros-først, uformelt dansk)
+- `app/models/schemas.py` — nye felter på response-modeller (se nedenfor)
+- `app/services/work_analyzer.py` — parse `gear_score` og `improvement_tip` fra AI-response med validering/clamping
+- `app/services/bulk_scan_service.py` — inkluder gear_score i BulkSubmitResult
+- `app/routers/bulk_submit.py` — returnér nye felter
 
 ### Backend (nye felter på eksisterende modeller)
-- `BulkSubmitResult`: `gear_score: dict`, `improvement_tip: Optional[str]`, `kvante_question: Optional[str]`
-- `SubmissionResponse`: samme tre felter
-- `ArkAssignment`: `gear_score: Optional[dict]`, `improvement_tip: Optional[str]`
+- `BulkSubmitResult`: `gear_score: Optional[GearScore]`, `improvement_tip: Optional[str]`
+- `SubmissionResponse`: `gear_score: Optional[GearScore]`, `improvement_tip: Optional[str]`
+- `ArkAssignment`: `gear_score: Optional[GearScore]`, `improvement_tip: Optional[str]`
