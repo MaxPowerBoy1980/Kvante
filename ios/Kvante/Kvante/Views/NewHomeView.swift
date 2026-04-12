@@ -34,13 +34,18 @@ struct NewHomeView: View {
     }
 
     /// First incomplete weekly session — drives tilstand 1
+    /// A session is considered done when status == "completed" OR all assignments are solved
     private var activeWeekly: SessionSummary? {
-        sessionHistory.first { $0.mode == "weekly" && !$0.isCompleted }
+        sessionHistory.first {
+            $0.mode == "weekly" && !$0.isCompleted && $0.completedCount < $0.assignmentCount
+        }
     }
 
     /// Most recent completed weekly session — drives tilstand 2
     private var completedWeekly: SessionSummary? {
-        sessionHistory.first { $0.mode == "weekly" && $0.isCompleted }
+        sessionHistory.first {
+            $0.mode == "weekly" && ($0.isCompleted || $0.completedCount >= $0.assignmentCount)
+        }
     }
 
     /// Show exercises card only in tilstand 1 (active weekly, not yet solved)
