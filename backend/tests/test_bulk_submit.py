@@ -183,3 +183,54 @@ def test_validate_deduplicates_highest_confidence():
     assert len(results) == 1
     assert results[0]["student_answer"] == "101"
     assert results[0]["confidence"] == 0.9
+
+
+from app.services.bulk_scan_service import validate_bounding_box
+
+
+# ---------------------------------------------------------------------------
+# validate_bounding_box
+# ---------------------------------------------------------------------------
+
+def test_validate_bounding_box_valid():
+    """A well-formed bounding box passes validation."""
+    assert validate_bounding_box([0.05, 0.22, 0.45, 0.18]) == [0.05, 0.22, 0.45, 0.18]
+
+
+def test_validate_bounding_box_none_input():
+    """None input returns None."""
+    assert validate_bounding_box(None) is None
+
+
+def test_validate_bounding_box_wrong_length():
+    """List with != 4 elements returns None."""
+    assert validate_bounding_box([0.1, 0.2, 0.3]) is None
+    assert validate_bounding_box([0.1, 0.2, 0.3, 0.4, 0.5]) is None
+
+
+def test_validate_bounding_box_out_of_range():
+    """Values outside 0.0–1.0 return None."""
+    assert validate_bounding_box([-0.1, 0.2, 0.3, 0.4]) is None
+    assert validate_bounding_box([0.1, 0.2, 1.5, 0.4]) is None
+
+
+def test_validate_bounding_box_too_small():
+    """Width or height < 0.03 returns None (micro-box misfire)."""
+    assert validate_bounding_box([0.1, 0.2, 0.02, 0.5]) is None
+    assert validate_bounding_box([0.1, 0.2, 0.5, 0.01]) is None
+
+
+def test_validate_bounding_box_too_large():
+    """Area > 0.50 returns None (covers too much of the page)."""
+    assert validate_bounding_box([0.0, 0.0, 0.8, 0.8]) is None  # area = 0.64
+
+
+def test_validate_bounding_box_at_area_boundary():
+    """Area exactly at 0.50 should be rejected (not strictly less)."""
+    assert validate_bounding_box([0.0, 0.0, 0.5, 1.0]) is None  # area = 0.50
+
+
+def test_validate_bounding_box_non_list():
+    """Non-list input returns None."""
+    assert validate_bounding_box("not a list") is None
+    assert validate_bounding_box(42) is None

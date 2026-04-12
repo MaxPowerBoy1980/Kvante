@@ -9,6 +9,35 @@ from app.services.answer_reader import compare_answer
 logger = logging.getLogger(__name__)
 
 
+def validate_bounding_box(bbox) -> list[float] | None:
+    """Validate a bounding box [x, y, width, height] with normalized 0.0–1.0 coords.
+
+    Returns the bbox list if valid, None otherwise.
+    Rejects: wrong type/length, out-of-range, micro-boxes (< 3%), oversized (≥ 50% area).
+    """
+    if not isinstance(bbox, list) or len(bbox) != 4:
+        return None
+
+    try:
+        x, y, w, h = [float(v) for v in bbox]
+    except (TypeError, ValueError):
+        return None
+
+    # All values must be in [0.0, 1.0]
+    if not all(0.0 <= v <= 1.0 for v in (x, y, w, h)):
+        return None
+
+    # Minimum size: 3% in each dimension
+    if w < 0.03 or h < 0.03:
+        return None
+
+    # Maximum area: strictly less than 50%
+    if w * h >= 0.50:
+        return None
+
+    return [x, y, w, h]
+
+
 def build_user_message(assignments: list[dict]) -> str:
     """Build the user message listing all assignments for AI matching."""
     lines = ["Eleven skulle løse disse opgaver:\n"]
