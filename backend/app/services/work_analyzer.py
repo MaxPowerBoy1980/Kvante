@@ -2,11 +2,30 @@ import logging
 import time
 
 from app.config import settings
+from app.models.schemas import GearScore
 from app.services.ai_client import get_ai_client
 from app.services.image_preprocessor import preprocess_handwritten_work
 from app.services.json_parser import extract_json
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_GEAR = {"correct_answer": 2, "visible_method": 1, "notation": 1}
+
+
+def extract_gear_score(parsed: dict) -> tuple[GearScore, str | None]:
+    """Extract and validate gear_score from AI response. Returns generous defaults on failure."""
+    tip = parsed.get("improvement_tip")
+    if isinstance(tip, str) and tip.strip() == "":
+        tip = None
+
+    raw = parsed.get("gear_score")
+    if not isinstance(raw, dict):
+        return GearScore(**_DEFAULT_GEAR), tip
+
+    try:
+        return GearScore(**raw), tip
+    except Exception:
+        return GearScore(**_DEFAULT_GEAR), tip
 
 
 class WorkAnalyzerService:
