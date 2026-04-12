@@ -1,7 +1,10 @@
 # Startskærm UX-sprint (B1-B3)
 
 **Dato:** 2026-04-12
+**Status:** Godkendt — klar til implementation
 **Mockup:** `.superpowers/brainstorm/58994-1776003963/content/home-states-v2.html`
+
+---
 
 ## Problemet
 
@@ -11,9 +14,30 @@ Startskærmen har tre UX-fejl:
 - **B2: Afsluttet ugesæt vises som aktivt** — `currentWeekly` falder tilbage til `sessionHistory.first` når alt er løst, så kortet viser "Fortsæt" selvom der intet er at fortsætte
 - **B3: Tom tilstand** — Når der ingen aktiv uge er, vises et generisk "Start ugens opgaver" med tomt kort. Det er intetsigende og ligner en fejl.
 
+---
+
 ## Løsningen
 
 Én kontekstuel startskærm med tre tilstande. Kortet spejler elevens præcise situation — det *er* velkomsten. "Hej [navn]"-headingen fjernes.
+
+---
+
+## Farvepalette
+
+Alle farver er afledt direkte fra Rob-pixelartens farver. Ingen system-farver undtagen hvid/sort.
+
+| Token | Kilde i pixelart | Hex |
+|-------|-----------------|-----|
+| `KvanteTheme.Colors.primary` | Gear-krave, orange | `#C94B1A` |
+| `KvanteTheme.Colors.accentRed` | Antenna-top, coral-rød | `#C0392B` |
+| `KvanteTheme.Colors.robBlue` | Robs hoved | `#5B9EB5` |
+| `KvanteTheme.Colors.blush` | Kinder-pink | `#E8547A` |
+| `KvanteTheme.Colors.backgroundWarm` | Afledt af gear-orange, meget lys | `#FFF7ED` |
+| `KvanteTheme.Colors.textPrimary` | Øje-outline, mørk navy | `#1A2D3D` |
+
+**`Color.green` bruges ikke.** Korrekte chips bruger `robBlue` baggrund med hvid ✓ — tydeligt "korrekt" men inden for Robs univers.
+
+---
 
 ## Tilstand 1: Midt i ugen (normal)
 
@@ -22,18 +46,20 @@ Startskærmen har tre UX-fejl:
 **Rob:** `rob2.png` (neutral) i hovedkortet, neutral i header
 
 **Hovedkort:**
-- Rob neutral pixelart (64×64, `image-rendering: pixelated`)
+- Rob neutral pixelart (64×64, `.interpolation(.none)`)
 - Titel: "Opgave {current} af {total}"
 - Undertitel: "{sessionName} — {topic}"
 - Progress-chips: horisontale bokse per opgave
-  - Færdige: grøn baggrund, ✓, **tappable → åbner FeedbackSheet for den opgave**
-  - Aktuel: orange border + nummer
+  - Færdige: `robBlue` baggrund, hvid ✓, **tappable → åbner FeedbackSheet for den opgave**
+  - Aktuel: `primary` (orange) border + nummer
   - Ventende: grå, nummer
-- CTA-knap: "Fortsæt opgave {current}" (orange, fuld bredde)
+- CTA-knap: "Fortsæt opgave {current}" (`primary` orange, fuld bredde)
 
 **Under kortet:**
 - Ekstra øvelser-kort (sekundært)
 - Matematikbog-kort (sekundært)
+
+---
 
 ## Tilstand 2: Alt er løst (triumf)
 
@@ -42,87 +68,63 @@ Startskærmen har tre UX-fejl:
 **Rob:** `rob2_happy.png` (glad) i hovedkortet — større (80×80). Glad i header.
 
 **Hovedkort:**
-- Varm gradient-baggrund (`#fff → #FFF8F0`), orange-tint border
-- Rob glad pixelart centreret — **Rob ejer øjeblikket**
-- Lyn-zigzag under Rob (orange, `⚡⚡⚡` eller custom SwiftUI shape)
+- Varm gradient-baggrund (`#FFFFFF → #FFF0E6`), `primary`-tinted border (afledt af gear-kragen)
+- Rob glad pixelart centreret, 80×80 — **Rob ejer øjeblikket**
+- Lyn-zigzag under Rob (orange `primary`, statisk i denne sprint)
 - Titel: "Uge {N} er i hus!"
 - Undertitel: "{total} af {total} opgaver — flot arbejde"
-- Progress-chips: alle grønne ✓, alle tappable → FeedbackSheet
+- Progress-chips: alle `robBlue` ✓, alle tappable → FeedbackSheet
 - **Ingen primær CTA-knap** — eleven skal lande i triumfen
 
 **Under kortet:**
-- "Se dit arbejde denne uge →" som rolig tekst-link (teal, centreret) — navigerer til arket/matematikbogen for denne session
+- "Se dit arbejde denne uge →" som rolig tekst-link i `robBlue`, centreret — navigerer til matematikbogen for denne session (v1-destination; direkte ark-navigation tilføjes senere)
 - Matematikbog-kort (sekundært, passivt arkiv-link)
-- **Øvelseskortet er skjult** — forhindrer "godt klaret, og forresten..." effekten
+- **Øvelseskortet er skjult** — forhindrer "godt klaret, og forresten..."-effekten
+
+---
 
 ## Tilstand 3: Ingen aktiv uge (venter)
 
-**Betingelse:** `activeWeekly == nil && completedWeekly == nil` (ingen weekly sessions overhovedet, eller ingen nylig completed)
+**Betingelse:** `activeWeekly == nil && completedWeekly == nil`
 
 **Rob:** `rob2.png` (neutral) i hovedkortet, neutral i header
 
 **Hovedkort:**
-- Dashed border (`rgba(61,44,30,0.15)`) — visuelt markerer "der er intet her endnu"
+- Dashed border (`robBlue` 25% opacity: `rgba(91, 158, 181, 0.25)`) — visuelt markerer "der er intet her endnu"
 - Rob neutral pixelart (64×64)
-- Titel: "Ingen nye opgaver endnu" (dæmpet farve)
+- Titel: "Ingen nye opgaver endnu" (dæmpet, `textPrimary` 50% opacity)
 - Tekst: "Kvante venter på at din lærer lægger ugens opgaver ind. Tjek igen senere."
 - **Ingen knap** — der er intet at starte
 
 **Under kortet:**
 - Matematikbog-kort (sekundært)
-- **Øvelseskortet er skjult** — intet at øve sig på uden kontekst
+- **Øvelseskortet er skjult**
 
-**Headerbar:** Ingen progress-dots (ingen session). Streak-badge vises stadig.
+**Headerbar:** Ingen progress-dots. Streak-badge vises stadig.
+
+---
 
 ## Pixelart-integration
 
-Rob-billederne fra `icons/Kvante/Pixelart/` bruges direkte som assets:
-
-| Tilstand | Billede | Størrelse i kort |
-|----------|---------|------------------|
+| Tilstand | Billede | Størrelse |
+|----------|---------|-----------|
 | 1 (midt i uge) | `rob2.png` | 64×64 |
 | 2 (triumf) | `rob2_happy.png` | 80×80 |
 | 3 (ingen uge) | `rob2.png` | 64×64 |
 
-Alle renderes med `Image(...)` og `.interpolation(.none)` for at bevare pixelart-skarpheden.
+Alle renderes med `.interpolation(.none)` for pixelart-skarphed.
 
-**Bemærk:** `rob2_happy .png` har et mellemrum i filnavnet — skal enten omdøbes ved import til asset catalog eller håndteres i koden.
+**OBS:** `rob2_happy .png` har et mellemrum i filnavnet — omdøb til `rob2_happy.png` ved import til asset catalog.
 
-## Progress-chip navigation
-
-Tappable ✓-chips er ny navigation:
-
-1. Elev tapper en færdig chip (index 0-2 i eksemplet)
-2. `SessionViewModel` slår assignment op på det index
-3. FeedbackSheet præsenteres for den assignment (samme sheet som fra arket)
-4. Eleven kan lukke sheeten og er tilbage på startskærmen
-
-Dette genbruger den eksisterende `FeedbackSheet` — ingen ny view nødvendig. Kræver kun at hovedkortet kender assignment-listen og kan præsentere sheeten.
-
-## Ændringer i KvanteHeaderBar
-
-Headerbaren ændres minimalt:
-
-- **Rob-udtryk matcher tilstand:** neutral (1/3), glad (2)
-- **Dots:** vises kun når session er aktiv (tilstand 1 og 2). Ingen dots i tilstand 3.
-- **Streak:** vises altid
-
-Ingen strukturelle ændringer i headerbaren.
-
-## Hvad fjernes
-
-- `"Hej, \(profile.name)!"` heading + undertitel-blokken (linje 45-59 i NewHomeView.swift)
-- `currentWeekly` computed property erstattes med to:
-  - `activeWeekly`: første incomplete weekly session (`sessionHistory.first { $0.mode == "weekly" && !$0.isCompleted }`)
-  - `completedWeekly`: senest completed weekly session (`sessionHistory.first { $0.mode == "weekly" && $0.isCompleted }`)
-- Logikken `currentWeekly != nil ? "Fortsæt" : "Start ugens opgaver"` erstattes af tilstandsmaskinen
+---
 
 ## Tilstandsmaskine
 
 ```swift
+// sessionHistory antages sorteret nyeste-først
 let weeklySessions = sessionHistory.filter { $0.mode == "weekly" }
 let activeWeekly = weeklySessions.first { !$0.isCompleted }
-let completedWeekly = weeklySessions.first { $0.isCompleted }
+let completedWeekly = weeklySessions.first { $0.isCompleted } // nyeste completed
 
 if let active = activeWeekly {
     // Tilstand 1: Midt i ugen
@@ -133,16 +135,46 @@ if let active = activeWeekly {
 }
 ```
 
-**Note:** `completedWeekly` viser den senest completed weekly session. Triumf-kortet forbliver synligt indtil en ny ugentlig session oprettes (→ tilstand 1). I praksis opretter læreren nye sessioner ugentligt, så triumf-tilstanden varer typisk fra færdiggørelse til næste mandag.
+**Note:** `completedWeekly` bruger `.first` på en liste sorteret nyeste-først — returnerer altså den *nyeste* completed session. Verificer at `sessionHistory` er sorteret korrekt inden brug. Triumf-tilstanden forbliver synlig indtil læreren opretter en ny ugentlig session.
 
-## Hvad der IKKE ændres
+---
 
-- Øvelseskortets indhold og navigation
-- Matematikbogskortets indhold og navigation
-- Backend — rent iOS-ændring
-- Onboarding-flow
-- Arket (AssignmentSheetView)
-- ChatView
+## Progress-chip navigation
+
+1. Elev tapper en færdig chip (index 0–N)
+2. `SessionViewModel` slår assignment op på det index
+3. `FeedbackSheet` præsenteres for den assignment (samme sheet som fra arket)
+4. Eleven lukker sheeten → tilbage på startskærmen
+
+Genbruger eksisterende `FeedbackSheet` — ingen ny view nødvendig.
+
+---
+
+## Ændringer i KvanteHeaderBar
+
+- **Rob-udtryk matcher tilstand:** neutral (1/3), glad (2)
+- **Dots:** vises kun i tilstand 1 og 2. Ingen dots i tilstand 3.
+- **Streak:** vises altid
+
+Ingen strukturelle ændringer.
+
+---
+
+## Hvad fjernes
+
+- `"Hej, \(profile.name)!"` heading + undertitel-blokken
+- `currentWeekly` computed property erstattes med `activeWeekly` + `completedWeekly`
+- Logikken `currentWeekly != nil ? "Fortsæt" : "Start ugens opgaver"` erstattes af tilstandsmaskinen ovenfor
+
+---
+
+## Scope-afgrænsning
+
+- Ingen animation på triumf-kortet i denne sprint — lyn-zigzag er statisk
+- "Se dit arbejde denne uge →" peger på matematikbogen i v1
+- Øvelseskortet skjules i tilstand 2 og 3, vises i tilstand 1
+
+---
 
 ## Berørte filer
 
@@ -152,10 +184,5 @@ if let active = activeWeekly {
 | `KvanteHeaderBar.swift` | Rob-udtryk matcher tilstand (minimal) |
 | `ContentView.swift` | Evt. eksponere `completedWeekly` til home view |
 | `FeedbackSheet.swift` | Ingen — genbruges som-den-er |
-| Asset catalog | Tilføj Rob pixelart-billeder som image assets |
-
-## Scope-afgrænsning
-
-- Ingen animation på triumf-kortet i denne sprint — lyn-zigzag er statisk. Animation kan tilføjes senere.
-- "Se dit arbejde denne uge →" navigerer til arket for den completed session. Hvis navigation er besværlig, kan det starte som et link til matematikbogen.
-- Øvelseskortet gemmes kun i tilstand 2 og 3. Det dukker op igen i tilstand 1.
+| Asset catalog | Tilføj Rob pixelart-billeder; omdøb `rob2_happy .png` → `rob2_happy.png` |
+| `KvanteTheme.swift` | Tilføj `robBlue`, `accentRed`, `blush`, `textPrimary` tokens |
