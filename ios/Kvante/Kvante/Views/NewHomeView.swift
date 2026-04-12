@@ -30,9 +30,19 @@ struct NewHomeView: View {
         return weeks.count
     }
 
-    /// Most recent weekly session for mini-ark preview
-    private var currentWeekly: SessionSummary? {
-        sessionHistory.first { !$0.isCompleted } ?? sessionHistory.first
+    /// First incomplete weekly session — drives tilstand 1
+    private var activeWeekly: SessionSummary? {
+        sessionHistory.first { $0.mode == "weekly" && !$0.isCompleted }
+    }
+
+    /// Most recent completed weekly session — drives tilstand 2
+    private var completedWeekly: SessionSummary? {
+        sessionHistory.first { $0.mode == "weekly" && $0.isCompleted }
+    }
+
+    /// Show exercises card only in tilstand 1 (active weekly, not yet solved)
+    private var showExercises: Bool {
+        activeWeekly != nil
     }
 
     var body: some View {
@@ -40,38 +50,24 @@ struct NewHomeView: View {
             KvanteTheme.Colors.cream.ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Welcome
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Hej, \(profile.name)!")
-                            .font(.system(size: 26, weight: .bold))
-                            .foregroundStyle(KvanteTheme.Colors.ink)
+                VStack(spacing: 14) {
+                    mainCard
 
-                        if let weekly = currentWeekly {
-                            let remaining = weekly.assignmentCount - weekly.completedCount
-                            Text("\(weekly.name) — du har \(remaining) opgave\(remaining == 1 ? "" : "r") tilbage")
-                                .font(.system(size: 15))
-                                .foregroundStyle(KvanteTheme.Colors.textSecondary)
-                        } else {
-                            Text("Klar til at blive skarpere til matematik?")
-                                .font(.system(size: 15))
-                                .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                    // "Se dit arbejde" link — only in tilstand 2 (triumf)
+                    if activeWeekly == nil, completedWeekly != nil {
+                        Button(action: onNotebook) {
+                            Text("Se dit arbejde denne uge →")
+                                .font(.system(size: 13))
+                                .foregroundStyle(KvanteTheme.Colors.robBlue)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
 
-                    // Primary CTA: Weekly math
-                    weeklyCard
-                        .padding(.horizontal, 24)
+                    if showExercises {
+                        practiceCard
+                    }
 
-                    // Secondary: Practice
-                    practiceCard
-                        .padding(.horizontal, 24)
-
-                    // Notebook
                     notebookCard
-                        .padding(.horizontal, 24)
 
                     // Server status
                     if serverDiscovery.serverURL == nil {
@@ -80,52 +76,55 @@ struct NewHomeView: View {
                             : "Ingen server fundet")
                             .font(.caption)
                             .foregroundStyle(KvanteTheme.Colors.textMuted)
-                            .padding(.horizontal, 24)
                     }
 
                     Spacer(minLength: 40)
                 }
+                .padding(.horizontal, 24)
             }
         }
     }
 
-    // MARK: - Weekly Card
+    // MARK: - Main Card (three states)
 
-    private var weeklyCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Ugens matematik")
+    @ViewBuilder
+    private var mainCard: some View {
+        if let active = activeWeekly {
+            activeWeeklyCard(active)
+        } else if let completed = completedWeekly {
+            triumfCard(completed)
+        } else {
+            emptyCard
+        }
+    }
+
+    // MARK: - Tilstand 1: Midt i ugen
+
+    private func activeWeeklyCard(_ weekly: SessionSummary) -> some View {
+        VStack(spacing: 14) {
+            Image("rob2")
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 64, height: 64)
+
+            Text("Opgave \(weekly.completedCount + 1) af \(weekly.assignmentCount)")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(KvanteTheme.Colors.ink)
 
-            if let weekly = currentWeekly {
-                Text("Næste: \(weekly.name)")
-                    .font(.system(size: 13))
-                    .foregroundStyle(KvanteTheme.Colors.textSecondary)
+            Text("\(weekly.name)")
+                .font(.system(size: 13))
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
 
-                // Mini-ark preview
-                HStack(spacing: 8) {
-                    ForEach(0..<weekly.assignmentCount, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(miniArkColor(index: i, completed: weekly.completedCount))
-                            .frame(height: 40)
-                            .frame(maxWidth: .infinity)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(miniArkBorder(index: i, completed: weekly.completedCount), lineWidth: miniArkBorderWidth(index: i, completed: weekly.completedCount))
-                            )
-                            .overlay(miniArkLabel(index: i, completed: weekly.completedCount))
-                    }
-                }
-            }
+            // Progress chips
+            progressChips(
+                total: weekly.assignmentCount,
+                completed: weekly.completedCount,
+                sessionId: weekly.sessionId
+            )
 
-            Button(action: {
-                if let weekly = currentWeekly {
-                    onTapSession(weekly)
-                } else {
-                    onWeekly()
-                }
-            }) {
-                Text(currentWeekly != nil ? "Fortsæt" : "Start ugens opgaver")
+            Button(action: { onTapSession(weekly) }) {
+                Text("Fortsæt opgave \(weekly.completedCount + 1)")
                     .font(KvanteTheme.Fonts.buttonLabel)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -136,6 +135,7 @@ struct NewHomeView: View {
             .opacity(serverDiscovery.serverURL == nil ? 0.5 : 1)
         }
         .padding(20)
+        .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
                 .fill(Color.white)
@@ -144,6 +144,86 @@ struct NewHomeView: View {
                         .stroke(KvanteTheme.Colors.cardBorder, lineWidth: 1.5)
                 )
                 .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+        )
+    }
+
+    // MARK: - Tilstand 2: Alt er løst (triumf)
+
+    private func triumfCard(_ weekly: SessionSummary) -> some View {
+        VStack(spacing: 10) {
+            Image("rob2_happy")
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 80, height: 80)
+
+            // Lyn-zigzag (statisk i denne sprint)
+            Text("⚡⚡⚡")
+                .font(.system(size: 18))
+                .foregroundStyle(KvanteTheme.Colors.primary)
+
+            Text("Uge \(weekNumber(from: weekly)) er i hus!")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(KvanteTheme.Colors.ink)
+
+            Text("\(weekly.assignmentCount) af \(weekly.assignmentCount) opgaver — flot arbejde")
+                .font(.system(size: 13))
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
+
+            // All done chips
+            progressChips(
+                total: weekly.assignmentCount,
+                completed: weekly.assignmentCount,
+                sessionId: weekly.sessionId
+            )
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                .fill(
+                    LinearGradient(
+                        colors: [.white, KvanteTheme.Colors.backgroundWarm],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                        .stroke(KvanteTheme.Colors.primary.opacity(0.2), lineWidth: 1.5)
+                )
+                .shadow(color: .black.opacity(0.03), radius: 4, y: 2)
+        )
+    }
+
+    // MARK: - Tilstand 3: Ingen aktiv uge
+
+    private var emptyCard: some View {
+        VStack(spacing: 12) {
+            Image("rob2")
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 64, height: 64)
+
+            Text("Ingen nye opgaver endnu")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.7))
+
+            Text("Kvante venter på at din lærer lægger ugens opgaver ind. Tjek igen senere.")
+                .font(.system(size: 14))
+                .foregroundStyle(KvanteTheme.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                .fill(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: KvanteTheme.Shapes.cardRadius)
+                        .stroke(KvanteTheme.Colors.robBlue.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [8, 4]))
+                )
         )
     }
 
@@ -265,41 +345,73 @@ struct NewHomeView: View {
         .accessibilityLabel("Din matematikbog. \(notebookSolvedCount) opgaver løst")
     }
 
-    // MARK: - Mini Ark Helpers
+    // MARK: - Progress Chips
 
-    private func miniArkColor(index: Int, completed: Int) -> Color {
-        if index < completed {
-            return KvanteTheme.Colors.success.opacity(0.1)
-        } else if index == completed {
-            return KvanteTheme.Colors.primary.opacity(0.1)
+    private func progressChips(total: Int, completed: Int, sessionId: String) -> some View {
+        HStack(spacing: 6) {
+            ForEach(0..<total, id: \.self) { i in
+                let isDone = i < completed
+                let isCurrent = i == completed && completed < total
+
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(chipFill(isDone: isDone, isCurrent: isCurrent))
+                    .frame(height: 28)
+                    .frame(maxWidth: 40)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(chipBorder(isDone: isDone, isCurrent: isCurrent),
+                                    lineWidth: isCurrent ? 2 : 1.5)
+                    )
+                    .overlay(chipLabel(index: i, isDone: isDone, isCurrent: isCurrent))
+                    .onTapGesture {
+                        if isDone {
+                            loadFeedbackForChip(sessionId: sessionId, chipIndex: i)
+                        }
+                    }
+            }
         }
+    }
+
+    private func chipFill(isDone: Bool, isCurrent: Bool) -> Color {
+        if isDone { return KvanteTheme.Colors.robBlue.opacity(0.15) }
+        if isCurrent { return KvanteTheme.Colors.primary.opacity(0.1) }
         return KvanteTheme.Colors.ink.opacity(0.03)
     }
 
-    private func miniArkBorder(index: Int, completed: Int) -> Color {
-        if index < completed {
-            return KvanteTheme.Colors.success.opacity(0.3)
-        } else if index == completed {
-            return KvanteTheme.Colors.primary.opacity(0.4)
-        }
+    private func chipBorder(isDone: Bool, isCurrent: Bool) -> Color {
+        if isDone { return KvanteTheme.Colors.robBlue.opacity(0.3) }
+        if isCurrent { return KvanteTheme.Colors.primary.opacity(0.4) }
         return KvanteTheme.Colors.ink.opacity(0.12)
     }
 
-    private func miniArkBorderWidth(index: Int, completed: Int) -> CGFloat {
-        if index == completed { return 2 }
-        return 1.5
+    @ViewBuilder
+    private func chipLabel(index: Int, isDone: Bool, isCurrent: Bool) -> some View {
+        if isDone {
+            Text("✓")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(KvanteTheme.Colors.robBlue)
+        } else if isCurrent {
+            Text("\(index + 1)")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(KvanteTheme.Colors.primary)
+        } else {
+            Text("\(index + 1)")
+                .font(.system(size: 11))
+                .foregroundStyle(KvanteTheme.Colors.ink.opacity(0.3))
+        }
     }
 
-    @ViewBuilder
-    private func miniArkLabel(index: Int, completed: Int) -> some View {
-        if index < completed {
-            Text("✓")
-                .font(.system(size: 10))
-                .foregroundStyle(KvanteTheme.Colors.success)
-        } else if index == completed {
-            Text("\(index + 1)")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(KvanteTheme.Colors.primary)
+    /// Extract week number from session name (e.g. "Uge 15 — Addition" → "15")
+    private func weekNumber(from session: SessionSummary) -> String {
+        let name = session.name
+        if let range = name.range(of: #"Uge (\d+)"#, options: .regularExpression) {
+            let match = name[range]
+            return match.replacingOccurrences(of: "Uge ", with: "")
         }
+        return name
+    }
+
+    private func loadFeedbackForChip(sessionId: String, chipIndex: Int) {
+        // Implemented in Task 3
     }
 }
