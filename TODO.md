@@ -3,6 +3,7 @@
 ## Gennemført
 
 ### 2026-04-12
+- [x] **Startskærm UX-sprint (B1-B3)** — Tre-tilstands hovedkort: aktivt ugesæt (Rob neutral + progress chips + "Fortsæt"), triumf (glad Rob + varm gradient + "Se hvad du har lavet →"), tomt (dashed border + dæmpet tekst). Solid `robBlue` chips med hvid ✓. Header: fjernet "Klar til matematik?" velkomsttekst, dots skjult i tilstand 3. Session-detection fix: kun nyeste weekly session tæller, `completedCount >= assignmentCount` som fallback for manglende backend-status. Branch: `feature/startskærm-ux-sprint`. Spec: `docs/superpowers/specs/2026-04-12-startskærm-ux-sprint-design.md`. Plan: `docs/superpowers/plans/2026-04-12-startskærm-ux-sprint.md`.
 - [x] **Ensartet feedback-oplevelse** — Enkelt-scan (`POST /submissions/`) returnerer nu gear_score + improvement_tip via WorkAnalyzerService (med fallback ved AI-fejl). iOS: ChatViewModel viser gear-rating inline i chatten (fjerner broken `POST /feedback/` kald), FeedbackSheet sammensætter feedback fra gear_score-data ("Perfekt!"/"Godt arbejde!"/"Tæt på!"/"Lad os prøve igen" + tip). Tap i arket åbner FeedbackSheet med fuld data uanset scan-type. `POST /feedback/` deprecated. 3 nye pytest tests. Branch: `feature/ensartet-feedback`. Spec: `docs/superpowers/specs/2026-04-12-ensartet-feedback-design.md`. Plan: `docs/superpowers/plans/2026-04-12-ensartet-feedback.md`.
 - [x] **FeedbackSheet (pakke 4 opfølgning)** — Én samlet `FeedbackSheet` erstatter tre gamle sheets (FeedbackPreviewSheet, ErrorAnalysisSheet, AssignmentDetailSheet). Kvante pixelart (5 states) øverst, tandhjul-rating (6 stjerner, midlertidigt SF Symbols — venter på pixelart fra Max), "Kvante siger" feedback-sektion med lazy loading, "Tip fra Kvante" forbedringsforslag, samtale-knapper ("Jeg prøver igen" / "Ja, vis mig!") ved fejl. GearScore Pydantic-model med validering + clamping. Backend: gear_score udtrukket fra analyze_work prompt, wired gennem bulk-submit. iOS: GearShape, GearRatingView, FeedbackSheet, croppet scan-billede. Historisk mode i matematikbogen (ingen knapper). 3 gamle sheets slettet (446 linjer). Branch: `feature/feedback-sheet`. Spec: `docs/superpowers/specs/2026-04-12-feedback-sheet-design.md`. Plan: `docs/superpowers/plans/2026-04-12-feedback-sheet.md`.
 - [x] **Auto-crop ved bulk-scan** — Claude Vision returnerer normaliserede bounding boxes [x, y, w, h] per opgave. Backend validerer (min 3%, max 50% areal) + nyt `GET /scans/{id}/crop` endpoint med Pillow. iOS: `CropRegion` model, cropped thumbnails i ArkCell via `ScanImageCache.croppedImage()`, `BoundingBoxOverlay` (dimming + orange cutout) i ErrorAnalysisSheet/FeedbackPreviewSheet/AssignmentDetailSheet. Shimmer skeleton loading. Fallback: ingen bbox → fuld side. 26 pytest tests. Bugfixes: `isCurrent`-border skjult på done-opgaver, ark→chat scroller nu til valgt opgave. Branch: `feature/auto-crop`. Spec: `docs/superpowers/specs/2026-04-12-auto-crop-design.md`. Plan: `docs/superpowers/plans/2026-04-12-auto-crop.md`.
@@ -43,14 +44,7 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 
 **Pakke 1 (Session persistence) er gennemført 2026-04-08**, **Dev-tooling capture-knap er gennemført 2026-04-09**, og **Pakke 2a (Ark-overlay) er gennemført 2026-04-09** — se "Gennemført"-sektionen øverst.
 
-### 1. Startskærm UX-sprint (B1-B3)
-Tre sammenhængende issues på home-skærmen:
-- **B1: Dobbelt velkomst** — "Hej, [navn]"-header og KvanteHeaderBar er redundante. Konsolidér al velkomst ind i KvanteHeaderBar.
-- **B2: Afsluttet ugesæt vises som aktivt** — Når 0 opgaver tilbage, fjern "Fortsæt"-knap. Flyt til matematikbogen, vis næste uge eller øvelsesforslag.
-- **B3: Tom tilstand** — Definer hvad der vises uden aktivt ugesæt. Aldrig tom skærm — vis øvelsesforslag og/eller ros.
-Berørte filer: `NewHomeView.swift`, `ContentView.swift`, `KvanteHeaderBar.swift`. Kræver brainstorm for tom-tilstand.
-
-### 4. Matematikbog redesign (C1-C5, kræver brainstorm)
+### 1. Matematikbog redesign (C1-C5, kræver brainstorm)
 Samlet UX-pass over bog-arkivet:
 - **C1: Navngivning** — "Ugematematik — uge 15" er uinformativt. Brainstorm navne der afspejler emne/regneart/sværhedsgrad.
 - **C2: SF Symbols + visuel progress** — Ikon per opgavetype, grafisk progressbar i stedet for tekst-tæller.
