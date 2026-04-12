@@ -51,10 +51,10 @@ struct ContentView: View {
         VStack(spacing: 0) {
             KvanteHeaderBar(
                 session: activeSession,
-                homeExpression: sessionPath.isEmpty ? homeExpression : .neutral,
                 onNavigateHome: sessionPath.isEmpty ? nil : {
                     sessionPath.removeAll()
-                }
+                },
+                homeExpression: sessionPath.isEmpty ? homeExpression : .neutral
             )
 
             NavigationStack(path: $sessionPath) {
