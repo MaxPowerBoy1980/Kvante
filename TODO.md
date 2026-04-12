@@ -89,6 +89,7 @@ Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som
 ## Kendte bugs
 
 - [ ] **OCR-præcision** — Claude (aktiv provider på Mac Mini via `.env`) forveksler lignende cifre i håndskrift: 5↔6, 3↔8, 1↔7. Eksempel: eleven skriver 533 men systemet læser 633 (som er det korrekte svar), markerer opgaven rigtigt. Brøker er også problematiske: "1/4" læses som "4". Mulige fixes: (1) prompt-instruktion om at foretrække aflæsning der IKKE matcher facit ved tvivl, (2) ConfirmAnswerSheet ved "correct" med confidence < 0.85, (3) specifik prompt-guidance om forvekslelige cifre.
+- [ ] **Feedback-generator timeout** — `POST /feedback/` hænger/timeout'er ved lazy feedback-generering fra FeedbackSheet. Log viser at feedback_generator starter men aldrig returnerer. Claude API-kaldet ser ud til at hænge. `feedback_text` er None på alle submissions i DB. Opdaget under FeedbackSheet-test 2026-04-12. Fallback-tekst ("Godt arbejde!") dækker, men reel AI-feedback når aldrig eleven.
 - [ ] **Swift 6 concurrency warnings** — `append` kaldt fra baggrundstråd på @MainActor property. Warnings nu, fejl i fremtiden.
 - [ ] **Visuel/tekst-konsistens** — AI skriver "æbler" men appen tegner cirkler. Prompt instruerer nu "prikker" men kan stadig ske.
 - [ ] **Opgaveforklaring på engelsk** — Explain-endpoint returnerer nogle gange engelsk tekst.
