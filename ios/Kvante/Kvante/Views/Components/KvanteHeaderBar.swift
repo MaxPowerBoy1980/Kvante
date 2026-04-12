@@ -7,6 +7,7 @@ extension Notification.Name {
 struct KvanteHeaderBar: View {
     var session: SessionViewModel?
     var onNavigateHome: (() -> Void)? = nil
+    var homeExpression: KvanteExpression = .neutral
     @State private var isExpanded = false
     @State private var celebratingDotIndex: Int? = nil
     @State private var expression: KvanteExpression = .neutral
@@ -30,6 +31,21 @@ struct KvanteHeaderBar: View {
                   let index = info["assignmentIndex"] as? Int,
                   let isSetComplete = info["isSetComplete"] as? Bool else { return }
             handleCelebration(assignmentIndex: index, isSetComplete: isSetComplete)
+        }
+        .onChange(of: session?.isSetComplete) { _, _ in
+            if session == nil {
+                expression = homeExpression
+            }
+        }
+        .onChange(of: homeExpression) { _, newValue in
+            if session == nil {
+                expression = newValue
+            }
+        }
+        .onAppear {
+            if session == nil {
+                expression = homeExpression
+            }
         }
     }
 

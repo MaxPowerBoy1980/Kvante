@@ -5,7 +5,6 @@ struct NewHomeView: View {
     let profile: StudentProfile
     let serverDiscovery: ServerDiscovery
     let onPractice: () -> Void
-    let onWeekly: () -> Void
     let onNotebook: () -> Void
     let sessionHistory: [SessionSummary]
     let onTapSession: (SessionSummary) -> Void

@@ -32,6 +32,16 @@ struct ContentView: View {
 
     private var profile: StudentProfile? { profiles.first }
 
+    private var homeExpression: KvanteExpression {
+        let weeklySessions = sessionHistory.filter { $0.mode == "weekly" }
+        let hasActive = weeklySessions.contains { !$0.isCompleted }
+        let hasCompleted = weeklySessions.contains { $0.isCompleted }
+        if !hasActive && hasCompleted {
+            return .happy  // Tilstand 2: triumf
+        }
+        return .neutral  // Tilstand 1 or 3
+    }
+
     private var apiClient: APIClient? {
         guard let url = serverDiscovery.serverURL else { return nil }
         return APIClient(baseURL: url)
@@ -41,6 +51,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             KvanteHeaderBar(
                 session: activeSession,
+                homeExpression: sessionPath.isEmpty ? homeExpression : .neutral,
                 onNavigateHome: sessionPath.isEmpty ? nil : {
                     sessionPath.removeAll()
                 }
@@ -82,7 +93,6 @@ struct ContentView: View {
                             profile: p,
                             serverDiscovery: serverDiscovery,
                             onPractice: { showPractice = true },
-                            onWeekly: { startWeeklySession() },
                             onNotebook: { sessionPath = [.notebook] },
                             sessionHistory: sessionHistory,
                             onTapSession: { summary in

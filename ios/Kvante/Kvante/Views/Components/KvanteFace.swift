@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum KvanteExpression {
+enum KvanteExpression: Equatable {
     case neutral   // Round mouth (small circle)
     case happy     // Smiling arc
     case excited   // Bigger eyes
