@@ -5,6 +5,7 @@ struct ErrorAnalysisSheet: View {
     let studentAnswer: String
     let errorDescription: String
     let scanId: String?
+    let cropRegion: CropRegion?
     let apiClient: APIClient
     let sessionId: String
     let onOpenChat: () -> Void
@@ -22,15 +23,22 @@ struct ErrorAnalysisSheet: View {
                 .foregroundStyle(KvanteTheme.Colors.ink)
 
             if let scanId {
-                AsyncImage(url: apiClient.scanImageURL(scanId: scanId)) { image in
-                    image.resizable().aspectRatio(contentMode: .fit)
-                        .frame(maxHeight: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(KvanteTheme.Colors.cream).frame(height: 120)
-                        .overlay { ProgressView() }
+                ZStack {
+                    AsyncImage(url: apiClient.scanImageURL(scanId: scanId)) { image in
+                        image.resizable().aspectRatio(contentMode: .fit)
+                    } placeholder: {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(KvanteTheme.Colors.cream).frame(height: 120)
+                            .overlay { ProgressView() }
+                    }
+                    .overlay {
+                        if let cropRegion {
+                            BoundingBoxOverlay(region: cropRegion)
+                        }
+                    }
                 }
+                .frame(maxHeight: 250)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             // What Kvante read

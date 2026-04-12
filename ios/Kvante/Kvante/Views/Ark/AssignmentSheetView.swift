@@ -126,6 +126,7 @@ struct AssignmentSheetView: View {
                 studentAnswer: session.studentAnswer[item.assignment.id] ?? "?",
                 errorDescription: session.errorDescription[item.assignment.id] ?? "",
                 scanId: session.latestScanId[item.assignment.id],
+                cropRegion: session.boundingBoxByAssignment[item.assignment.id],
                 apiClient: apiClient,
                 sessionId: session.sessionId,
                 onOpenChat: {
