@@ -8,6 +8,11 @@ from app.services.feedback_generator import FeedbackGeneratorService
 
 import logging
 
+# DEPRECATED 2026-04-12: This endpoint is no longer called by iOS.
+# gear_score + improvement_tip are now computed at submission time and returned
+# inline in SubmissionResponse. The known timeout bug is not being fixed.
+# This endpoint will be removed in a future cleanup sprint.
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
