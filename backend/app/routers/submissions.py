@@ -136,7 +136,7 @@ async def submit_work(
         analysis["gear_score"] = gear_score_obj.model_dump() if gear_score_obj else None
         analysis["improvement_tip"] = improvement_tip_val
     except Exception:
-        logger.warning("Work analyzer failed for submission %s, continuing without gear_score", submission.id)
+        logger.warning("Work analyzer failed for submission %s, continuing without gear_score", submission.id, exc_info=True)
         analysis["gear_score"] = None
         analysis["improvement_tip"] = None
 
