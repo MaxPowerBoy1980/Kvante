@@ -49,7 +49,8 @@ struct AssignmentSheetView: View {
                                 apiClient: apiClient,
                                 onTap: {
                                     let status = session.statusByAssignment[assignment.id] ?? .notStarted
-                                    if status == .done {
+                                    let hasBeenScanned = session.studentAnswer[assignment.id] != nil
+                                    if status == .done || (status == .inProgress && hasBeenScanned) {
                                         presentedFeedbackSheet = ArkFeedbackItem(id: assignment.id, assignment: assignment, index: index)
                                     } else {
                                         onSelectAssignment(index)
