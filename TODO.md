@@ -2,6 +2,9 @@
 
 ## Gennemført
 
+### 2026-04-12
+- [x] **Pakke 4: Bulk-scan hele arket + AI fejlanalyse** — `POST /sessions/{id}/bulk-submit` med multi-page VisionKit scanner. Claude Vision matcher håndskrevne svar til opgaver, validerer deterministisk med `compare_answer()`, analyserer fejltyper (procedural/understanding/careless). Tre-status ark (✓/✗/❓). ErrorAnalysisSheet (tap forkert → scan + fejltype + "Få hjælp" + "Ret mit svar"). ConfirmAnswerSheet (erstatter re-scan — "Kvante læste X, stemmer det?"). Multi-image `send_vision_multi()` på AIClient. 15 pytest tests. Ark UX fixes: fjernet dobbelt Hjem-knap, tap done → FeedbackPreviewSheet, større opgavekort, DEV-knap bag long-press på KvanteFace, scan-thumbnails for alle løste opgaver (Scan fallback fra Submission). Branch: `feature/pakke-4-bulk-scan`. Spec: `docs/superpowers/specs/2026-04-11-pakke-4-bulk-scan-design.md`. Plan: `docs/superpowers/plans/2026-04-11-pakke-4-bulk-scan.md`.
+
 ### 2026-04-11
 - [x] **Pakke 5 perf: Inline assignments i session-historik** — Elimineret N+1 API-kald i bog-arkivet. Nyt `?include=assignments` query-parameter på `GET /students/{id}/sessions` returnerer fulde `ArkAssignment`-objekter inline med 4 batch SQL queries i stedet for 1+N individuelle requests. Backend N+1 i default-path også fikset. iOS `NotebookViewModel` simplificeret: `sessionGroups(for:)` er nu synkron, `loadDetail()`/`detailCache` slettet. `SerializeAsAny` for Pydantic v2 subclass-serialisering. Branch: `feature/pakke-5-perf`. Spec: `docs/superpowers/specs/2026-04-11-pakke-5-perf-design.md`. Plan: `docs/superpowers/plans/2026-04-11-pakke-5-perf.md`.
 
@@ -37,8 +40,8 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 
 **Pakke 1 (Session persistence) er gennemført 2026-04-08**, **Dev-tooling capture-knap er gennemført 2026-04-09**, og **Pakke 2a (Ark-overlay) er gennemført 2026-04-09** — se "Gennemført"-sektionen øverst.
 
-### 1. Pakke 4 — Bulk-scan hele arket + AI fejlanalyse
-`POST /sessions/{id}/bulk-submit` med hele A4-arket. Gemini Vision udtrækker regnestykker + svar, matcher mod sessionens opgaver, validerer. Batch-update af ark-overlay (✓/✗/?). Samlet feedback-kort i chatten. **AI fejlanalyse foldet ind** — pakke 4's spec dækker eksplicit "tap rød opgave → detaljeret fejlanalyse" (ikke svag "prøv igen"). Udfordringer i spec: long mult over flere linjer, OCR-fejl, delvise ark, re-scan, kruseduller.
+### 1. Auto-crop ved bulk-scan (pakke 4 opfølgning)
+Når eleven bulk-scanner sit ark, skal Claude Vision returnere bounding box (crop-koordinater) per opgave. Backend gemmer koordinaterne i `Submission.analysis`. iOS cropper thumbnailet client-side så hver opgave viser kun den relevante del af billedet — ikke hele arket. Kræver prompt-ændring + backend parser + iOS crop-logik.
 
 ### 2. Single-digit polish-bundle
 Samlet pass gennem single-digit multiplikations-koden:
@@ -68,6 +71,7 @@ Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som
 - [ ] **Visuel/tekst-konsistens** — AI skriver "æbler" men appen tegner cirkler. Prompt instruerer nu "prikker" men kan stadig ske.
 - [ ] **Opgaveforklaring på engelsk** — Explain-endpoint returnerer nogle gange engelsk tekst.
 - [ ] **AnimationPlayer.recalculateCumulativeState glemmer cumulativeGridState** — Pre-existing bug opdaget under T9 code review 2026-04-08. `recalculateCumulativeState` nulstiller `cumulativeShortDivisionState`, `cumulativeLongMultiplicationState`, og (nu) `cumulativeArrayGridState`, men IKKE `cumulativeGridState`. Kan give stale stacked-arithmetic grid-state ved backward scroll. Ikke kritisk — genopretter sig ved næste `setup`-step.
+- [ ] **Chat-tråd per opgave, ikke per session** — Nuværende design: én lang chat-tråd for hele sessionen (alle opgaver). Bliver uoverskueligt at vende tilbage til. Bør være fokuseret på den individuelle opgave — hver assignment får sin egen chat-kontekst. Kræver refactor af ChatViewModel + backend chat persistence.
 - [ ] **Brøk-forklaringer utydelige** — Trin 3 i brøk-eksempler er utydelig. Brøk-eksempler skal simplificeres. Trin 4 flasher 1/4 af cirklen rundt (animationsfejl). Opdaget via dev-capture 2026-04-09.
 - [x] **Practice sessions har tom `name` på backend** — Fikset i Pakke 2a (2026-04-09). Genererer nu `"Øvelser — Topic (Difficulty)"`.
 - [x] **`completed_count` altid 0 pga. status string-mismatch** — Fikset i Pakke 2a (2026-04-09). Counter accepterer nu begge `"complete"` og `"completed"`.

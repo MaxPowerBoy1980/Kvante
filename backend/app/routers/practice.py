@@ -1,5 +1,6 @@
 """Practice session endpoint — create a session from the assignment library."""
 
+import os
 import random
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -9,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession
 
 from app.database import get_db
-from app.models.db import Assignment, ChatMessage, MathProblem, Session, Submission
+from app.models.db import Assignment, ChatMessage, MathProblem, Scan, Session, Submission
 from app.models.schemas import (
     ArkAssignment,
     SessionDetailResponse,
@@ -303,6 +304,7 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
         # Latest feedback and student answer from the most recent submission
         latest_feedback = None
         student_answer = None
+        latest_sub = None
         if subs:
             latest_sub = subs[-1]
             latest_feedback = _truncate_feedback(latest_sub.feedback_text)
@@ -312,6 +314,28 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
                     import json as _json
                     analysis = _json.loads(analysis)
                 student_answer = analysis.get("student_answer")
+                # Bulk-scan feedback: use error description if no feedback_text
+                if not latest_feedback and analysis.get("error_type"):
+                    latest_feedback = analysis.get("methodology_assessment") or analysis.get("error_type")
+
+        # Resolve scan_id: prefer ChatMessage scan, fall back to Submission image
+        scan_id = latest_scan_by_assignment.get(a.id)
+        if not scan_id and latest_sub and latest_sub.work_image_path:
+            # Check if work_image_path is a scan_id (from bulk-scan) or a file path
+            wip = latest_sub.work_image_path
+            if "/" not in wip and "." not in wip:
+                # Looks like a scan_id (bulk-scan stores scan_id directly)
+                scan_id = wip
+            elif os.path.exists(wip):
+                # File path from single submission — create a Scan record on-the-fly
+                scan = Scan(image_path=wip)
+                db.add(scan)
+                db.commit()
+                db.refresh(scan)
+                scan_id = scan.id
+                # Update submission so we don't re-create next time
+                latest_sub.work_image_path = scan.id
+                db.commit()
 
         ark_assignments.append(
             ArkAssignment(
@@ -323,7 +347,7 @@ def get_session(session_id: str, db: DBSession = Depends(get_db)):
                 difficulty_estimate=a.difficulty_estimate,
                 position=a.position,
                 ark_status=_compute_ark_status(a, subs),
-                latest_scan_id=latest_scan_by_assignment.get(a.id),
+                latest_scan_id=scan_id,
                 latest_ai_feedback_summary=latest_feedback,
                 teacher_comment=None,  # Always null in Pakke 2a
                 correct_answer=a.correct_answer,
