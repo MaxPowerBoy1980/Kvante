@@ -185,8 +185,9 @@ struct ArkCell: View {
 
             Spacer()
 
-            // Info button (feedback preview or error detail)
-            if feedbackSummary != nil || (status != .done && errorDescription != nil) {
+            // Info button — only for not-started/in-progress without scan
+            // (done and scanned assignments open FeedbackSheet via cell tap)
+            if status == .notStarted, feedbackSummary != nil {
                 Button(action: onFeedbackTap) {
                     Image(systemName: "info.circle.fill")
                         .font(.body)
