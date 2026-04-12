@@ -3,6 +3,7 @@
 ## Gennemført
 
 ### 2026-04-12
+- [x] **FeedbackSheet (pakke 4 opfølgning)** — Én samlet `FeedbackSheet` erstatter tre gamle sheets (FeedbackPreviewSheet, ErrorAnalysisSheet, AssignmentDetailSheet). Kvante pixelart (5 states) øverst, tandhjul-rating (6 stjerner, midlertidigt SF Symbols — venter på pixelart fra Max), "Kvante siger" feedback-sektion med lazy loading, "Tip fra Kvante" forbedringsforslag, samtale-knapper ("Jeg prøver igen" / "Ja, vis mig!") ved fejl. GearScore Pydantic-model med validering + clamping. Backend: gear_score udtrukket fra analyze_work prompt, wired gennem bulk-submit. iOS: GearShape, GearRatingView, FeedbackSheet, croppet scan-billede. Historisk mode i matematikbogen (ingen knapper). 3 gamle sheets slettet (446 linjer). Branch: `feature/feedback-sheet`. Spec: `docs/superpowers/specs/2026-04-12-feedback-sheet-design.md`. Plan: `docs/superpowers/plans/2026-04-12-feedback-sheet.md`.
 - [x] **Auto-crop ved bulk-scan** — Claude Vision returnerer normaliserede bounding boxes [x, y, w, h] per opgave. Backend validerer (min 3%, max 50% areal) + nyt `GET /scans/{id}/crop` endpoint med Pillow. iOS: `CropRegion` model, cropped thumbnails i ArkCell via `ScanImageCache.croppedImage()`, `BoundingBoxOverlay` (dimming + orange cutout) i ErrorAnalysisSheet/FeedbackPreviewSheet/AssignmentDetailSheet. Shimmer skeleton loading. Fallback: ingen bbox → fuld side. 26 pytest tests. Bugfixes: `isCurrent`-border skjult på done-opgaver, ark→chat scroller nu til valgt opgave. Branch: `feature/auto-crop`. Spec: `docs/superpowers/specs/2026-04-12-auto-crop-design.md`. Plan: `docs/superpowers/plans/2026-04-12-auto-crop.md`.
 - [x] **Pakke 4: Bulk-scan hele arket + AI fejlanalyse** — `POST /sessions/{id}/bulk-submit` med multi-page VisionKit scanner. Claude Vision matcher håndskrevne svar til opgaver, validerer deterministisk med `compare_answer()`, analyserer fejltyper (procedural/understanding/careless). Tre-status ark (✓/✗/❓). ErrorAnalysisSheet (tap forkert → scan + fejltype + "Få hjælp" + "Ret mit svar"). ConfirmAnswerSheet (erstatter re-scan — "Kvante læste X, stemmer det?"). Multi-image `send_vision_multi()` på AIClient. 15 pytest tests. Ark UX fixes: fjernet dobbelt Hjem-knap, tap done → FeedbackPreviewSheet, større opgavekort, DEV-knap bag long-press på KvanteFace, scan-thumbnails for alle løste opgaver (Scan fallback fra Submission). Branch: `feature/pakke-4-bulk-scan`. Spec: `docs/superpowers/specs/2026-04-11-pakke-4-bulk-scan-design.md`. Plan: `docs/superpowers/plans/2026-04-11-pakke-4-bulk-scan.md`.
 
@@ -41,8 +42,12 @@ Roadmap-reorder 2026-04-08 — se `docs/superpowers/specs/2026-04-08-roadmap-reo
 
 **Pakke 1 (Session persistence) er gennemført 2026-04-08**, **Dev-tooling capture-knap er gennemført 2026-04-09**, og **Pakke 2a (Ark-overlay) er gennemført 2026-04-09** — se "Gennemført"-sektionen øverst.
 
-### 1. Feedback-visning brainstorm (pakke 4 opfølgning)
-FeedbackPreviewSheet og ErrorAnalysisSheet skal redesignes. Eleven ser for lidt — kun regnestykke og kort tekst. Brainstorm hvad der giver værdi: forstørret scan-billede, Kvantes ros, fejlforklaring med visuel markering, "prøv igen"-flow. Hænger sammen med auto-crop (#1).
+### 1. Ensartet feedback-oplevelse: enkelt-scan vs. bulk-scan
+To forskellige flows giver forskellige oplevelser. Bulk-scan → FeedbackSheet med tandhjul, Kvante-feedback, knapper. Enkelt-scan via chat → feedback inline i chatten, ingen tandhjul, tap på ark tager direkte til chat igen. Skal ensrettes:
+- Backend: enkelt-scan submissions (`POST /submissions/`) skal også generere `gear_score` via work_analyzer
+- iOS: tap på "in_progress" opgave i arket skal vise FeedbackSheet (ikke navigere til chat)
+- FeedbackSheet skal kunne hente gear_score fra eksisterende submission (ikke kun fra bulk-scan data)
+Berørte filer: `work_analyzer.py`, `submissions.py`, `AssignmentSheetView.swift`, `FeedbackSheet.swift`, `SessionViewModel.swift`.
 
 ### 3. Startskærm UX-sprint (B1-B3)
 Tre sammenhængende issues på home-skærmen:
