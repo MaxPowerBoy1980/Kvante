@@ -10,6 +10,7 @@ from app.models.db import Assignment, Session, Submission
 from app.models.schemas import ErrorResponse, SubmissionResponse
 from app.services.answer_reader import read_student_answer, compare_answer
 from app.services.streak_service import update_streak
+from app.services.work_analyzer import WorkAnalyzerService, extract_gear_score
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -120,6 +121,25 @@ async def submit_work(
         "confidence": 0.95,
     }
 
+    # Gear score: analyze handwritten work with AI
+    gear_score_obj = None
+    improvement_tip_val = None
+    try:
+        analyzer = WorkAnalyzerService()
+        ai_analysis = analyzer.analyze_work(
+            image_bytes=contents,
+            assignment_text=assignment.text,
+            assignment_type=assignment.type,
+            assignment_topic=assignment.topic,
+        )
+        gear_score_obj, improvement_tip_val = extract_gear_score(ai_analysis)
+        analysis["gear_score"] = gear_score_obj.model_dump() if gear_score_obj else None
+        analysis["improvement_tip"] = improvement_tip_val
+    except Exception:
+        logger.warning("Work analyzer failed for submission %s, continuing without gear_score", submission.id)
+        analysis["gear_score"] = None
+        analysis["improvement_tip"] = None
+
     submission.analysis = analysis
     assignment.status = "complete" if is_correct else "in_progress"
     db.commit()
@@ -131,5 +151,7 @@ async def submit_work(
         submission_id=submission.id,
         assignment_id=assignment_id,
         session_id=session_id,
-        **{k: v for k, v in analysis.items() if k in SubmissionResponse.model_fields},
+        gear_score=gear_score_obj,
+        improvement_tip=improvement_tip_val,
+        **{k: v for k, v in analysis.items() if k in SubmissionResponse.model_fields and k not in ("gear_score", "improvement_tip")},
     )
