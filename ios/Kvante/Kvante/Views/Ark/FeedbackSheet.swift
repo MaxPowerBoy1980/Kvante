@@ -128,21 +128,17 @@ struct FeedbackSheet: View {
                 .frame(height: 200)
                 .overlay { ProgressView() }
         } else if let scanImage {
-            ZStack {
-                Image(uiImage: scanImage)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay {
-                        if let cropRegion {
-                            BoundingBoxOverlay(region: cropRegion)
-                        }
-                    }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(maxHeight: 300)
+            Image(uiImage: scanImage)
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
+                .frame(maxWidth: .infinity)
+                .frame(maxHeight: 300)
         } else if scanId != nil {
-            // Fallback placeholder when no image loaded
             RoundedRectangle(cornerRadius: 10)
                 .fill(KvanteTheme.Colors.inkSubtle)
                 .frame(height: 120)
@@ -177,18 +173,19 @@ struct FeedbackSheet: View {
                 }
                 .padding(12)
             } else {
-                let displayText = feedbackText ?? feedbackSummary
-                if let displayText {
-                    Text(displayText)
-                        .font(.body)
-                        .foregroundStyle(KvanteTheme.Colors.ink)
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(KvanteTheme.Colors.teal.opacity(0.08))
-                        )
-                }
+                let displayText = feedbackText
+                    ?? feedbackSummary
+                    ?? (isCorrect ? "Godt arbejde! Du løste opgaven." : "Godt forsøg — bliv ved med at øve dig!")
+
+                Text(displayText)
+                    .font(.body)
+                    .foregroundStyle(KvanteTheme.Colors.ink)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(KvanteTheme.Colors.teal.opacity(0.08))
+                    )
             }
         }
     }
@@ -285,12 +282,18 @@ struct FeedbackSheet: View {
     // MARK: - Loading Logic
 
     private func loadContent() async {
-        // Load scan image
+        // Load scan image — cropped if bounding box available, otherwise full
         if let sid = scanId {
             isLoadingScan = true
-            scanImage = await ScanImageCache.shared.image(
-                for: sid, apiClient: apiClient, maxPixelSize: 800
-            )
+            if let region = cropRegion {
+                scanImage = await ScanImageCache.shared.croppedImage(
+                    for: sid, region: region, apiClient: apiClient
+                )
+            } else {
+                scanImage = await ScanImageCache.shared.image(
+                    for: sid, apiClient: apiClient, maxPixelSize: 800
+                )
+            }
             isLoadingScan = false
         }
 

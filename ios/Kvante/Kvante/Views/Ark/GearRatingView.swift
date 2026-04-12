@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// Displays 0-6 filled gear icons representing the quality score.
+/// Displays 0-6 filled icons representing the quality score.
+/// TODO: Replace star.fill with custom tandhjul pixelart from Max (28×28pt @2x PNG)
 struct GearRatingView: View {
     let score: Int
     let maxScore: Int = 6
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             ForEach(0..<maxScore, id: \.self) { index in
-                GearShape()
-                    .fill(index < score ? KvanteTheme.Colors.primary : Color(.systemGray5))
-                    .frame(width: 28, height: 28)
+                Image(systemName: index < score ? "star.fill" : "star")
+                    .font(.system(size: 22))
+                    .foregroundStyle(index < score ? KvanteTheme.Colors.primary : Color(.systemGray4))
             }
         }
     }
