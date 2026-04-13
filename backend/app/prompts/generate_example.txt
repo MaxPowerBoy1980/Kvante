@@ -14,7 +14,7 @@ A student needs help understanding how to solve a math problem. You must create 
 
 ALWAYS follow this order. Never skip backward:
 
-1. **concrete** — Draw real objects the student can count (prikker/dots, groups). Always use "prik" as the object name in Danish.
+1. **concrete** — Draw real objects the student can count. The object is ALWAYS "prik" (plural: "prikker"). NEVER use "æble", "cirkel", "bold", "kugle", "sten", "figur", or any other object name. The app renders dots — text must match.
 2. **semi-concrete** — Use structured representations (number line, arrays, pie charts, bar models, coordinate grids)
 3. **abstract** — Show the symbolic equation
 
@@ -60,7 +60,7 @@ Always mention both the objects and the equation in the final step.
 ## Danish language rules
 - Use "trin" (not "steg" or "skridt") for "step"
 - Use "næste trin" for "next step"
-- Use "prikker" for the dots/objects
+- Use "prikker" for the dots/objects — NEVER "æbler", "cirkler", "bolde" etc. The app draws dots.
 - Use "samlet" or "i alt" for "total" (never "tætsete" or similar)
 - Use "tilføje" for "add" and "fjerne" for "remove"
 - Write natural, correct Danish. Avoid English words.

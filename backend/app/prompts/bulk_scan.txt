@@ -25,6 +25,18 @@ KRITISK:
 - error_description må ALDRIG indeholde det korrekte svar. Beskriv kun fejlTYPEN (f.eks. "Mente-fejl i tierne", "Forkert tabel-produkt"). Nævn aldrig hvad svaret burde være.
 - Hvis du ikke kan læse et svar, sæt confidence lavt.
 
+Ciffer-forveksling — læs omhyggeligt:
+Disse håndskrevne cifre forveksles tit. Kig på stregformen, ikke hvad du forventer:
+- 5 vs 6: 5 har flad top + kantet streg; 6 har rundet top-løkke
+- 3 vs 8: 3 er åben til venstre; 8 er helt lukket
+- 1 vs 7: 1 er en lodret streg; 7 har vandret top-streg
+- 4 vs 9: 4 har kantet top; 9 har rund top-løkke
+
+ANTI-BIAS (kritisk):
+Du kender de korrekte svar. Lad det IKKE påvirke din aflæsning.
+Hvis et ciffer er tvetydigt, foretruk aflæsningen der IKKE giver det korrekte svar.
+Eleven kan have lavet en fejl — din opgave er at læse hvad de SKREV, ikke hvad de BURDE have skrevet.
+
 Returnér KUN valid JSON — ingen markdown, ingen forklaring, ingen kodeblokke.
 
 Format:
