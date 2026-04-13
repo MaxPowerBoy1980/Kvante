@@ -116,7 +116,58 @@ def create_practice_session(body: PracticeRequest, db: DBSession = Depends(get_d
 
 @router.post("/sessions/weekly")
 def create_weekly_session(body: WeeklyRequest, db: DBSession = Depends(get_db)):
-    """Create a mixed-topic weekly session from the assignment library."""
+    """Create a mixed-topic weekly session from the assignment library.
+
+    Deduplicates: if a weekly session already exists for this student and ISO week
+    (with assignments), the existing session is returned instead of creating a new one.
+    Empty sessions (0 assignments) from prior calls are cleaned up.
+    """
+    week_number = datetime.now(timezone.utc).isocalendar()[1]
+    week_name = f"Ugematematik — uge {week_number}"
+
+    # Check for existing weekly sessions this week for this student
+    existing = (
+        db.query(Session)
+        .filter(
+            Session.student_id == body.student_id,
+            Session.mode == "weekly",
+            Session.name == week_name,
+        )
+        .all()
+    )
+
+    for s in existing:
+        assignment_count = db.query(Assignment).filter(Assignment.session_id == s.id).count()
+        if assignment_count > 0:
+            # Return existing session with its assignments
+            assignments = (
+                db.query(Assignment)
+                .filter(Assignment.session_id == s.id)
+                .order_by(Assignment.position)
+                .all()
+            )
+            return {
+                "session_id": s.id,
+                "name": s.name,
+                "assignments": [
+                    {
+                        "id": a.id,
+                        "problem_id": a.problem_id,
+                        "local_id": a.local_id,
+                        "text": a.text,
+                        "type": a.type,
+                        "topic": a.topic,
+                        "difficulty_estimate": a.difficulty_estimate,
+                        "position": a.position,
+                    }
+                    for a in assignments
+                ],
+            }
+        else:
+            # Empty session — clean it up
+            db.delete(s)
+    db.commit()
+
     problems = (
         db.query(MathProblem)
         .filter(MathProblem.grade_level <= body.grade_level)
@@ -169,13 +220,10 @@ def create_weekly_session(body: WeeklyRequest, db: DBSession = Depends(get_db)):
             },
         )
 
-    # Determine ISO week number for the session name
-    week_number = datetime.now(timezone.utc).isocalendar()[1]
-
     session = Session(
         student_id=body.student_id,
         mode="weekly",
-        name=f"Ugematematik — uge {week_number}",
+        name=week_name,
         detected_language="da",
     )
     db.add(session)

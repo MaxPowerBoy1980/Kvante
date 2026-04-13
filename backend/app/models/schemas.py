@@ -112,15 +112,6 @@ class FeedbackResponse(BaseModel):
     structured_prompts: list[StructuredPrompt]
 
 
-class FeedbackRequest(BaseModel):
-    submission_id: str
-    language: str = "da"
-
-
-class FollowupRequest(BaseModel):
-    action: str  # explain_different | another_example | show_first_step | what_did_well | try_again | explain_task
-
-
 # --- Health ---
 
 class HealthResponse(BaseModel):

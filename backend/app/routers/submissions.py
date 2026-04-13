@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session as DBSession
@@ -9,6 +10,7 @@ from app.database import get_db
 from app.models.db import Assignment, Session, Submission
 from app.models.schemas import ErrorResponse, SubmissionResponse
 from app.services.answer_reader import read_student_answer, compare_answer
+from app.services.session_completion import check_and_complete_session
 from app.services.streak_service import update_streak
 from app.services.work_analyzer import WorkAnalyzerService, extract_gear_score
 
@@ -142,10 +144,13 @@ async def submit_work(
 
     submission.analysis = analysis
     assignment.status = "complete" if is_correct else "in_progress"
+    if is_correct:
+        assignment.completed_at = datetime.now(timezone.utc)
     db.commit()
 
     if is_correct:
         update_streak(db, session.student_id)
+        check_and_complete_session(db, session_id)
 
     return SubmissionResponse(
         submission_id=submission.id,

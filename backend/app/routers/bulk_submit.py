@@ -2,6 +2,7 @@
 
 import logging
 import os
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session as DBSession
@@ -12,6 +13,7 @@ from app.models.db import Assignment, Scan, Session, Submission
 from app.models.schemas import BulkSubmitResponse, BulkSubmitResult, BulkSubmitSummary
 from app.services.ai_client import get_ai_client
 from app.services.bulk_scan_service import build_user_message, parse_ai_response, validate_and_build_results
+from app.services.session_completion import check_and_complete_session
 from app.services.streak_service import update_streak
 from app.services.work_analyzer import extract_gear_score
 
@@ -164,6 +166,7 @@ async def bulk_submit(
         # Update assignment status
         if v["status"] == "correct":
             assignment.status = "complete"
+            assignment.completed_at = datetime.now(timezone.utc)
             correct_count += 1
         elif v["status"] == "incorrect":
             assignment.status = "in_progress"
@@ -206,6 +209,9 @@ async def bulk_submit(
                 confidence=0.0,
                 submission_id=None,
             ))
+
+    # Auto-complete session if all assignments are now done
+    check_and_complete_session(db, session_id)
 
     # Calculate total: all non-previously-complete assignments
     previously_complete_not_matched = sum(

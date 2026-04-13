@@ -1,6 +1,6 @@
 """Full flow integration test with mocked Claude API.
 
-Workflow: scan page → pick assignment → get example → submit work → get feedback → followup
+Workflow: scan page → pick assignment → get example → submit work
 """
 import io
 import json
@@ -61,17 +61,6 @@ ANALYSIS = json.dumps({
     "confidence": 0.95,
 })
 
-FEEDBACK = json.dumps({
-    "feedback_text": "Fantastisk arbejde! Du har mestret mente-teknikken perfekt.",
-    "tone": "celebratory",
-})
-
-FOLLOWUP = json.dumps({
-    "feedback_text": "Du stillede tallene flot op og huskede at gemme mente — det er det vigtigste!",
-    "tone": "celebratory",
-})
-
-
 def test_full_workflow(client):
     """Test the complete Kvante workflow end-to-end."""
 
@@ -81,15 +70,12 @@ def test_full_workflow(client):
     mock_example.send_text.return_value = EXAMPLE
     mock_analyzer = MagicMock()
     mock_analyzer.send_vision.return_value = ANALYSIS
-    mock_feedback = MagicMock()
-    mock_feedback.send_text.return_value = FEEDBACK
 
     with patch("app.services.page_parser.get_ai_client", return_value=mock_parser), \
          patch("app.services.page_parser.preprocess_textbook_page", side_effect=lambda b: b), \
          patch("app.services.example_generator.get_ai_client", return_value=mock_example), \
          patch("app.services.work_analyzer.get_ai_client", return_value=mock_analyzer), \
-         patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b), \
-         patch("app.services.feedback_generator.get_ai_client", return_value=mock_feedback):
+         patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b):
 
         # 1. Scan page
         resp = client.post("/pages/scan", files={"image": ("page.jpg", _jpeg(), "image/jpeg")})
@@ -114,30 +100,9 @@ def test_full_workflow(client):
         )
         assert resp.status_code == 200, resp.text
         submission_data = resp.json()
-        submission_id = submission_data["submission_id"]
         assert submission_data["methodology_sound"] is True
 
-        # 4. Get feedback
-        resp = client.post("/feedback/", json={"submission_id": submission_id, "language": "da"})
-        assert resp.status_code == 200, resp.text
-        feedback_data = resp.json()
-        assert "Fantastisk" in feedback_data["feedback_text"]
-        assert len(feedback_data["structured_prompts"]) == 6
-        prompt_ids = [p["id"] for p in feedback_data["structured_prompts"]]
-        assert "explain_different" in prompt_ids
-        assert "next_assignment" in prompt_ids
-
-        # 5. Followup — "What did I do well?"
-        mock_feedback.send_text.return_value = FOLLOWUP
-        resp = client.post(
-            f"/feedback/{submission_id}/followup",
-            json={"action": "what_did_well"},
-        )
-        assert resp.status_code == 200, resp.text
-        followup_data = resp.json()
-        assert len(followup_data["feedback_text"]) > 0
-
-    # 6. Health check
+    # 4. Health check
     resp = client.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
