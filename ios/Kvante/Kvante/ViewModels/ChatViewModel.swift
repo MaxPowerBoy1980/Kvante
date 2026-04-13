@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 @Observable
+@MainActor
 class ChatViewModel {
     // MARK: - State
 

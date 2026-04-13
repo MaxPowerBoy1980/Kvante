@@ -38,13 +38,8 @@ struct ChatBubble: View {
     // MARK: - Avatar
 
     private var avatar: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: KvanteTheme.Shapes.avatarRadius)
-                .fill(KvanteTheme.Colors.kvanteAvatar)
-                .frame(width: 40, height: 40)
-            Text("🤖")
-                .font(.system(size: 20))
-        }
+        KvanteFace(expression: .neutral, size: 28)
+            .frame(width: 40, height: 40)
     }
 
     // MARK: - Bubble Shape

@@ -79,15 +79,15 @@ Bracket-layout med divide/subtract/bring-down cyklus. Deterministisk service som
 - [ ] **OCR-præcision** — Prompt-fix deployet 2026-04-13: anti-bias regel (foretræk aflæsning der IKKE matcher facit ved tvivl) + detaljeret ciffer-forvekslings-guide tilføjet til `answer_reader.py` og `bulk_scan.txt`. Brøker er stadig problematiske. Resterende mulige fixes: (1) ConfirmAnswerSheet ved "correct" med confidence < 0.85, (2) specialiseret brøk-OCR prompt.
 - [ ] **Scan-billede i FeedbackSheet viser forkert udsnit** — Når en opgave scannes via chatten (enkelt-scan) og derefter vises i FeedbackSheet, viser billedet kun et mærkeligt udsnit (fx toppen af regnestykket uden svaret) i stedet for hele det samlede regnestykke. Sandsynligvis fordi enkelt-scan gemmer et scan-billede uden bounding box, og cropningen rammer forkert. Eleven SKAL kunne se hele sit regnestykke inkl. svar i FeedbackSheet. Opdaget 2026-04-12.
 - [x] **Feedback-generator timeout** — Fikset 2026-04-13: endpoint slettet (`POST /feedback/` var deprecated siden 2026-04-12). gear_score + improvement_tip beregnes inline ved submission-tid.
-- [ ] **Swift 6 concurrency warnings** — `append` kaldt fra baggrundstråd på @MainActor property. Warnings nu, fejl i fremtiden.
+- [x] **Swift 6 concurrency warnings** — Fikset 2026-04-13: `@MainActor` tilføjet til ChatViewModel. 0 build warnings.
 - [x] **Visuel/tekst-konsistens** — Fikset 2026-04-13: generate_example.txt prompt strammet — eksplicit forbud mod "æbler", "cirkler", "bolde". Kun "prik/prikker" tilladt.
 - [x] **Opgaveforklaring på engelsk** — Fikset 2026-04-13: explain_method.txt prompt strammet med stærk dansk-enforcement som absolut regel.
-- [ ] **AnimationPlayer.recalculateCumulativeState glemmer cumulativeGridState** — Pre-existing bug opdaget under T9 code review 2026-04-08. `recalculateCumulativeState` nulstiller `cumulativeShortDivisionState`, `cumulativeLongMultiplicationState`, og (nu) `cumulativeArrayGridState`, men IKKE `cumulativeGridState`. Kan give stale stacked-arithmetic grid-state ved backward scroll. Ikke kritisk — genopretter sig ved næste `setup`-step.
+- [x] **AnimationPlayer.recalculateCumulativeState glemmer cumulativeGridState** — Fikset 2026-04-13: tilføjet `cumulativeGridState = nil` i recalculateCumulativeState().
 - [ ] **Chat-tråd per opgave, ikke per session** — Nuværende design: én lang chat-tråd for hele sessionen (alle opgaver). Bliver uoverskueligt at vende tilbage til. Bør være fokuseret på den individuelle opgave — hver assignment får sin egen chat-kontekst. Kræver refactor af ChatViewModel + backend chat persistence.
 - [ ] **Brøk-forklaringer utydelige** — Trin 3 i brøk-eksempler er utydelig. Brøk-eksempler skal simplificeres. Trin 4 flasher 1/4 af cirklen rundt (animationsfejl). Opdaget via dev-capture 2026-04-09.
 - [x] **Backend markerer aldrig sessions som "completed"** — Fikset 2026-04-13: `check_and_complete_session()` kører automatisk efter submission/bulk-submit. Sætter `status=completed` + `completed_at` når alle assignments er done.
 - [x] **Duplikerede weekly sessions** — Fikset 2026-04-13: `create_weekly_session()` deduplicerer nu — returnerer eksisterende session for samme student+uge, sletter tomme sessions.
-- [ ] **Kvante-ikon mangler i chatview** — Chatten har ingen Kvante-avatar/ikon ved beskeder fra Kvante. Opdaget 2026-04-12.
+- [x] **Kvante-ikon mangler i chatview** — Fikset 2026-04-13: 🤖 emoji erstattet med KvanteFace-komponent i ChatBubble.
 - [x] **Practice sessions har tom `name` på backend** — Fikset i Pakke 2a (2026-04-09). Genererer nu `"Øvelser — Topic (Difficulty)"`.
 - [x] **`completed_count` altid 0 pga. status string-mismatch** — Fikset i Pakke 2a (2026-04-09). Counter accepterer nu begge `"complete"` og `"completed"`.
 

@@ -146,6 +146,7 @@ class AnimationPlayer {
         cumulativeCrossedOut = 0
         cumulativeRows = 2
         cumulativeGrouped = 0
+        cumulativeGridState = nil
         cumulativeShortDivisionState = nil
         cumulativeLongMultiplicationState = nil
         cumulativeArrayGridState = nil
