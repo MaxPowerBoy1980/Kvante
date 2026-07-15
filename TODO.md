@@ -1,5 +1,9 @@
 # Kvante TODO
 
+## I gang
+
+- [ ] **Public launch fase 1: Landing page + venteliste** — 95% færdig 2026-07-16. Live på https://kvante.mintworks.ai (Cloudflare Pages fra `web/` i dette repo). Tilmeldinger gemmes i KV (`kvante-signups`), verificeret end-to-end fra iPhone. **Mangler kun Turnstile** (bot-værn) før linket deles offentligt — præcist flow står øverst i `TASK.md`. Fase 2 (mobil web-demo mod backend gennem tunnel) er besluttet men ikke påbegyndt; forudsætninger ligeledes i `TASK.md`.
+
 ## Gennemført
 
 ### 2026-04-12

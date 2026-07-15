@@ -1,5 +1,36 @@
 # Task: Expose Kvante publicly for teachers and testers
 
+> ## STATUS 2026-07-16 — Fase 1 næsten færdig
+>
+> **Besluttet arkitektur:** Fase 1 = landing + venteliste (DONE, live). Fase 2 = mobil web-demo
+> mod nyt `/public/*` API-subset gennem Cloudflare Tunnel (ikke påbegyndt).
+>
+> **Live og verificeret end-to-end:**
+> - https://kvante.mintworks.ai — landing page (Cloudflare Pages, projekt `kvante`,
+>   git-connected til dette repo, root dir `web`, output `public`, ingen build command)
+> - Tilmeldingsformular → Pages Function `web/functions/api/signup.js` → KV-namespace
+>   `kvante-signups` (binding `SIGNUPS`, kun Production-environment). Rigtige tilmeldinger
+>   bekræftet fra iPhone. Tilmeldinger læses i dashboard: Workers KV → kvante-signups → KV Pairs.
+>
+> **ENESTE udestående i fase 1 — Turnstile (bot-værn), aftalt flow:**
+> 1. Bruger opretter widget: Turnstile → Add site → hostname `kvante.mintworks.ai`, mode Managed
+> 2. Bruger sender SITE KEY i chatten → Claude erstatter `REPLACE_WITH_TURNSTILE_SITE_KEY`
+>    i `web/public/index.html`, committer, pusher
+> 3. Bruger sætter SECRET KEY selv: Workers & Pages → kvante → Settings → Variables and
+>    secrets → Add → type Secret, navn `TURNSTILE_SECRET` (gælder fra næste deployment;
+>    Claudes push i trin 2 udløser den)
+> 4. Claude verificerer: POST uden token → 403; siden loader med widget; bruger tester fra telefon
+>
+> **Småting:** (a) Preview-environment mangler `SIGNUPS`-bindingen (503 på previews — valgfrit
+> fix i Settings → Bindings med Preview valgt). (b) Testposter i KV fra verifikation kan slettes
+> (`claude-test@example.com`). (c) Branch `feature/public-landing` er merget men ikke slettet.
+>
+> **Fase 2-forudsætninger (SKAL før backend eksponeres):** gate `/dev/*` + `/test/ocr`-routere,
+> stram CORS (`allow_origins=["*"]` i `backend/app/main.py`), anonyme demo-sessions med kvoter.
+> Bemærk: backend kører live med Claude Sonnet 4 (`.env` på macmini4) — kvoter beskytter API-regningen.
+
+---
+
 ## Goal
 Take my AI math assistant "Kvante" from a private backend on my Mac mini
 to something I can share publicly: a link teachers can try, and that I
