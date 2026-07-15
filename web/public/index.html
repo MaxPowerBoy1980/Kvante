@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kvante — AI-matematikhjælp på papir</title>
+  <meta name="description" content="Kvante hjælper børn i 3.–6. klasse med matematik — med blyant og papir. Kvante guider metoden, men afslører aldrig svaret. Bliv tester.">
+  <meta property="og:title" content="Kvante — AI-matematikhjælp på papir">
+  <meta property="og:description" content="Eleven regner på papir, Kvante kigger med og guider — uden at afsløre svaret. Vi søger lærere og forældre som testere.">
+  <meta property="og:image" content="https://kvante.mintworks.ai/assets/kvante-happy.png">
+  <link rel="icon" type="image/png" href="assets/kvante-happy.png">
+  <style>
+    :root {
+      --cream: #FAF6EE;
+      --card: #FFFFFF;
+      --ink: #16324A;
+      --ink-soft: #4A6274;
+      --teal: #6FBDD8;
+      --teal-deep: #3E92B0;
+      --orange: #E2701B;
+      --orange-soft: #F5A623;
+      --pink: #F25C9B;
+      --line: #E6DFD2;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 0 1.25rem; }
+
+    /* Hero */
+    header {
+      text-align: center;
+      padding: 3rem 0 2.5rem;
+      background: linear-gradient(180deg, #EAF4F8 0%, var(--cream) 100%);
+    }
+    header img.mascot {
+      width: 132px; height: auto;
+      image-rendering: pixelated;
+      margin-bottom: 1rem;
+    }
+    header h1 {
+      font-size: 2.1rem;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 0.75rem;
+    }
+    header h1 .accent { color: var(--teal-deep); }
+    header p.sub {
+      font-size: 1.1rem;
+      color: var(--ink-soft);
+      max-width: 34rem;
+      margin: 0 auto 1.75rem;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--orange);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+    }
+    .cta {
+      display: inline-block;
+      background: var(--orange);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 0.9rem 2rem;
+      border-radius: 14px;
+      border: none;
+      box-shadow: 0 4px 0 #B55712;
+      transition: transform 0.1s, box-shadow 0.1s;
+      cursor: pointer;
+    }
+    .cta:active { transform: translateY(3px); box-shadow: 0 1px 0 #B55712; }
+
+    /* Sections */
+    section { padding: 2.5rem 0; }
+    section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      letter-spacing: -0.01em;
+    }
+    .steps { display: grid; gap: 1rem; }
+    .step {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 1.25rem 1.25rem 1.25rem 4.25rem;
+      position: relative;
+    }
+    .step .num {
+      position: absolute;
+      left: 1.1rem; top: 1.2rem;
+      width: 2.1rem; height: 2.1rem;
+      border-radius: 50%;
+      background: var(--teal);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step h3 { font-size: 1.05rem; margin-bottom: 0.25rem; }
+    .step p { color: var(--ink-soft); font-size: 0.95rem; }
+
+    /* Principle callout */
+    .principle {
+      background: var(--ink);
+      color: #F5F1E8;
+      border-radius: 20px;
+      padding: 1.75rem 1.5rem;
+      display: flex;
+      gap: 1.1rem;
+      align-items: center;
+    }
+    .principle img { width: 72px; height: auto; image-rendering: pixelated; flex-shrink: 0; }
+    .principle h3 { font-size: 1.15rem; margin-bottom: 0.35rem; color: #fff; }
+    .principle p { font-size: 0.95rem; color: #C9D6DF; }
+    .principle .zigzag { color: var(--orange-soft); }
+
+    /* Teachers */
+    .facts { display: grid; gap: 0.9rem; }
+    .fact {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+    }
+    .fact strong { display: block; margin-bottom: 0.15rem; }
+    .fact span { color: var(--ink-soft); }
+
+    /* Form */
+    #tester { padding-bottom: 3.5rem; }
+    form {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 1.75rem 1.5rem;
+      display: grid;
+      gap: 1rem;
+    }
+    label { font-weight: 600; font-size: 0.92rem; display: block; margin-bottom: 0.3rem; }
+    label .opt { color: var(--ink-soft); font-weight: 400; }
+    input[type="text"], input[type="email"], select, textarea {
+      width: 100%;
+      font: inherit;
+      font-size: 1rem;
+      padding: 0.75rem 0.9rem;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      background: var(--cream);
+      color: var(--ink);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--teal-deep);
+    }
+    textarea { min-height: 5.5rem; resize: vertical; }
+    .hp { position: absolute; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
+    .privacy-note { font-size: 0.82rem; color: var(--ink-soft); }
+    #form-status {
+      display: none;
+      border-radius: 12px;
+      padding: 0.9rem 1.1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    #form-status.ok { display: block; background: #E3F2E9; color: #1D6B43; }
+    #form-status.err { display: block; background: #FBE9E7; color: #B03A2E; }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 2rem 0 2.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
+    footer img { width: 44px; image-rendering: pixelated; margin-bottom: 0.5rem; opacity: 0.9; }
+
+    @media (min-width: 560px) {
+      header h1 { font-size: 2.6rem; }
+      .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <img class="mascot" src="assets/kvante-happy.png" alt="Kvante — en glad blå robot" width="132" height="132">
+    <div><span class="badge">Testfase — vi søger testere</span></div>
+    <h1>Matematik med blyant og papir.<br><span class="accent">Kvante kigger med.</span></h1>
+    <p class="sub">Kvante er en AI-matematikmakker til børn i 3.–6. klasse. Eleven regner i hånden — Kvante guider metoden og afslører aldrig svaret.</p>
+    <a class="cta" href="#tester">Bliv tester</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="hvordan">
+    <h2>Sådan virker det</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>Regn på papir</h3>
+        <p>Eleven løser opgaver med blyant og papir, som i en helt almindelig matematiktime. Ingen skærm-tastning, ingen svar-gætteri.</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>Tag et billede</h3>
+        <p>Når opgaven er regnet, tager eleven et billede af sit arbejde. Kvante læser både mellemregninger og svar — ikke kun facit.</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>Få hjælp til metoden</h3>
+        <p>Kvante giver feedback på fremgangsmåden. Sidder eleven fast, viser Kvante et gennemregnet eksempel med <em>andre tal</em> — trin for trin, med animationer.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="principle">
+      <img src="assets/kvante-thinking.png" alt="" width="72" height="72">
+      <div>
+        <h3><span class="zigzag">⚡</span> Kvante afslører aldrig svaret</h3>
+        <p>Det er husets vigtigste regel. Kvante forklarer, viser eksempler og stiller spørgsmål — men selve opgaven skal eleven selv regne. Det er sådan man lærer det.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="laerere">
+    <h2>Til lærere og forældre</h2>
+    <div class="facts">
+      <div class="fact">
+        <strong>Bygget til mellemtrinnet</strong>
+        <span>Plus, minus, gange og division med opstillede stykker, brøker og ugentlige blandede opgavesæt — målrettet 9–13-årige.</span>
+      </div>
+      <div class="fact">
+        <strong>Metode frem for facit</strong>
+        <span>Feedbacken handler om fremgangsmåden: Hvor gik det godt? Hvor smuttede menten? Fejl kategoriseres, så eleven kan arbejde målrettet.</span>
+      </div>
+      <div class="fact">
+        <strong>Privatliv fra starten</strong>
+        <span>Kvante er i lukket testfase og kører uden konti og uden offentlig lagring af elevdata. Som tester får du fuld indsigt i, hvad der gemmes.</span>
+      </div>
+      <div class="fact">
+        <strong>Dansk hele vejen</strong>
+        <span>Forklaringer, eksempler og feedback er på naturligt dansk og følger de metoder, der bruges i danske klasseværelser.</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="tester">
+    <h2>Vær med til at teste Kvante</h2>
+    <form id="signup-form" novalidate>
+      <div>
+        <label for="name">Navn <span class="opt">(valgfrit)</span></label>
+        <input type="text" id="name" name="name" autocomplete="name">
+      </div>
+      <div>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" required autocomplete="email" inputmode="email">
+      </div>
+      <div>
+        <label for="role">Jeg er…</label>
+        <select id="role" name="role">
+          <option value="laerer">Lærer</option>
+          <option value="foraelder">Forælder</option>
+          <option value="andet">Andet</option>
+        </select>
+      </div>
+      <div>
+        <label for="message">Besked <span class="opt">(valgfrit — fx klassetrin eller hvad du er nysgerrig på)</span></label>
+        <textarea id="message" name="message" maxlength="1000"></textarea>
+      </div>
+      <div class="hp" aria-hidden="true">
+        <label for="website">Udfyld ikke dette felt</label>
+        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <div id="turnstile-slot"></div>
+      <div id="form-status" role="status"></div>
+      <button class="cta" type="submit" id="submit-btn">Skriv mig op</button>
+      <p class="privacy-note">Vi gemmer kun det, du skriver her, og bruger det udelukkende til at kontakte dig om Kvante-testen. Ingen nyhedsbreve, ingen videregivelse. Vil du slettes, svarer du bare på vores mail.</p>
+    </form>
+  </section>
+
+</main>
+
+<footer>
+  <img src="assets/kvante-happy.png" alt="">
+  <div>Kvante · et Mintworks-projekt · 2026</div>
+</footer>
+
+<script>
+  // Turnstile: skiftes til den rigtige site key når widget'en er oprettet i Cloudflare.
+  // Med placeholder renderes ingen widget, og backend springer verifikation over
+  // indtil TURNSTILE_SECRET er sat som Pages-miljøvariabel.
+  const TURNSTILE_SITE_KEY = "REPLACE_WITH_TURNSTILE_SITE_KEY";
+
+  if (!TURNSTILE_SITE_KEY.startsWith("REPLACE")) {
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    s.async = true;
+    document.head.appendChild(s);
+    const slot = document.getElementById("turnstile-slot");
+    slot.className = "cf-turnstile";
+    slot.setAttribute("data-sitekey", TURNSTILE_SITE_KEY);
+  }
+
+  const form = document.getElementById("signup-form");
+  const status = document.getElementById("form-status");
+  const btn = document.getElementById("submit-btn");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    status.className = "";
+    const email = form.email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      status.textContent = "Skriv en gyldig e-mailadresse.";
+      status.className = "err";
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Sender…";
+    try {
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        body: new FormData(form),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      form.reset();
+      status.textContent = "Tak! Du hører fra os, når næste testrunde starter.";
+      status.className = "ok";
+      btn.textContent = "Sendt ✓";
+    } catch (err) {
+      status.textContent = "Hov, noget gik galt. Prøv igen om lidt.";
+      status.className = "err";
+      btn.disabled = false;
+      btn.textContent = "Skriv mig op";
+    }
+  });
+</script>
+
+</body>
+</html>
