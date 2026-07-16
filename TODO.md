@@ -1,10 +1,9 @@
 # Kvante TODO
 
-## I gang
-
-- [ ] **Public launch fase 1: Landing page + venteliste** — 95% færdig 2026-07-16. Live på https://kvante.mintworks.ai (Cloudflare Pages fra `web/` i dette repo). Tilmeldinger gemmes i KV (`kvante-signups`), verificeret end-to-end fra iPhone. **Mangler kun Turnstile** (bot-værn) før linket deles offentligt — præcist flow står øverst i `TASK.md`. Fase 2 (mobil web-demo mod backend gennem tunnel) er besluttet men ikke påbegyndt; forudsætninger ligeledes i `TASK.md`.
-
 ## Gennemført
+
+### 2026-07-17
+- [x] **Public launch fase 1: Landing page + venteliste** — Live på https://kvante.mintworks.ai. Cloudflare Pages (projekt `kvante`, git-connected, root `web/`, ingen build-step). Mobil-first dansk landing med Kvante-pixelart, tre-trins forklaring, kardinalregel-kort, lærer-sektion og tilmeldingsformular. Tilmeldinger → Pages Function → KV `kvante-signups` (binding `SIGNUPS`), læses under KV Pairs i dashboardet. Bot-værn i tre lag: honeypot + Turnstile (Managed, håndhævet server-side — POST uden token afvises 403) + Cloudflare-edge. Verificeret end-to-end fra iPhone inkl. Turnstile. Branch: `feature/public-landing` (merget). Fase 2 (mobil web-demo mod backend gennem tunnel) er besluttet men ikke påbegyndt — forudsætninger og arkitektur i `TASK.md`.
 
 ### 2026-04-12
 - [x] **Startskærm UX-sprint (B1-B3)** — Tre-tilstands hovedkort: aktivt ugesæt (Rob neutral + progress chips + "Fortsæt"), triumf (glad Rob + varm gradient + "Se hvad du har lavet →"), tomt (dashed border + dæmpet tekst). Solid `robBlue` chips med hvid ✓. Header: fjernet "Klar til matematik?" velkomsttekst, dots skjult i tilstand 3. Session-detection fix: kun nyeste weekly session tæller, `completedCount >= assignmentCount` som fallback for manglende backend-status. Branch: `feature/startskærm-ux-sprint`. Spec: `docs/superpowers/specs/2026-04-12-startskærm-ux-sprint-design.md`. Plan: `docs/superpowers/plans/2026-04-12-startskærm-ux-sprint.md`.

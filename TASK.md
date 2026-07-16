@@ -1,25 +1,17 @@
 # Task: Expose Kvante publicly for teachers and testers
 
-> ## STATUS 2026-07-16 — Fase 1 næsten færdig
+> ## STATUS 2026-07-17 — Fase 1 FÆRDIG, fase 2 ikke påbegyndt
 >
-> **Besluttet arkitektur:** Fase 1 = landing + venteliste (DONE, live). Fase 2 = mobil web-demo
-> mod nyt `/public/*` API-subset gennem Cloudflare Tunnel (ikke påbegyndt).
+> **Fase 1 (landing + venteliste) er live og fuldt verificeret:** https://kvante.mintworks.ai
+> - Cloudflare Pages: projekt `kvante`, git-connected, root `web`, output `public`, ingen build command
+> - Tilmeldinger: Pages Function `web/functions/api/signup.js` → KV `kvante-signups`
+>   (binding `SIGNUPS`). Læses i dashboard: Workers KV → kvante-signups → KV Pairs.
+> - Bot-værn: honeypot + Turnstile Managed (site key i index.html, secret som Pages-secret
+>   `TURNSTILE_SECRET`; POST uden token afvises 403 — verificeret)
 >
-> **Live og verificeret end-to-end:**
-> - https://kvante.mintworks.ai — landing page (Cloudflare Pages, projekt `kvante`,
->   git-connected til dette repo, root dir `web`, output `public`, ingen build command)
-> - Tilmeldingsformular → Pages Function `web/functions/api/signup.js` → KV-namespace
->   `kvante-signups` (binding `SIGNUPS`, kun Production-environment). Rigtige tilmeldinger
->   bekræftet fra iPhone. Tilmeldinger læses i dashboard: Workers KV → kvante-signups → KV Pairs.
->
-> **ENESTE udestående i fase 1 — Turnstile (bot-værn), aftalt flow:**
-> 1. Bruger opretter widget: Turnstile → Add site → hostname `kvante.mintworks.ai`, mode Managed
-> 2. Bruger sender SITE KEY i chatten → Claude erstatter `REPLACE_WITH_TURNSTILE_SITE_KEY`
->    i `web/public/index.html`, committer, pusher
-> 3. Bruger sætter SECRET KEY selv: Workers & Pages → kvante → Settings → Variables and
->    secrets → Add → type Secret, navn `TURNSTILE_SECRET` (gælder fra næste deployment;
->    Claudes push i trin 2 udløser den)
-> 4. Claude verificerer: POST uden token → 403; siden loader med widget; bruger tester fra telefon
+> **Fase 2 = mobil web-demo:** nyt `/public/*` API-subset på backenden, eksponeret som
+> `kvante-api.mintworks.ai` gennem den eksisterende Cloudflare Tunnel på macmini4.
+> Anonyme demo-sessions, kvote pr. session, evt. billigere model til demoen.
 >
 > **Småting:** (a) Preview-environment mangler `SIGNUPS`-bindingen (503 på previews — valgfrit
 > fix i Settings → Bindings med Preview valgt). (b) Testposter i KV fra verifikation kan slettes
