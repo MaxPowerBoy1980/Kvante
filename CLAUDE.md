@@ -216,3 +216,10 @@ TODO.md giver *hvad* og *prioritet*. Memory-filen giver *hvorfor* og *hvordan*. 
 - **Tjek altid `git status`** før destruktive operationer (reset, force-push, branch -D) og bekræft med brugeren først
 - **Aldrig push uden eksplicit ja**, slet aldrig branches uden eksplicit ja
 - **`.gitignore` skal vedligeholdes** — tilføj nye mønstre når der opstår støj fra værktøjer (xcuserstate, .DS_Store, build artifacts)
+
+## Maskin-niveau vs. app-niveau
+
+Denne session handler om Kvante. Maskin-niveau-spørgsmål på macmini4 (Cloudflare-tunnel,
+DNS/hostnavne, porte på tværs af services, launchd-konventioner, eksponeringsbeslutninger)
+hører hjemme i `~/baseOS` (se dens CLAUDE.md og `exposure/PLAN.md`) — notér dem dér,
+afgør dem ikke her.
