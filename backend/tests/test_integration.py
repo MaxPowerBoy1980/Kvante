@@ -61,7 +61,7 @@ ANALYSIS = json.dumps({
     "confidence": 0.95,
 })
 
-def test_full_workflow(client):
+def test_full_workflow(client, test_db):
     """Test the complete Kvante workflow end-to-end."""
 
     mock_parser = MagicMock()
@@ -75,7 +75,9 @@ def test_full_workflow(client):
          patch("app.services.page_parser.preprocess_textbook_page", side_effect=lambda b: b), \
          patch("app.services.example_generator.get_ai_client", return_value=mock_example), \
          patch("app.services.work_analyzer.get_ai_client", return_value=mock_analyzer), \
-         patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b):
+         patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b), \
+         patch("app.routers.submissions.read_student_answer",
+               return_value={"answer": "42", "readable": True, "elapsed": 0.1}):
 
         # 1. Scan page
         resp = client.post("/pages/scan", files={"image": ("page.jpg", _jpeg(), "image/jpeg")})
@@ -93,6 +95,14 @@ def test_full_workflow(client):
         assert len(example_data["steps"]) >= 1
 
         # 3. Submit handwritten work
+        # Scanned assignments carry no ground truth; methodology_sound == is_correct
+        # requires correct_answer to be set (as the practice flow does).
+        from app.models.db import Assignment
+
+        db_assignment = test_db.query(Assignment).filter(Assignment.id == assignment_id).first()
+        db_assignment.correct_answer = "42"
+        test_db.commit()
+
         resp = client.post(
             "/submissions/",
             data={"session_id": session_id, "assignment_id": assignment_id},

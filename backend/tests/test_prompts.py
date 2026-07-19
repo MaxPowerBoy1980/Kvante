@@ -27,6 +27,9 @@ def test_prompt_mentions_never_reveal_answer(filename):
     if filename == "parse_page.txt":
         pytest.skip("parse_page doesn't analyze student work")
     content = (PROMPTS_DIR / filename).read_text().lower()
-    assert "never" in content and "answer" in content, (
-        f"Prompt {filename} must contain the 'never reveal answer' instruction"
+    has_english = "never" in content and "answer" in content
+    has_danish = "aldrig" in content and "svar" in content
+    assert has_english or has_danish, (
+        f"Prompt {filename} must contain the 'never reveal answer' instruction "
+        f"(English or Danish)"
     )

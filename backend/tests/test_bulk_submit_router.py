@@ -82,6 +82,13 @@ def _ai_response_json(matches: list) -> str:
     return json.dumps({"matches": matches})
 
 
+def _model_name(model):
+    """Route by model name: works whether the router bound the real SQLAlchemy
+    models (stubs no-op because conftest already imported app.models.db) or our
+    sys.modules stubs (Python 3.14 workaround)."""
+    return getattr(model, "__name__", None) or getattr(model, "_mock_name", None)
+
+
 def _build_db(mock_session, assignments, submission_count=0):
     """Build a DB mock that routes db.query(Model) calls correctly."""
     db = MagicMock()
@@ -93,11 +100,12 @@ def _build_db(mock_session, assignments, submission_count=0):
         o = MagicMock()
         f.order_by.return_value = o
 
-        if model is _FakeSession:
+        name = _model_name(model)
+        if name == "Session":
             f.first.return_value = mock_session
-        elif model is _FakeAssignment:
+        elif name == "Assignment":
             o.all.return_value = assignments
-        elif model is _FakeSubmission:
+        elif name == "Submission":
             f.count.return_value = submission_count
 
         return inner
@@ -232,7 +240,7 @@ def test_bulk_submit_404_for_missing_session():
         inner = MagicMock()
         f = MagicMock()
         inner.filter.return_value = f
-        if model is _FakeSession:
+        if _model_name(model) == "Session":
             f.first.return_value = None
         return inner
 

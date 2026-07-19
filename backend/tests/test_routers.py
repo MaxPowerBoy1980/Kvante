@@ -53,7 +53,7 @@ def test_get_example_404_for_missing_session(mock_gen_cls, client):
 
 @patch("app.services.work_analyzer.preprocess_handwritten_work", side_effect=lambda b: b)
 @patch("app.routers.submissions.WorkAnalyzerService")
-def test_submit_work(mock_analyzer_cls, mock_preprocess, client):
+def test_submit_work(mock_analyzer_cls, mock_preprocess, client, test_db):
     # First create a session by scanning a page
     with patch("app.routers.pages.PageParserService") as mock_parser_cls:
         mock_parser = MagicMock()
@@ -77,6 +77,14 @@ def test_submit_work(mock_analyzer_cls, mock_preprocess, client):
     assignments = scan_resp.json()["assignments"]
     assignment_id = assignments[0]["id"]
 
+    # Scanned assignments have no ground truth; methodology_sound == is_correct
+    # requires correct_answer to be set (as the practice flow does).
+    from app.models.db import Assignment
+
+    db_assignment = test_db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    db_assignment.correct_answer = "5"
+    test_db.commit()
+
     mock_analyzer = MagicMock()
     mock_analyzer_cls.return_value = mock_analyzer
     mock_analyzer.analyze_work.return_value = {
@@ -90,11 +98,15 @@ def test_submit_work(mock_analyzer_cls, mock_preprocess, client):
         "confidence": 0.95,
     }
 
-    resp = client.post(
-        "/submissions/",
-        data={"session_id": session_id, "assignment_id": assignment_id},
-        files={"image": ("work.jpg", _make_test_jpeg(), "image/jpeg")},
-    )
+    with patch(
+        "app.routers.submissions.read_student_answer",
+        return_value={"answer": "5", "readable": True, "elapsed": 0.1},
+    ):
+        resp = client.post(
+            "/submissions/",
+            data={"session_id": session_id, "assignment_id": assignment_id},
+            files={"image": ("work.jpg", _make_test_jpeg(), "image/jpeg")},
+        )
     assert resp.status_code == 200
     data = resp.json()
     assert data["methodology_sound"] is True
