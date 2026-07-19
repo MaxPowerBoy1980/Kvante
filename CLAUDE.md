@@ -223,3 +223,7 @@ Denne session handler om Kvante. Maskin-niveau-spørgsmål på macmini4 (Cloudfl
 DNS/hostnavne, porte på tværs af services, launchd-konventioner, eksponeringsbeslutninger)
 hører hjemme i `~/baseOS` (se dens CLAUDE.md og `exposure/PLAN.md`) — notér dem dér,
 afgør dem ikke her.
+
+Ændrer arbejdet her på porte, launchd-opsætning, hostnavne eller eksponering, skal
+`~/baseOS/docs/architecture.md` (arkitekturdiagrammerne) opdateres i en
+baseOS-session — notér det eksplicit, så det ikke glemmes.
